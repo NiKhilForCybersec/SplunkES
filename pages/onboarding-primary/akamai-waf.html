@@ -155,7 +155,7 @@
                             <tr><td style="width:35%"><strong>Correlate with other sources</strong></td><td>A blocked WAF request from IP 1.2.3.4 is interesting. That same IP also failing VPN logins and scanning internal ports is a campaign. The SIEM connects these.</td></tr>
                             <tr><td><strong>Detect patterns over time</strong></td><td>Credential stuffing attacks trickle in slowly — 10 requests per minute across 50 IPs. The WAF sees each request individually. The SIEM sees the pattern.</td></tr>
                             <tr><td><strong>Build automated alerts</strong></td><td>When attack volume from a country spikes 10x in an hour, the SIEM triggers an alert. Akamai's dashboard does not do this.</td></tr>
-                            <tr><td><strong>Feed incident response workflows</strong></td><td>Investigations need searchable, retainable logs. Akamai retains security events for only 12 hours. The SIEM retains them for months or years.</td></tr>
+                            <tr><td><strong>Feed incident response workflows</strong></td><td>Investigations need searchable, retainable logs. The Akamai Collector stores security event data for only 12 hours. The SIEM retains them for months or years.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -175,10 +175,10 @@
                 <p>This is the most important thing to understand upfront: <strong>Akamai does not send security events anywhere automatically.</strong> There is no "enable forwarding to Splunk" toggle. Akamai stores security events temporarily on its platform, and <em>you</em> must actively pull them out.</p>
 
                 <h3>Where Akamai Stores Security Events</h3>
-                <p>When a security event is generated at the edge, Akamai writes it to a short-term buffer called the <strong>Akamai Security Events Collector (ASEC)</strong>. ASEC retains events for exactly <strong>12 hours</strong>. After 12 hours, events are permanently deleted — there is no archive, no backup, no way to recover them. This 12-hour window is the hard constraint that drives everything about your collection strategy.</p>
+                <p>When a security event is generated at the edge, Akamai captures it in the <strong>Akamai Security Events Collector (ASEC)</strong> — a component that aggregates security events across edge servers and exposes them via the SIEM API. Per Akamai's documentation, the Collector stores security event data for <strong>up to 12 hours</strong>, enabling you to go back and capture missed events if necessary (<a href="https://techdocs.akamai.com/siem-integration/docs/akamai-siem-integration-for-splunk-and-cef-syslog" target="_blank">source: Akamai SIEM Integration Guide</a>). If your connection is disrupted, you can use time-based mode to replay security events from within the past 12 hours (<a href="https://techdocs.akamai.com/siem-integration/reference/get-configid" target="_blank">source: Fetch Security Events API</a>). The documentation does not specify what happens to events beyond this window — treat the 12-hour replay window as the operational constraint that drives your entire collection strategy.</p>
 
                 <h3>The Akamai SIEM Integration API</h3>
-                <p>The supported way to extract security events from ASEC is the <strong>SIEM Integration API</strong>. This is a REST API with these characteristics:</p>
+                <p>The supported way to retrieve security events from the Collector is the <strong>SIEM Integration API</strong>. This is a REST API with these characteristics:</p>
 
                 <div class="table-wrapper">
                     <table>
@@ -187,7 +187,7 @@
                             <tr><td><strong>Direction</strong></td><td>Pull — your code calls Akamai. Akamai does not call you.</td></tr>
                             <tr><td><strong>Response format</strong></td><td>Newline-delimited JSON (NDJSON). One JSON object per line per event. The last line is a <code>ResponseContext</code> object with pagination data.</td></tr>
                             <tr><td><strong>Authentication</strong></td><td>Akamai OPEN EdgeGrid — requires four credential values: <code>client_token</code>, <code>client_secret</code>, <code>access_token</code>, and <code>hostname</code>.</td></tr>
-                            <tr><td><strong>Retention</strong></td><td>12 hours. Non-negotiable. Miss the window and events are gone forever.</td></tr>
+                            <tr><td><strong>Retention</strong></td><td>The Collector stores security event data for up to 12 hours, enabling replay of missed events within that window (Akamai Guide). The docs do not state what happens beyond this window.</td></tr>
                             <tr><td><strong>Max events per request</strong></td><td>600,000 (default: 10,000, configurable via the <code>limit</code> parameter).</td></tr>
                             <tr><td><strong>Inherent latency</strong></td><td>5 seconds — the API intentionally delays delivery by 5 seconds.</td></tr>
                             <tr><td><strong>Response timeout</strong></td><td>2 minutes — Akamai's edge stops sending after 2 minutes per request.</td></tr>
@@ -221,7 +221,7 @@
 flowchart LR
     subgraph AKAMAI["Akamai Platform"]
         A1["Edge Security<br/>(WAF, Bot, DDoS)"]
-        A2["ASEC<br/>Security Events<br/>Collector<br/><em>12-hour retention</em>"]
+        A2["Security Events<br/>Collector (ASEC)<br/><em>12-hour replay window</em>"]
     end
 
     subgraph YOUR_INFRA["Your Infrastructure"]
@@ -284,7 +284,7 @@ flowchart LR
                     <table>
                         <thead><tr><th style="width:15%">Aspect</th><th style="width:85%">Detail</th></tr></thead>
                         <tbody>
-                            <tr><td><strong>WHAT</strong></td><td>SIEM Integration is a per-configuration toggle that tells Akamai to write security events for that configuration into ASEC (the 12-hour buffer). If this toggle is off, no events are generated — the API will return empty responses.</td></tr>
+                            <tr><td><strong>WHAT</strong></td><td>SIEM Integration is a per-configuration toggle that enables Akamai to capture security events for that configuration in the Security Events Collector (ASEC). The Collector retains event data for 12 hours. If this toggle is off, no events are captured — the API will return empty responses.</td></tr>
                             <tr><td><strong>WHERE</strong></td><td>Akamai Control Center → <strong>WEB &amp; DATA CENTER SECURITY</strong> → Security Configuration → select the configuration → <strong>Advanced Settings</strong> → <strong>Data Collection for SIEM Integrations</strong>.</td></tr>
                             <tr><td><strong>HOW</strong></td><td>The toggle must show <strong>On</strong>. If it is Off, turn it on and activate the configuration to production (next step). <strong>Record the <code>configId</code></strong> displayed on this page — you will need it later.</td></tr>
                             <tr><td><strong>VERIFY</strong></td><td>The toggle is On AND the configId is recorded.</td></tr>
@@ -473,7 +473,7 @@ flowchart TD
                             <tr><td><strong>2-minute timeout</strong></td><td>Akamai's edge servers stop sending after 2 minutes per request. A truncated response has no ResponseContext on the last line. Re-call with the same offset and a lower limit.</td></tr>
                             <tr><td><strong>HTTP 429 — Rate limited</strong></td><td>Akamai returns 429 with no <code>X-RateLimit-Reset</code> header. Implement exponential backoff: wait 30s → 60s → 120s before retrying.</td></tr>
                             <tr><td><strong>Base64-encoded fields</strong></td><td>Fields <code>ruleActions</code>, <code>ruleData</code>, <code>ruleMessages</code>, <code>ruleSelectors</code>, <code>ruleTags</code> are base64-encoded. Each contains semicolon-delimited values (one per triggered rule). Decode in the collector before posting, or leave encoded and decode at search time.</td></tr>
-                            <tr><td><strong>12-hour replay</strong></td><td>If the collector goes offline, events remain available for 12 hours. Use time-based mode with <code>from</code> and <code>to</code> epochs to replay. After 12 hours, events are permanently lost.</td></tr>
+                            <tr><td><strong>12-hour replay</strong></td><td>If your collector goes offline, the API supports replaying missed security events from within the past 12 hours using time-based mode with <code>from</code> and <code>to</code> epoch parameters. Plan your recovery strategy around this window — the docs do not guarantee availability beyond it.</td></tr>
                             <tr><td><strong>Offset persistence</strong></td><td>If the offset is lost (e.g., disk failure), you must fall back to time-based mode. Use the last known collection time as the <code>from</code> parameter. Accept that some duplicates may occur.</td></tr>
                         </tbody>
                     </table>
@@ -1077,7 +1077,7 @@ flowchart LR
                             <tr><td>F1</td><td>429 rate limit</td><td>Collector gets 429. No reset header.</td><td>Exponential backoff. Reduce poll frequency. Check for competing collectors.</td></tr>
                             <tr><td>F2</td><td>Expired credentials</td><td>401/403 from API.</td><td>Re-provision in Control Center. Update collector.</td></tr>
                             <tr><td>F3</td><td>Offset lost</td><td>Duplicate spike after restart.</td><td>Time-based replay. Dedup at search time.</td></tr>
-                            <tr><td>F4</td><td>Offline &gt; 12h</td><td>Permanent event gap.</td><td>Document gap. No recovery.</td></tr>
+                            <tr><td>F4</td><td>Offline &gt; 12h</td><td>The API only supports replay of events from within the past 12 hours. Downtime beyond this window likely means an unrecoverable gap.</td><td>Document the gap. Use time-based replay to recover whatever falls within the 12-hour replay window. Contact Akamai support if you need to confirm whether older events are recoverable in your account.</td></tr>
                             <tr><td>F5</td><td>2-min timeout</td><td>Incomplete response, no ResponseContext.</td><td>Lower limit parameter. Re-call with same offset.</td></tr>
                             <tr><td>F6</td><td>SIEM not enabled</td><td>Empty API responses.</td><td>Toggle On in Control Center (Step 4.1).</td></tr>
                             <tr><td>F7</td><td>Proxy interference</td><td>Cannot reach API or garbled responses.</td><td>Whitelist *.akamaiapis.net. Preserve headers.</td></tr>
@@ -1169,7 +1169,7 @@ flowchart LR
                             <tr><td style="width:30%"><strong>Vendor</strong></td><td>Akamai Technologies</td></tr>
                             <tr><td><strong>API Endpoint</strong></td><td><code>GET /siem/v1/configs/{configId}</code></td></tr>
                             <tr><td><strong>Authentication</strong></td><td>Akamai OPEN EdgeGrid (client_token, client_secret, access_token, hostname)</td></tr>
-                            <tr><td><strong>Event Retention</strong></td><td>12 hours in ASEC. Non-negotiable.</td></tr>
+                            <tr><td><strong>Event Retention</strong></td><td>The Collector (ASEC) stores event data for 12 hours. Replay available within this window.</td></tr>
                             <tr><td><strong>Max Events/Request</strong></td><td>600,000 (default: 10,000)</td></tr>
                             <tr><td><strong>Response Format</strong></td><td>NDJSON. Last line = ResponseContext.</td></tr>
                             <tr><td><strong>Base64 Fields</strong></td><td>ruleActions, ruleData, ruleMessages, ruleSelectors, ruleTags — semicolon-delimited.</td></tr>

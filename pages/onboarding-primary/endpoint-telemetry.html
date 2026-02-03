@@ -32,6 +32,30 @@
                 <p>This page includes explicit validation criteria, volume management guidance, and enterprise deployment considerations.</p>
             </div>
 
+                <!-- ============================================== -->
+                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
+                <!-- ============================================== -->
+                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
+                    <div class="callout-title">☁️ Splunk Cloud Safety Box — Endpoint Telemetry</div>
+                    <p><strong>✅ Allowed in Cloud:</strong> Deploying UFs on endpoints, configuring UF outputs to Cloud, installing parsing TAs on Cloud SH via SSAI, creating indexes via UI, all validation SPL.</p>
+                    <p><strong>⚠️ Restricted in Cloud:</strong> UF deployment server must be customer-managed (Cloud does not include one). TA installation on Cloud indexers requires a Splunk support ticket. You cannot edit inputs.conf on Cloud indexers.</p>
+                    <p><strong>🔄 Cloud-Safe Alternative:</strong> Deploy UFs using your own deployment server or config management tool. For endpoint TAs that require indexer-side installation (e.g., Splunk Add-on for Microsoft Windows for index-time transforms), request indexer TA installation via support ticket. Install the same TA on the Cloud SH via SSAI for search-time extractions.</p>
+                    <p><strong>📋 Verify:</strong> Confirm which TAs need to be on indexers vs. SH only by checking the TA's documentation. Use <code>| rest /services/apps/local splunk_server=*</code> to verify TA deployment locations.</p>
+                </div>
+
+                <h3>Splunk Cloud Execution Notes — Endpoint Telemetry</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <tbody>
+                            <tr><td style="width:35%"><strong>Where do UFs run?</strong></td><td><strong>On your endpoints</strong> — servers, workstations. Managed by your deployment server or config management.</td></tr>
+                            <tr><td><strong>Where does parsing happen?</strong></td><td><strong>Index-time:</strong> On Cloud indexers (requires TA installed on indexers via support ticket). <strong>Search-time:</strong> On Cloud SH (TA installed via SSAI).</td></tr>
+                            <tr><td><strong>Deployment server?</strong></td><td><strong>Customer-managed.</strong> Splunk Cloud does not provide a deployment server. Deploy your own or use Puppet/Chef/Ansible.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+
+
             <div class="callout callout-danger">
                 <div class="callout-title">🚨 CRITICAL: Endpoint Data Can Explode License Usage</div>
                 <p><strong>Unfiltered endpoint logs from 10,000+ endpoints can consume 100+ GB/day.</strong> Before enabling endpoint collection:</p>

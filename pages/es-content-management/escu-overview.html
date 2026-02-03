@@ -26,6 +26,18 @@
                     <p><strong>Preconditions:</strong> Familiarity with <a href="ootb-content.html">OOTB Content Reality</a> and the <a href="ootb-vs-custom.html">OOTB vs Custom Strategy</a>.</p>
                 </div>
 
+                <!-- ============================================== -->
+                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
+                <!-- ============================================== -->
+                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
+                    <div class="callout-title">☁️ Splunk Cloud Safety Box — ES Content Management</div>
+                    <p><strong>✅ Allowed in Cloud:</strong> All ES content management workflows are UI-based and work identically in Cloud. Correlation search creation, enablement, tuning, suppression, ESCU deployment, and content lifecycle management all use the ES UI. No differences from Enterprise.</p>
+                    <p><strong>⚠️ Restricted in Cloud:</strong> If this page references <code>savedsearches.conf</code> file edits, <code>btool</code> debugging, or filesystem-level backup procedures, those apply only to customer-managed infrastructure. You cannot edit .conf files directly in Splunk Cloud.</p>
+                    <p><strong>🔄 Cloud-Safe Alternative:</strong> All correlation search management is via Configure → Content → Content Management. For backup/versioning, export searches via the ES UI or REST API and store in Git. Use <code>| rest /services/saved/searches</code> to inspect search configurations programmatically. Deploy content updates as packaged apps via SSAI.</p>
+                </div>
+
+
+
                 <div class="callout callout-warning">
                     <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
                     <ul>

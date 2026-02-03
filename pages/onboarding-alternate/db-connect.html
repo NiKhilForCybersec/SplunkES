@@ -30,6 +30,19 @@
                 <p>This page includes database-specific operational guidance, security requirements, and rollback procedures.</p>
             </div>
 
+                <!-- ============================================== -->
+                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
+                <!-- ============================================== -->
+                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
+                    <div class="callout-title">☁️ Splunk Cloud Safety Box — DB Connect</div>
+                    <p><strong>✅ Allowed in Cloud:</strong> Splunk DB Connect is Cloud-vetted and can run on SH (Victoria Experience) or IDM (Classic Experience). All validation SPL works in Cloud.</p>
+                    <p><strong>⚠️ Restricted in Cloud:</strong> DB Connect requires network connectivity from the Splunk Cloud SH/IDM to your database. This may require IP allowlisting on both sides. On Classic Experience, DB Connect must run on IDM — not on the SH. JDBC drivers may need to be included in the app package.</p>
+                    <p><strong>🔄 Cloud-Safe Alternative:</strong> If direct database connectivity is not feasible, consider deploying a customer-managed HF near the database, running DB Connect on the HF, and forwarding results to Cloud. Or use a scheduled script/Lambda to query the database and POST results to HEC.</p>
+                    <p><strong>📋 Verify:</strong> Confirm network path from Cloud SH/IDM to your database. Check firewall rules and IP allowlists. Verify DB Connect version is Cloud-certified on Splunkbase.</p>
+                </div>
+
+
+
             <div class="callout callout-danger">
                 <div class="callout-title">🚨 CRITICAL: DB Connect Can Impact Production Databases</div>
                 <p><strong>Poorly tuned queries can degrade database performance.</strong> Before implementing:</p>

@@ -30,6 +30,18 @@
                 <p>This page includes custom script security requirements, checkpoint management, and rollback procedures.</p>
             </div>
 
+                <!-- ============================================== -->
+                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
+                <!-- ============================================== -->
+                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
+                    <div class="callout-title">☁️ Splunk Cloud Safety Box — Scripted Inputs</div>
+                    <p><strong>✅ Allowed in Cloud:</strong> Scripted inputs can run on IDM (Classic) or SH (Victoria) if packaged as a Cloud-vetted app. They can also run on customer-managed HFs.</p>
+                    <p><strong>⚠️ Restricted in Cloud:</strong> Arbitrary scripts cannot be deployed ad-hoc — they must be packaged as a private app and submitted for Cloud vetting. <code>$SPLUNK_HOME</code> filesystem paths, CLI commands, and manual script placement described on this page apply ONLY to customer-managed infrastructure (HFs, standalone instances). On Classic Experience, scripted inputs on SH void search SLAs.</p>
+                    <p><strong>🔄 Cloud-Safe Alternative:</strong> Preferred pattern: run the script on your own infrastructure (Lambda, EC2, cron job on a server) and POST results to Cloud HEC. This eliminates all Cloud-side scripted input restrictions. If the script must run inside Splunk, package it as an app, get it vetted, and deploy to IDM (Classic) or SH (Victoria).</p>
+                </div>
+
+
+
             <div class="callout callout-danger">
                 <div class="callout-title">🚨 CRITICAL: Scripted Inputs Require Custom Code Maintenance</div>
                 <p><strong>Scripts are custom code that YOU must maintain.</strong> Before implementing:</p>

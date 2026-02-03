@@ -26,6 +26,18 @@
                     <p><strong>Preconditions:</strong> At least one correlation search enabled and producing notables in production. SOC analyst has <code>ess_analyst</code> role or equivalent permissions.</p>
                 </div>
 
+                <!-- ============================================== -->
+                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
+                <!-- ============================================== -->
+                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
+                    <div class="callout-title">☁️ Splunk Cloud Safety Box — ES Operations</div>
+                    <p><strong>✅ Allowed in Cloud:</strong> All ES operational workflows (Incident Review, triage, investigations, notable suppression, adaptive response actions) are UI-based and work identically in Cloud. No differences from Enterprise.</p>
+                    <p><strong>⚠️ Restricted in Cloud:</strong> None for standard ES operations. If this page references filesystem paths or CLI commands for troubleshooting, those do not apply in Cloud.</p>
+                    <p><strong>🔄 Cloud-Safe Alternative:</strong> For troubleshooting ES operational issues, use the ES Health dashboard, <code>| rest</code> queries, and internal indexes (<code>index=_internal</code>, <code>index=_audit</code>) — all accessible via search in Cloud.</p>
+                </div>
+
+
+
                 <div class="callout callout-warning">
                     <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
                     <ul>

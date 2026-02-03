@@ -30,6 +30,18 @@
                     <p>This overview page links to source-specific guides, each with their own hardened procedures.</p>
                 </div>
 
+                <!-- ============================================== -->
+                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
+                <!-- ============================================== -->
+                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
+                    <div class="callout-title">☁️ Splunk Cloud Safety Box — Infrastructure &amp; Decision Guides</div>
+                    <p><strong>✅ Allowed in Cloud:</strong> Decision frameworks and evaluation criteria on this page apply to Cloud. HEC is the primary Cloud ingestion path.</p>
+                    <p><strong>⚠️ Restricted in Cloud:</strong> Architecture patterns that assume direct indexer access, deployment server management, or filesystem-level configuration apply only to customer-managed infrastructure (HFs, UFs, standalone instances).</p>
+                    <p><strong>🔄 Cloud-Safe Alternative:</strong> When this page discusses ingestion architectures, the Cloud path is: external collector → HEC, or UF/HF → Cloud indexing tier. See the <a href="../../pages/planning/splunk-cloud-es-differences.html">Cloud + ES: What's Different</a> page for the full Cloud architecture reference.</p>
+                </div>
+
+
+
                 <div class="callout callout-danger">
                     <div class="callout-title">🚨 MANDATORY: Follow Source-Specific Guides</div>
                     <p><strong>This page is an overview only.</strong> Each data source has unique requirements, failure modes, and rollback procedures. Always read the source-specific guide BEFORE starting onboarding.</p>

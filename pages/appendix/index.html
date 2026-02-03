@@ -32,6 +32,18 @@
                     <p>The Appendix contains reference materials. Individual reference pages (SPL Library, Troubleshooting, Checklists) have their own hardened procedures.</p>
                 </div>
 
+                <!-- ============================================== -->
+                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
+                <!-- ============================================== -->
+                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
+                    <div class="callout-title">☁️ Splunk Cloud Safety Box — Appendix / Troubleshooting</div>
+                    <p><strong>✅ Allowed in Cloud:</strong> All SPL queries, search-based troubleshooting, and ES UI workflows apply in Cloud. Internal index searches (<code>index=_internal</code>, <code>index=_audit</code>) work in Cloud.</p>
+                    <p><strong>⚠️ Restricted in Cloud:</strong> CLI-based troubleshooting (<code>btool</code>, <code>splunkd.log</code> via filesystem, <code>splunk restart</code>) does not apply. Filesystem paths and OS-level commands apply only to customer-managed HFs.</p>
+                    <p><strong>🔄 Cloud-Safe Alternative:</strong> Replace filesystem-based log inspection with <code>index=_internal sourcetype=splunkd</code>. Replace <code>btool</code> with <code>| rest /services/configs/conf-[name]</code>. For issues requiring Splunk-side intervention, file a support ticket with evidence from your search-based troubleshooting.</p>
+                </div>
+
+
+
                 <!-- Quick Navigation Cards -->
                 <section class="section">
                     <h2>Reference Materials</h2>

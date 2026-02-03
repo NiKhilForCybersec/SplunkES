@@ -32,6 +32,32 @@
                 <p>This page includes explicit validation criteria, failure modes, rollback procedures, and enterprise-scale considerations.</p>
             </div>
 
+                <!-- ============================================== -->
+                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
+                <!-- ============================================== -->
+                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
+                    <div class="callout-title">☁️ Splunk Cloud Safety Box — Syslog via Heavy Forwarder</div>
+                    <p><strong>✅ Allowed in Cloud:</strong> All HF configuration steps on this page apply — the HF is YOUR infrastructure. Creating indexes and HEC tokens via Splunk Cloud UI. Installing parsing TAs on Cloud search heads via SSAI.</p>
+                    <p><strong>⚠️ Restricted in Cloud:</strong> You cannot deploy a Heavy Forwarder INSIDE Splunk Cloud. All HF instances must be customer-managed. You cannot SSH to Splunk Cloud search heads or indexers. You cannot push index-time configs to Cloud indexers directly — file a support ticket.</p>
+                    <p><strong>🔄 Cloud-Safe Alternative:</strong> All <code>$SPLUNK_HOME</code> paths, <code>btool</code> commands, <code>splunk restart</code> commands, and <code>inputs.conf/outputs.conf/props.conf</code> edits on this page apply to YOUR Heavy Forwarder, not to Splunk Cloud. The <code>outputs.conf</code> must use the Splunk Cloud credentials package.</p>
+                    <p><strong>📋 Verify:</strong> Download the Splunk Cloud credentials package (universal forwarder credentials) from the Splunk Cloud admin panel. This contains the certificates needed for your HF to connect.</p>
+                </div>
+
+                <h3>Splunk Cloud Execution Notes — Syslog Collection</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <tbody>
+                            <tr><td style="width:35%"><strong>Where does the HF run?</strong></td><td><strong>In your network</strong> — on-prem or in your cloud VPC. You have full OS/filesystem/CLI access to the HF. Splunk Cloud does not provide or manage Heavy Forwarders.</td></tr>
+                            <tr><td><strong>Are modular inputs involved?</strong></td><td>No — syslog collection uses native TCP/UDP inputs on the HF, not modular inputs. No IDM dependency.</td></tr>
+                            <tr><td><strong>Where does parsing happen?</strong></td><td><strong>On the HF</strong> — props.conf and transforms.conf on the HF handle index-time parsing (timestamp, linebreaking, sourcetype assignment) before events are forwarded to Cloud. <strong>On the Cloud SH</strong> — search-time field extraction and CIM mapping happen via the TA installed on the search head.</td></tr>
+                            <tr><td><strong>Who owns credentials?</strong></td><td>You manage the HF outputs.conf with the Splunk Cloud credentials package. Splunk provides the certificates; you deploy them on your HF.</td></tr>
+                            <tr><td><strong>Who has restart authority?</strong></td><td>You restart your HF at will. You cannot restart Splunk Cloud services.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+
+
             <div class="callout callout-danger">
                 <div class="callout-title">🚨 CRITICAL: Heavy Forwarder Changes Impact ALL Syslog Sources</div>
                 <p><strong>Heavy Forwarders are shared infrastructure.</strong> A misconfiguration can cause data loss for ALL sources routing through that HF. Follow these rules:</p>

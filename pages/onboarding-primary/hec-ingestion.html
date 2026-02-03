@@ -32,6 +32,19 @@
                 <p>This page includes token security guidance, volume management, and enterprise-scale considerations.</p>
             </div>
 
+                <!-- ============================================== -->
+                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
+                <!-- ============================================== -->
+                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
+                    <div class="callout-title">☁️ Splunk Cloud Safety Box — HEC Ingestion</div>
+                    <p><strong>✅ Allowed in Cloud:</strong> HEC is the PRIMARY ingestion method for Splunk Cloud. Create tokens via UI (Settings → Data Inputs → HTTP Event Collector). All HEC functionality described on this page works in Cloud. Acknowledgment, indexer discovery, and token-per-sourcetype patterns all apply.</p>
+                    <p><strong>⚠️ Restricted in Cloud:</strong> You cannot edit <code>inputs.conf</code> on Cloud indexers to modify global HEC settings (port, SSL, maxContentLength). These are managed by Splunk. You cannot disable HEC globally — file a support ticket if needed.</p>
+                    <p><strong>🔄 Cloud-Safe Alternative:</strong> Use the Cloud-specific HEC endpoint URL (provided in your Cloud admin panel — typically <code>https://http-inputs-&lt;your-stack&gt;.splunkcloud.com:443</code>). Token management is fully self-service via the UI.</p>
+                    <p><strong>📋 Verify:</strong> Confirm your Cloud HEC endpoint URL and ensure network ACLs allow HTTPS traffic from your sources to the Cloud HEC endpoint. Some Cloud stacks have IP allowlists — check with your Splunk admin.</p>
+                </div>
+
+
+
             <div class="callout callout-danger">
                 <div class="callout-title">🚨 CRITICAL: HEC Token Security</div>
                 <p><strong>HEC tokens are API keys that grant write access to Splunk.</strong> A compromised token can be used to inject malicious data or exhaust license. Follow these rules:</p>

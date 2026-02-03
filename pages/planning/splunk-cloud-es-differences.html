@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Splunk Cloud + ES: What's Different — Read This First</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <aside id="sidebar" class="sidebar"></aside>
+
+        <main class="main-content">
+            <nav id="breadcrumbs" class="breadcrumbs"></nav>
+
+<div class="content-wrapper">
+                <span class="phase-indicator phase-1">☁️ Cloud Foundation</span>
+                <h1>Splunk Cloud + ES: What's Different</h1>
+                <p class="page-subtitle">Read this before touching any configuration page in this handbook</p>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">🛑 STOP — Read This Page First</div>
+                    <p>This handbook was originally written with Splunk Enterprise patterns: direct filesystem access, CLI commands, Heavy Forwarder configuration, and indexer-level operations. <strong>Most of those patterns do not apply in Splunk Cloud.</strong></p>
+                    <p>Every page in this handbook now carries a <strong>Cloud Safety Box</strong> that tells you what is allowed, what is restricted, and what the Cloud-safe alternative is. This page is the master reference for understanding <em>why</em> those distinctions exist.</p>
+                    <p><strong>If you are running Splunk Cloud with Enterprise Security, this page is your ground truth.</strong></p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION 1: PRACTICAL COMPARISON                -->
+                <!-- ============================================== -->
+                <h2>1 — Splunk Enterprise vs. Splunk Cloud: Practical Differences</h2>
+
+                <p>This is not a marketing comparison. This is what matters operationally when you are configuring ES, onboarding data sources, and managing detection content.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:25%">Capability</th>
+                                <th style="width:37%">Splunk Enterprise</th>
+                                <th style="width:38%">Splunk Cloud</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>OS / filesystem access</strong></td>
+                                <td>Full SSH access to all Splunk instances. Can edit any .conf file directly. Can run CLI commands.</td>
+                                <td><strong>No OS access.</strong> No SSH. No filesystem. No CLI on search heads or indexers. All configuration is via Splunk Web UI, REST API, or support ticket.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Service restarts</strong></td>
+                                <td>Admin runs <code>splunk restart</code> at will. Rolling restarts on indexer cluster via CLI.</td>
+                                <td><strong>You cannot restart Splunk services.</strong> Splunk manages restarts. Some app installations trigger automatic rolling restarts (which may cause brief search disruption).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Index creation</strong></td>
+                                <td>Edit <code>indexes.conf</code> on cluster master, push bundle.</td>
+                                <td>Create indexes via Splunk Web (Settings → Indexes) or via support ticket. You do not control index storage paths, bucket sizes, or replication factor.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>props.conf / transforms.conf</strong></td>
+                                <td>Edit files directly on indexers, search heads, HFs. Use <code>btool</code> to debug.</td>
+                                <td><strong>Search-time configurations</strong> (REPORT, EXTRACT, FIELDALIAS, EVAL, LOOKUP) can be deployed via UI (Settings → Fields) or packaged in an app installed on search heads. <strong>Index-time configurations</strong> (TRANSFORMS for routing/masking, TIME_FORMAT on indexers) require a Splunk support ticket or a vetted app deployed to indexers via support.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Add-on / TA installation</strong></td>
+                                <td>Copy to <code>$SPLUNK_HOME/etc/apps/</code> on each tier (SH, indexer, HF). Use deployment server for UFs.</td>
+                                <td><strong>Search head:</strong> Self-Service App Install (SSAI) for Cloud-vetted apps via Splunk Web (Apps → Install App from File or Find More Apps). <strong>Indexers:</strong> Requires Splunk support ticket — you cannot install apps on indexers yourself. <strong>IDM:</strong> Requires support ticket (Classic Experience) or install on SH (Victoria Experience).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Modular / scripted inputs</strong></td>
+                                <td>Run anywhere: SH, HF, standalone instance.</td>
+                                <td><strong>Classic Experience:</strong> Must run on IDM (Inputs Data Manager) or customer-managed HF. <strong>Victoria Experience:</strong> Can run on search head directly. <strong>Never on indexers.</strong> Java-based modular inputs (like Akamai SIEM connector) may not work on IDM — verify with Splunk support.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Heavy Forwarder</strong></td>
+                                <td>Deployed on-prem, managed by customer. Handles parsing, routing, syslog collection.</td>
+                                <td><strong>Customer-managed, outside Splunk Cloud.</strong> Splunk Cloud does not provide or manage HFs. You deploy and maintain HFs in your own infrastructure. HFs connect to Splunk Cloud via <code>outputs.conf</code> using Splunk-provided certificates.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>HEC (HTTP Event Collector)</strong></td>
+                                <td>Configured on indexers or HFs. Full control over tokens, acknowledgment, load balancing.</td>
+                                <td><strong>Primary ingestion method for Cloud.</strong> Create HEC tokens via Splunk Web on the search head. Tokens route to the Cloud indexing tier. Global HEC settings are managed by Splunk. Endpoints use the Cloud-specific HEC URL.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>btool</strong></td>
+                                <td><code>$SPLUNK_HOME/bin/splunk btool [conf] list --debug</code> — essential debugging tool.</td>
+                                <td><strong>Not available.</strong> No CLI access means no btool. Alternative: use <code>| rest /services/configs/conf-props</code> or the Admin's Little Helper app (Splunkbase 6368) to inspect configurations via SPL.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Deployment server</strong></td>
+                                <td>Centrally manage UF configurations and app deployments.</td>
+                                <td>Splunk Cloud does not include a deployment server. <strong>You must run your own deployment server</strong> in your infrastructure to manage your UFs. Alternatively, use third-party tools (Puppet, Chef, Ansible) for UF management.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model acceleration</strong></td>
+                                <td>Full control via <code>datamodels.conf</code>. Can force rebuilds via UI or CLI. Can tune parallel summarization in <code>limits.conf</code>.</td>
+                                <td>Acceleration works identically in behavior. <strong>Rebuild via UI:</strong> Settings → Data Models → expand row → Rebuild. <strong>Parallel summarization changes:</strong> File a support ticket. <strong>Do not manually edit datamodels.conf</strong> — use the CIM Setup page or ES Data Model Acceleration Enforcement modular input.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Correlation searches</strong></td>
+                                <td>Deploy via UI, conf files, or app packages.</td>
+                                <td><strong>Identical behavior.</strong> Deploy and manage via ES UI (Configure → Content → Content Management). App-packaged correlation searches work via SSAI. No differences in search logic or scheduling.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION 2: WHAT IS NOT ALLOWED                 -->
+                <!-- ============================================== -->
+                <h2>2 — What Is NOT Allowed in Splunk Cloud</h2>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">🚫 Restricted Actions — Do Not Attempt</div>
+                    <p>Attempting these will either silently fail, trigger a support escalation, or violate your Splunk Cloud SLA.</p>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:35%">Restricted Action</th>
+                                <th style="width:65%">Why It's Restricted &amp; What Happens</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Direct indexer access</strong></td>
+                                <td>Splunk manages the indexing tier. You have no SSH, no REST API access to indexers, and no ability to deploy apps or edit configs on indexers directly. All indexer-tier changes go through Splunk support or vetted app installation.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Restarting Splunk services</strong></td>
+                                <td>There is no <code>splunk restart</code> command available. App installations may trigger automatic restarts. If you need a restart for a config change to take effect, file a support ticket.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Arbitrary modular inputs on search heads (Classic Experience)</strong></td>
+                                <td>On Classic Experience, running modular/scripted inputs on search heads impacts search performance and voids support SLAs for search-related issues. Use IDM or a customer-managed HF instead. (Victoria Experience allows modular inputs on SH.)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Unvetted TAs on indexers</strong></td>
+                                <td>Only Splunk-vetted, Cloud-certified apps can be installed on the indexing tier. You request installation via support ticket. Unvetted apps cannot be deployed to indexers.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Global props.conf / transforms.conf edits on indexers</strong></td>
+                                <td>You cannot edit <code>$SPLUNK_HOME/etc/system/local/</code> on indexers. Index-time transformations (TRANSFORMS for routing, null-queue, data masking, sourcetype overriding) require a Splunk support ticket to deploy as a packaged app. The app installation triggers a rolling restart.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Editing limits.conf, server.conf, authorize.conf directly</strong></td>
+                                <td>System-level configuration files are managed by Splunk. Changes to search limits, concurrent search caps, or system settings require a support ticket. Some settings can be adjusted via the Splunk Cloud admin UI.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Using btool CLI</strong></td>
+                                <td>No filesystem access means no btool. Use REST API queries or the Admin's Little Helper app for configuration inspection.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Managing indexer cluster or cluster master</strong></td>
+                                <td>The indexer cluster is fully managed by Splunk. You do not interact with the cluster master, push bundles, or manage replication/search factor.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Controlling index storage paths, bucket sizes, or retention via conf files</strong></td>
+                                <td>Index retention is set when creating the index. For changes, use Splunk Web or file a support ticket. You do not control <code>tstatsHomePath</code>, <code>homePath</code>, or volume definitions.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION 3: WHAT IS ALLOWED AND PREFERRED       -->
+                <!-- ============================================== -->
+                <h2>3 — What IS Allowed and Preferred in Splunk Cloud</h2>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">✅ Cloud-Native Patterns — Use These</div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:30%">Allowed Action</th>
+                                <th style="width:70%">How to Execute</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>HEC (HTTP Event Collector)</strong></td>
+                                <td>Primary data ingestion path. Create tokens via Splunk Web → Settings → Data Inputs → HTTP Event Collector. Bind tokens to specific indexes and sourcetypes. Use the Cloud-specific HEC endpoint URL provided in your Cloud admin panel.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Edge Processor / Ingest Actions</strong></td>
+                                <td>Splunk's cloud-native data transformation layer. Use for routing, filtering, masking, and field extraction before indexing. Configured via Splunk Web — no CLI or conf files needed. Available on newer Cloud stacks.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cloud-approved add-ons on SH</strong></td>
+                                <td>Install via Self-Service App Install (SSAI): Apps → Install App from File (for private apps) or Find More Apps (for Splunkbase). The app must be Cloud-vetted. Search-time knowledge (field extractions, aliases, lookups, tags) takes effect immediately.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Search-time field extraction</strong></td>
+                                <td>All REPORT, EXTRACT, FIELDALIAS, EVAL, LOOKUP, and calculated field configurations work on search heads without indexer involvement. Deploy via TAs on the SH, via Settings → Fields, or via apps installed through SSAI.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ES UI-based configuration</strong></td>
+                                <td>All ES workflows are UI-driven: correlation search management (Configure → Content → Content Management), data model acceleration (Settings → Data Inputs → Data Model Acceleration Enforcement), notable suppression, adaptive response actions, and risk scoring. No conf file editing is required for ES operations.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Index creation via UI</strong></td>
+                                <td>Settings → Indexes → New Index. Set name, retention, and data type. The indexing tier handles storage automatically.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>REST API for configuration inspection</strong></td>
+                                <td>Use <code>| rest /services/configs/conf-props</code>, <code>| rest /services/data/indexes</code>, and similar REST endpoints from SPL to inspect active configurations. Replaces btool for debugging.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Customer-managed HFs and UFs</strong></td>
+                                <td>Deploy Heavy Forwarders and Universal Forwarders in your own infrastructure. Connect them to Splunk Cloud using the credentials package provided by Splunk. HFs handle syslog collection, parsing, and forwarding. UFs handle file monitoring and WinEventLog.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data Manager (Victoria Experience)</strong></td>
+                                <td>Cloud-native data onboarding for supported sources (AWS, Azure, GCP, Salesforce, etc.). Configured via Splunk Web. Automates HEC setup, source configuration, and index-time parsing for supported source types.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CIM Setup page</strong></td>
+                                <td>Configure data model acceleration settings, index allow lists, and tag allow lists via Apps → Manage Apps → Splunk Common Information Model → Set Up. Works identically on Cloud and Enterprise.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION 4: SAFE PATTERNS                       -->
+                <!-- ============================================== -->
+                <h2>4 — Safe Data Ingestion Patterns for Splunk Cloud</h2>
+
+                <p>These are the architectures that work reliably and are fully supported in Splunk Cloud.</p>
+
+                <div class="mermaid">
+flowchart LR
+    subgraph YOUR_INFRA["Your Infrastructure"]
+        direction TB
+        API_POLL["API Polling Collector<br/>(Lambda, EC2, container)"]
+        HF["Heavy Forwarder<br/>(syslog, parsing)"]
+        UF["Universal Forwarder<br/>(file, WinEventLog)"]
+        VENDOR["Vendor Push<br/>(webhook, direct)"]
+    end
+
+    subgraph CLOUD_NATIVE["Cloud-Native Sources"]
+        direction TB
+        AZURE_EH["Azure Event Hubs"]
+        AWS_SQS["AWS SQS / S3"]
+        GCP_PS["GCP Pub/Sub"]
+    end
+
+    subgraph SPLUNK_CLOUD["Splunk Cloud"]
+        direction TB
+        HEC_EP["HEC Endpoint"]
+        IDM_EP["IDM / SH<br/>(modular inputs)"]
+        DM["Data Manager"]
+        IX["Indexing Tier"]
+        SH["Search Head<br/>(+ ES)"]
+    end
+
+    API_POLL -->|"HTTPS POST"| HEC_EP
+    VENDOR -->|"HTTPS POST"| HEC_EP
+    HF -->|"Splunk-to-Splunk<br/>encrypted"| IX
+    UF -->|"Splunk-to-Splunk<br/>encrypted"| IX
+    AZURE_EH -->|"via Data Manager<br/>or add-on"| DM
+    AWS_SQS -->|"via Data Manager<br/>or add-on"| DM
+    GCP_PS -->|"via Data Manager<br/>or add-on"| DM
+    HEC_EP --> IX
+    DM --> IX
+    IDM_EP --> IX
+    IX --> SH
+
+    style SPLUNK_CLOUD fill:#0d1117,stroke:#238636,color:#c9d1d9
+    style YOUR_INFRA fill:#0d1117,stroke:#1f6feb,color:#c9d1d9
+    style CLOUD_NATIVE fill:#0d1117,stroke:#9e6a03,color:#c9d1d9
+    style HEC_EP fill:#238636,stroke:#3fb950,color:#fff
+    style IX fill:#161b22,stroke:#30363d,color:#c9d1d9
+    style SH fill:#1f6feb,stroke:#58a6ff,color:#fff
+                </div>
+
+                <h3>Pattern A — External API Polling → HEC</h3>
+                <p><strong>Use when:</strong> The data source provides a REST API (e.g., Akamai SIEM, CrowdStrike Falcon, vendor APIs).</p>
+                <p><strong>Architecture:</strong> Deploy a collector process (AWS Lambda, EC2 instance, Azure Function, Docker container, or on-prem server) in your infrastructure. The collector polls the vendor API, transforms events as needed, and POSTs them to the Splunk Cloud HEC endpoint over HTTPS.</p>
+                <p><strong>Cloud advantage:</strong> No dependency on Splunk-side modular inputs. You control the collector lifecycle, credentials, and polling logic. HEC handles authentication and indexing.</p>
+
+                <h3>Pattern B — Vendor Push → HEC</h3>
+                <p><strong>Use when:</strong> The vendor supports direct webhook or HTTPS push to an endpoint (e.g., Okta System Log, Duo, many SaaS platforms).</p>
+                <p><strong>Architecture:</strong> Configure the vendor to send events directly to your Splunk Cloud HEC endpoint. Set the HEC token, index, and sourcetype in the vendor's admin console.</p>
+                <p><strong>Cloud advantage:</strong> Zero infrastructure on your side. The vendor pushes directly to Cloud. Ensure the vendor supports custom headers for HEC token authentication.</p>
+
+                <h3>Pattern C — Cloud-Native Streaming (Event Hub / SQS / Pub/Sub)</h3>
+                <p><strong>Use when:</strong> Logs originate in a cloud platform (Azure, AWS, GCP) and are routed through the platform's native streaming service.</p>
+                <p><strong>Architecture:</strong> Use Splunk's Data Manager or the appropriate Splunk add-on (e.g., Splunk Add-on for Microsoft Cloud Services, Splunk Add-on for AWS) to consume from the streaming service. On Victoria Experience, the add-on runs on the search head. On Classic Experience, use IDM.</p>
+
+                <h3>Pattern D — Syslog → Customer-Managed HF → Cloud</h3>
+                <p><strong>Use when:</strong> On-prem devices (firewalls, switches, load balancers) emit syslog.</p>
+                <p><strong>Architecture:</strong> Deploy Heavy Forwarder(s) in your network. HFs receive syslog, apply parsing (props.conf/transforms.conf), and forward parsed events to Splunk Cloud via the encrypted Splunk-to-Splunk connection using the credentials package.</p>
+                <p><strong>Key point:</strong> The HF is YOUR infrastructure — you have full filesystem and CLI access to it. Splunk Cloud does not manage it.</p>
+
+                <h3>Pattern E — UF → Cloud</h3>
+                <p><strong>Use when:</strong> Collecting file-based logs or Windows Event Logs from servers.</p>
+                <p><strong>Architecture:</strong> Deploy Universal Forwarders on endpoints. UFs monitor files or WinEventLog and forward raw data to Splunk Cloud. Parsing happens on the Cloud indexing tier (requires the TA installed on indexers — request via support ticket).</p>
+
+                <!-- ============================================== -->
+                <!-- SECTION 5: DANGEROUS PATTERNS                  -->
+                <!-- ============================================== -->
+                <h2>5 — Dangerous Patterns Copied from Enterprise Documentation</h2>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ These Enterprise Patterns Will Fail or Cause Problems in Cloud</div>
+                    <p>If you see these patterns in vendor documentation, Splunk Community posts, or older runbooks, do not follow them in a Splunk Cloud environment.</p>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:35%">Dangerous Pattern</th>
+                                <th style="width:30%">Why It Fails in Cloud</th>
+                                <th style="width:35%">Cloud-Safe Alternative</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>"SSH to the search head and edit props.conf"</td>
+                                <td>No SSH access. No filesystem access.</td>
+                                <td>Package the configuration in an app and install via SSAI. Or use Settings → Fields for search-time extractions.</td>
+                            </tr>
+                            <tr>
+                                <td>"Run <code>splunk restart</code> after config changes"</td>
+                                <td>No CLI access. Cannot restart services.</td>
+                                <td>Search-time changes take effect without restart. For index-time changes, file a support ticket (the app install will trigger a rolling restart).</td>
+                            </tr>
+                            <tr>
+                                <td>"Deploy TA to indexers via cluster master bundle push"</td>
+                                <td>No access to cluster master or indexers.</td>
+                                <td>File a support ticket requesting TA installation on indexers. Provide the exact app name and version. Splunk will vet and deploy it.</td>
+                            </tr>
+                            <tr>
+                                <td>"Install modular input add-on on the search head" (Classic Experience)</td>
+                                <td>On Classic Experience, modular inputs on SH cause search performance degradation and void support SLAs.</td>
+                                <td>Use IDM for cloud-based inputs, or deploy a customer-managed HF for on-prem sources. (Victoria Experience allows modular inputs on SH.)</td>
+                            </tr>
+                            <tr>
+                                <td>"Use <code>btool props list --debug</code> to verify configuration"</td>
+                                <td>No CLI, no btool.</td>
+                                <td>Use <code>| rest /services/configs/conf-props</code> from SPL, or install Admin's Little Helper app (Splunkbase 6368).</td>
+                            </tr>
+                            <tr>
+                                <td>"Edit indexes.conf to add tstatsHomePath"</td>
+                                <td>No access to indexes.conf on indexers. Storage paths are managed by Splunk.</td>
+                                <td>Create indexes via UI. For DMA storage tuning, file a support ticket.</td>
+                            </tr>
+                            <tr>
+                                <td>"Run <code>splunk rebuild acceleration</code> from CLI"</td>
+                                <td>No CLI access.</td>
+                                <td>Use Settings → Data Models → expand row → Rebuild. Or use the Data Model Audit dashboard in ES to monitor acceleration status.</td>
+                            </tr>
+                            <tr>
+                                <td>"Set up a deployment server to manage UFs"</td>
+                                <td>Splunk Cloud does not include a deployment server.</td>
+                                <td>Deploy and manage your own deployment server in your infrastructure. Or use configuration management tools (Puppet, Chef, Ansible).</td>
+                            </tr>
+                            <tr>
+                                <td>"Edit limits.conf to increase max concurrent searches"</td>
+                                <td>System conf files are managed by Splunk.</td>
+                                <td>File a support ticket with the specific setting change you need and the business justification.</td>
+                            </tr>
+                            <tr>
+                                <td>"Copy the backup to <code>$SPLUNK_HOME/etc/apps/</code>"</td>
+                                <td>No filesystem access.</td>
+                                <td>Export app configurations via the UI, version them in Git, and redeploy via SSAI if rollback is needed.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SPLUNK CLOUD EXPERIENCE TYPES                  -->
+                <!-- ============================================== -->
+                <h2>6 — Classic vs. Victoria Experience: Know Your Stack</h2>
+
+                <p>Splunk Cloud comes in two "Experience" types that determine what you can run on the search tier. This matters critically for add-on modular inputs.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:25%">Capability</th>
+                                <th style="width:37%">Classic Experience</th>
+                                <th style="width:38%">Victoria Experience</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Modular inputs on SH</strong></td>
+                                <td>Not supported. Voids search SLAs. Must use IDM or customer-managed HF.</td>
+                                <td>Supported. Can run modular/scripted inputs directly on search head.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>IDM (Inputs Data Manager)</strong></td>
+                                <td>Required for cloud-based modular inputs.</td>
+                                <td>Not required. Upon upgrade from Classic → Victoria, Splunk migrates all IDM apps/configs to the search head and removes the IDM.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data Manager</strong></td>
+                                <td>Available on AWS-hosted Classic stacks.</td>
+                                <td>Fully available.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Self-Service App Install</strong></td>
+                                <td>Available for SH. IDM app installs require support ticket.</td>
+                                <td>Available for SH (which now handles IDM functions).</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">🔍 How to Check Your Experience Type</div>
+                    <p>Log into Splunk Cloud → click the Splunk logo (top-left) → About. The Experience type is displayed. Alternatively, check with your Splunk account team or look at the Cloud stack provisioning documentation you received.</p>
+                    <p>Source: <em>Splunk Documentation — Determine your Splunk Cloud Platform Experience</em></p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- ES-SPECIFIC CLOUD BEHAVIORS                    -->
+                <!-- ============================================== -->
+                <h2>7 — Enterprise Security Behaviors Identical Across Cloud and Enterprise</h2>
+
+                <p>The following ES components work identically in Splunk Cloud and Splunk Enterprise. Do not second-guess these — they are the same.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:30%">ES Component</th>
+                                <th style="width:70%">Cloud Behavior</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Correlation searches</strong></td>
+                                <td>Search logic, scheduling, throttling, adaptive response actions, and notable event creation are identical. All management is via the ES UI (Configure → Content → Content Management). No conf file editing needed on either platform.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Notable events &amp; Incident Review</strong></td>
+                                <td>Identical. Notable events are stored in the <code>notable</code> index. Incident Review dashboard works the same way. Status assignments, urgency calculations, and ownership are identical.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CIM data models</strong></td>
+                                <td>Data model definitions (field names, constraints, tags) are identical. The CIM add-on (Splunk_SA_CIM) ships with ES on both platforms.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model acceleration</strong></td>
+                                <td>Acceleration behavior (TSIDX summarization, tstats queries) is identical. <strong>Management differs:</strong> in Cloud, use the ES UI for DMA enforcement (Settings → Data Inputs → Data Model Acceleration Enforcement) and the CIM Setup page for index/tag allow lists. Do not attempt to edit datamodels.conf on indexers — file a support ticket if advanced changes are needed.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Risk scoring (RBA)</strong></td>
+                                <td>Identical. Risk factors, risk objects, risk index, and risk-based alerting rules work the same way.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Asset &amp; Identity lookups</strong></td>
+                                <td>Identical. Upload CSV lookups via Splunk Web or configure lookup inputs. The ES Asset and Identity Framework processes them the same way.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ESCU (Enterprise Security Content Updates)</strong></td>
+                                <td>Install via SSAI on the search head. Content is identical. Deployment and enablement workflow is the same UI path.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Suppression rules</strong></td>
+                                <td>Identical. Managed via ES UI.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Investigations</strong></td>
+                                <td>Identical.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- CLOUD SAFETY BOX PATTERN                       -->
+                <!-- ============================================== -->
+                <h2>8 — How to Read Cloud Safety Boxes in This Handbook</h2>
+
+                <p>Every page in this handbook that contains configuration steps now includes a <strong>Cloud Safety Box</strong> near the top. Here is what the box means:</p>
+
+                <div class="callout callout-info" style="border-left-color: #1f6feb;">
+                    <div class="callout-title">☁️ Splunk Cloud Safety Box — [Page Topic]</div>
+                    <p><strong>✅ Allowed in Cloud:</strong> Actions you can take without restriction.</p>
+                    <p><strong>⚠️ Restricted in Cloud:</strong> Actions that require a support ticket, are not possible, or require an alternative approach.</p>
+                    <p><strong>🔄 Cloud-Safe Alternative:</strong> What to do instead of the Enterprise pattern described on the page.</p>
+                    <p><strong>📋 Verify:</strong> Items you should confirm with Splunk Cloud support or your account team before proceeding.</p>
+                </div>
+
+                <p>When you see Enterprise-specific commands (like <code>btool</code>, <code>splunk restart</code>, or filesystem paths), the Cloud Safety Box tells you the Cloud-equivalent approach. The original Enterprise content is preserved because it applies to customer-managed Heavy Forwarders and any hybrid environments.</p>
+
+                <!-- ============================================== -->
+                <!-- QUICK REFERENCE: WHAT TO DO IN CLOUD           -->
+                <!-- ============================================== -->
+                <h2>9 — Quick Reference: "I Need to Do X in Cloud"</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:35%">I need to…</th>
+                                <th style="width:65%">In Splunk Cloud, do this:</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Create a new index</td><td>Settings → Indexes → New Index</td></tr>
+                            <tr><td>Create a HEC token</td><td>Settings → Data Inputs → HTTP Event Collector → New Token</td></tr>
+                            <tr><td>Install a TA on search heads</td><td>Apps → Install App from File (SSAI) or Find More Apps</td></tr>
+                            <tr><td>Install a TA on indexers</td><td>File a Splunk support ticket</td></tr>
+                            <tr><td>Add a field alias</td><td>Settings → Fields → Field Aliases → New Field Alias (or deploy via TA on SH)</td></tr>
+                            <tr><td>Add a field extraction</td><td>Settings → Fields → Field Extractions → New Field Extraction (or deploy via TA on SH)</td></tr>
+                            <tr><td>Check active props for a sourcetype</td><td><code>| rest /services/configs/conf-props/[sourcetype] splunk_server=local</code></td></tr>
+                            <tr><td>Rebuild a data model</td><td>Settings → Data Models → expand row → Rebuild</td></tr>
+                            <tr><td>Enable/disable a correlation search</td><td>ES → Configure → Content → Content Management → find search → Enable/Disable</td></tr>
+                            <tr><td>Add a notable suppression</td><td>ES → Configure → Content → Content Management → Suppression tab → New Suppression</td></tr>
+                            <tr><td>Debug why a field is missing</td><td><code>| rest /services/configs/conf-props/[sourcetype]</code> + <code>| rest /services/configs/conf-transforms</code> to inspect active configs</td></tr>
+                            <tr><td>Verify TA is on indexers</td><td><code>| rest /services/apps/local splunk_server=* | search label="[TA name]"</code> — if it only shows SH, it's not on indexers. File a ticket.</td></tr>
+                            <tr><td>Route data to null (drop events)</td><td>Use Ingest Actions (if available) or file a support ticket to deploy a props/transforms app to indexers</td></tr>
+                            <tr><td>Mask sensitive fields at index time</td><td>Use Ingest Actions or file a support ticket to deploy SEDCMD/transforms on indexers</td></tr>
+                            <tr><td>Set up syslog collection</td><td>Deploy a customer-managed HF in your network. Configure HF to receive syslog and forward to Cloud.</td></tr>
+                            <tr><td>Run a vendor API polling connector</td><td>Deploy the connector on a customer-managed server (not inside Splunk Cloud). Have it POST to HEC.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📚 Official References</div>
+                    <p><strong>Splunk Cloud Platform Admin Manual:</strong> <code>docs.splunk.com/Documentation/SplunkCloud/latest/Admin</code></p>
+                    <p><strong>Getting Data into Splunk Cloud:</strong> <code>docs.splunk.com/Documentation/SplunkCloud/latest/Data</code></p>
+                    <p><strong>Install Add-ons in Splunk Cloud:</strong> <code>docs.splunk.com/Documentation/AddOns/released/Overview/SplunkCloudinstall</code></p>
+                    <p><strong>Determine Your Cloud Experience:</strong> <code>help.splunk.com/en/splunk-cloud-platform/administer/admin-manual/.../determine-your-splunk-cloud-platform-experience</code></p>
+                    <p><strong>ES Data Models in Cloud:</strong> <code>docs.splunk.com/Documentation/ES/latest/Install/Datamodels</code></p>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
+    <script src="../../assets/nav.js"></script>
+    <script src="../../assets/app.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#0d1117',
+                primaryColor: '#238636',
+                primaryTextColor: '#c9d1d9',
+                primaryBorderColor: '#30363d',
+                lineColor: '#8b949e',
+                secondaryColor: '#161b22',
+                tertiaryColor: '#21262d'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 20
+            }
+        });
+    </script>
+</body>
+</html>

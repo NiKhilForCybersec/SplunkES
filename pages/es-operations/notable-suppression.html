@@ -26,6 +26,18 @@
                     <p><strong>Preconditions:</strong> Notables exist in Incident Review. The detection generating noise has been evaluated per the <a href="../es-content-management/tuning-noise.html">Tuning Hierarchy</a>. Suppression is being used as a safety valve, not the first response.</p>
                 </div>
 
+                <!-- ============================================== -->
+                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
+                <!-- ============================================== -->
+                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
+                    <div class="callout-title">☁️ Splunk Cloud Safety Box — ES Operations</div>
+                    <p><strong>✅ Allowed in Cloud:</strong> All ES operational workflows (Incident Review, triage, investigations, notable suppression, adaptive response actions) are UI-based and work identically in Cloud. No differences from Enterprise.</p>
+                    <p><strong>⚠️ Restricted in Cloud:</strong> None for standard ES operations. If this page references filesystem paths or CLI commands for troubleshooting, those do not apply in Cloud.</p>
+                    <p><strong>🔄 Cloud-Safe Alternative:</strong> For troubleshooting ES operational issues, use the ES Health dashboard, <code>| rest</code> queries, and internal indexes (<code>index=_internal</code>, <code>index=_audit</code>) — all accessible via search in Cloud.</p>
+                </div>
+
+
+
                 <div class="callout callout-danger">
                     <div class="callout-title">🚨 CRITICAL: Suppression Is NOT Tuning</div>
                     <p><strong>Suppression hides notables. It does NOT fix the detection.</strong></p>
