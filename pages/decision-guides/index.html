@@ -525,7 +525,7 @@ flowchart TB
                         <span>Sample ADR: Akamai WAF Ingestion</span>
                         <button class="copy-btn">Copy</button>
                     </div>
-                    <pre><code>## Decision: Akamai WAF via SIEM Integration
+                    <pre><code>## Decision: Akamai WAF via SIEM Integration API
 
 **Date:** 2024-01-15
 **Decision Maker:** Detection Engineering Team
@@ -533,23 +533,26 @@ flowchart TB
 
 ### Context
 Need to ingest Akamai WAF logs for DDoS and web attack detection.
-Options: SIEM Integration (HEC), Log Delivery Service (S3), Datastream.
+Options: SIEM Integration API (external connector → HEC), Log Delivery Service (S3), Datastream.
 
 ### Decision
-Use SIEM Integration with HEC push to Splunk Cloud.
+Deploy Akamai SIEM connector on customer Linux VM. Connector polls
+Akamai SIEM Integration API and forwards events to Splunk Cloud via HEC.
+Install Akamai Splunk add-on on Search Head for parsing and CIM mapping.
 
 ### Rationale
 - Considered alternatives: Log Delivery (S3 polling), Datastream
 - Key factors: 
-  - SIEM Integration is lowest latency (~2-5 min)
-  - No additional infrastructure required
-  - Akamai manages the integration
-  - Directly supported by Akamai TA for Splunk
+  - SIEM Integration API is lowest latency (~2-5 min)
+  - Official Akamai SIEM connector is production-grade
+  - Connector runs on customer infrastructure (we control lifecycle)
+  - Akamai Splunk add-on provides CIM mapping for ES compatibility
 
 ### Consequences
-- **Positive:** Simple setup, low maintenance, good latency
-- **Negative:** Dependent on Akamai-side configuration
-- **Risks:** HEC token compromise could allow data injection
+- **Positive:** Low latency, ES-compatible, well-documented
+- **Negative:** Requires customer-managed VM/container for the connector
+- **Risks:** HEC token compromise could allow data injection.
+  Collector outage causes event gap (12-hour replay window).
 
 ### Reversal Plan
 Could switch to Log Delivery if SIEM Integration has issues.

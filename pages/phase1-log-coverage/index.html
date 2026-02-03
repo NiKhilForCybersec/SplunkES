@@ -1190,7 +1190,7 @@ flowchart TB
 2. DISABLE the ingestion source:
    - HEC Token: Splunk Web → Settings → Data Inputs → HTTP Event Collector → [token] → Disable
    - API Polling: Edit inputs.conf, set disabled = 1, restart Splunk
-   - SIEM Push: Disable connector in vendor portal (Akamai, CyberArk, etc.)
+   - SIEM Push/Pull: Disable connector in vendor portal, or stop external collector process (Akamai SIEM connector, CyberArk, etc.)
 
 3. COMMUNICATE:
    - Notify Splunk admin immediately

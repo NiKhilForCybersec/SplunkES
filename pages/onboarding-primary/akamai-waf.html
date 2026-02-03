@@ -35,19 +35,59 @@
                 <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
                     <div class="callout-title">☁️ Splunk Cloud Safety Box — Akamai WAF</div>
                     <p><strong>✅ Allowed:</strong> Create HEC tokens (UI) · Install Cloud-vetted TAs on search head via SSAI · Create indexes (UI) · Run all validation SPL · Configure CIM Setup page · Manage ES correlation searches (UI).</p>
-                    <p><strong>⚠️ Restricted:</strong> Run vendor modular inputs inside Cloud (Classic Experience) · Edit props.conf/transforms.conf on indexers · Use btool CLI · Restart Splunk services · Deploy unvetted apps to indexers.</p>
-                    <p><strong>🔄 Alternative:</strong> Deploy the collector on YOUR infrastructure (Lambda, EC2, Azure Function, Docker, on-prem server). It POSTs to the Cloud HEC endpoint. Install the vendor TA on the search head for search-time parsing and CIM mapping only.</p>
-                    <p><strong>📋 Verify:</strong> Confirm your Cloud Experience (Classic vs. Victoria) before planning modular input placement. Check Splunkbase for the "Cloud Compatible" badge on any add-on.</p>
+                    <p><strong>⚠️ Restricted:</strong> Execute Akamai API polling from inside Splunk Cloud · Store Akamai EdgeGrid credentials in Splunk Cloud · Edit props.conf/transforms.conf on indexers · Use btool CLI · Restart Splunk services · Deploy unvetted apps to indexers.</p>
+                    <p><strong>🔄 Alternative:</strong> Deploy the Akamai SIEM connector on YOUR infrastructure (Linux VM, Docker container). The connector polls the Akamai API, holds the EdgeGrid credentials, and POSTs events to the Cloud HEC endpoint. Install the Akamai Splunk add-on on the search head for search-time parsing and CIM mapping only.</p>
+                    <p><strong>📋 Verify:</strong> Confirm Cloud-vetting status of any TA you plan to install via SSAI. Check Splunkbase for the "Cloud Compatible" badge.</p>
                 </div>
+
+                <!-- ============================================== -->
+                <!-- AUTHORITATIVE COLLECTION ARCHITECTURE BLOCK    -->
+                <!-- ============================================== -->
+                <div class="callout callout-danger" style="border-left-color: #f85149; background: #3d0b0b44;">
+                    <div class="callout-title">🔴 Important: How Akamai Logs Are Actually Collected in Splunk Cloud</div>
+                    <p><strong>Splunk Cloud does NOT poll the Akamai API. Splunk Cloud does NOT store Akamai API credentials.</strong> Splunk Cloud is a <em>destination</em> — it receives events via HEC. It does not reach out to Akamai.</p>
+                    <p><strong>Why a collector is required:</strong> Akamai does not push security events anywhere. Events are stored temporarily in Akamai's Security Events Collector (ASEC) and exposed via a REST API. A collector process must actively poll that API on a schedule to retrieve events.</p>
+                    <p><strong>Why Splunk Cloud does not run it:</strong> Splunk Cloud is a managed SaaS platform. You have no OS access, no ability to install arbitrary processes, and no ability to store third-party API secrets on Splunk infrastructure. The polling process must execute on infrastructure you control.</p>
+                    <p><strong>What Akamai provides:</strong> The SIEM Integration API (the data endpoint) and the Akamai SIEM connector software (an official collector that runs on a Linux VM or container). Akamai publishes this connector specifically for pulling events from their API and forwarding them to SIEMs.</p>
+                    <p><strong>What we operate:</strong> We deploy, configure, and maintain the Akamai SIEM connector on customer-managed infrastructure (Linux VM, Docker container, or equivalent). This connector holds the EdgeGrid credentials (<code>client_token</code>, <code>client_secret</code>, <code>access_token</code>, <code>hostname</code>) and posts events to Splunk Cloud HEC over HTTPS.</p>
+                    <p><strong>Where credentials live:</strong> Akamai EdgeGrid API credentials live <em>only</em> on the collector host — never in Splunk Cloud. The HEC token lives in Splunk Cloud (Settings → Data Inputs → HTTP Event Collector). These are two separate credential sets with two separate owners.</p>
+                    <p><strong>Where failures must be monitored:</strong> Collection failures happen on the collector — not inside Splunk. If events stop arriving, check the collector host first: process health, credential expiry, network connectivity to Akamai, disk space for offset storage. Splunk Cloud has no visibility into why the collector stopped posting.</p>
+                    <p><strong>What the Akamai Splunk Add-on does:</strong> The add-on (Splunkbase App ID 4310) is installed on the Splunk Cloud search head for <em>parsing and CIM mapping only</em>. It provides field extraction rules, FIELDALIAS definitions, eventtypes, and tags that make Akamai events compatible with ES data models. It does NOT perform collection in this architecture.</p>
+                </div>
+
+                <!-- CANONICAL PIPELINE DIAGRAM -->
+                <div class="mermaid">
+flowchart LR
+    A1["Akamai Edge<br/><em>WAF · Bot · DDoS</em>"]
+    A2["SIEM Integration API<br/><em>REST · EdgeGrid Auth</em>"]
+    C1["Akamai SIEM Connector<br/><em>Linux VM / Container</em><br/><em>(customer-managed)</em>"]
+    S1["Splunk Cloud HEC<br/><em>HTTPS POST</em>"]
+    S2["Index"]
+    S3["Search Head<br/><em>+ TA (parsing)</em>"]
+    S4["CIM Mapping"]
+    S5["Enterprise Security"]
+
+    A1 --> A2 --> C1 --> S1 --> S2 --> S3 --> S4 --> S5
+
+    style A1 fill:#0d1117,stroke:#9e6a03,color:#c9d1d9
+    style A2 fill:#0d1117,stroke:#9e6a03,color:#c9d1d9
+    style C1 fill:#0d1117,stroke:#1f6feb,color:#c9d1d9
+    style S1 fill:#238636,stroke:#3fb950,color:#fff
+    style S2 fill:#0d1117,stroke:#238636,color:#c9d1d9
+    style S3 fill:#0d1117,stroke:#238636,color:#c9d1d9
+    style S4 fill:#0d1117,stroke:#238636,color:#c9d1d9
+    style S5 fill:#0d1117,stroke:#a371f7,color:#c9d1d9
+                </div>
+                <p style="text-align:center; color:#8b949e; font-size:0.9em;"><em>Canonical pipeline — no branches, no alternatives. This is the production architecture.</em></p>
 
                 <h3>Splunk Cloud Execution Notes</h3>
                 <div class="table-wrapper">
                     <table>
                         <tbody>
                             <tr><td style="width:35%"><strong>Where does the collector run?</strong></td><td><strong>Outside Splunk Cloud</strong> — your infrastructure. It polls the Akamai API and POSTs JSON to the Cloud HEC endpoint.</td></tr>
-                            <tr><td><strong>Are add-on modular inputs allowed?</strong></td><td><strong>Classic:</strong> IDM or customer HF only. <strong>Victoria:</strong> SH if Cloud-vetted. The Akamai add-on uses a Java modular input — verify with Splunk support before depending on this path.</td></tr>
+                            <tr><td><strong>Is the Splunk add-on used for collection?</strong></td><td><strong>No.</strong> The Akamai Splunk add-on (App ID 4310) is installed on the search head for parsing and CIM mapping <em>only</em>. Collection is performed by the Akamai SIEM connector deployed on customer-managed infrastructure (Linux VM or container). The add-on's modular input capability is not used in this architecture.</td></tr>
                             <tr><td><strong>Where does parsing happen?</strong></td><td><strong>Search-time:</strong> Field extraction, FIELDALIAS, EVAL, LOOKUP, CIM mapping — all on the SH via the TA. <strong>Index-time:</strong> Timestamp and sourcetype assignment at ingest (HEC token metadata or collector).</td></tr>
-                            <tr><td><strong>Who owns credentials?</strong></td><td>Akamai API credentials live on YOUR collector. HEC tokens live in Splunk Cloud (Settings → Data Inputs → HTTP Event Collector). You own both.</td></tr>
+                            <tr><td><strong>Who owns credentials?</strong></td><td>Akamai EdgeGrid API credentials (<code>client_token</code>, <code>client_secret</code>, <code>access_token</code>, <code>hostname</code>) live <strong>only on the collector host</strong> — never in Splunk Cloud. HEC tokens live in Splunk Cloud (Settings → Data Inputs → HTTP Event Collector). Two separate credential sets, two separate locations.</td></tr>
                             <tr><td><strong>Restart authority?</strong></td><td>You restart your collector at will. You <strong>cannot</strong> restart Splunk Cloud. SSAI installs may trigger automatic restart.</td></tr>
                         </tbody>
                     </table>
@@ -225,7 +265,7 @@ flowchart LR
     end
 
     subgraph YOUR_INFRA["Your Infrastructure"]
-        C1["Collector<br/><em>(VM, container,<br/>Lambda, or add-on<br/>on customer HF)</em>"]
+        C1["Akamai SIEM Connector<br/><em>(Linux VM / Container<br/>on customer infrastructure)</em>"]
     end
 
     subgraph SPLUNK["Splunk Cloud"]
@@ -254,11 +294,11 @@ flowchart LR
                     <table>
                         <thead><tr><th style="width:25%">Term</th><th style="width:75%">What It Means (Plain English)</th></tr></thead>
                         <tbody>
-                            <tr><td><strong>Collector</strong></td><td>A piece of software that runs on YOUR infrastructure (not inside Splunk Cloud). Its job is to call the Akamai API on a regular schedule, receive events, and forward them to Splunk. It is a middleman between Akamai and Splunk.</td></tr>
+                            <tr><td><strong>Collector / Connector</strong></td><td>The <strong>Akamai SIEM connector</strong> — an official piece of software provided by Akamai that runs on YOUR infrastructure (Linux VM, Docker container — not inside Splunk Cloud). Its job is to call the Akamai SIEM API on a regular schedule, receive events, and forward them to Splunk Cloud via HEC. This is not the Splunk add-on — it is a separate component with separate credentials.</td></tr>
                             <tr><td><strong>HEC (HTTP Event Collector)</strong></td><td>Splunk's built-in HTTPS endpoint for receiving data. The collector sends events to HEC by making POST requests. Think of HEC as Splunk's front door for incoming data.</td></tr>
                             <tr><td><strong>Index</strong></td><td>A container inside Splunk where events are stored. Like a folder for a specific type of data. Your Akamai events will go into a dedicated index.</td></tr>
                             <tr><td><strong>Sourcetype</strong></td><td>A label that tells Splunk what format the data is in and how to parse it. Every event gets a sourcetype when it enters Splunk.</td></tr>
-                            <tr><td><strong>TA (Technology Add-on)</strong></td><td>A package of configuration files that tells Splunk how to parse and normalize a specific vendor's data. Some TAs also include a data collection component (modular input). Not all TAs do both — some only parse.</td></tr>
+                            <tr><td><strong>TA (Technology Add-on)</strong></td><td>A package of configuration files installed on the Splunk search head that tells Splunk how to parse and normalize a specific vendor's data. For Akamai, the TA provides field extraction, CIM field aliases, eventtypes, and tags. It does NOT perform collection — collection is handled by the Akamai SIEM connector running on customer infrastructure.</td></tr>
                             <tr><td><strong>CIM (Common Information Model)</strong></td><td>A standard set of field names that Splunk ES uses across all data sources. Instead of every vendor using different field names (<code>clientIP</code> vs <code>src_addr</code> vs <code>source_ip</code>), CIM normalizes everything to standard names like <code>src</code>. ES searches and dashboards use CIM field names.</td></tr>
                             <tr><td><strong>Data Model</strong></td><td>A structured representation of CIM-compliant data. ES correlation searches often query data models (via <code>tstats</code>) instead of raw indexes. Data models only contain events that are properly tagged and CIM-mapped.</td></tr>
                         </tbody>
@@ -389,12 +429,13 @@ flowchart LR
 
                 <h3>What About the Splunk Add-on's Modular Input?</h3>
 
-                <div class="callout callout-warning">
-                    <div class="callout-title">⚠️ The Akamai Add-on Modular Input Has Constraints in Splunk Cloud</div>
-                    <p>The Akamai SIEM Integration add-on (Splunkbase App ID 4310) includes a <strong>Java-based modular input</strong> that can act as a collector — it polls the Akamai API and writes events directly into Splunk. However, running this inside Splunk Cloud has significant restrictions:</p>
-                    <p><strong>Classic Experience:</strong> Modular inputs can only run on the IDM (Inputs Data Manager) or a customer-managed HF — NOT on the search head.</p>
-                    <p><strong>Victoria Experience:</strong> Modular inputs can run on the SH if the add-on is Cloud-vetted. However, the Akamai add-on uses Java, which has additional compatibility requirements.</p>
-                    <p><strong>Recommendation:</strong> Unless you have confirmed with Splunk support that the Akamai add-on's modular input works in your specific Cloud environment, use an external collector. The external collector approach is universally reliable.</p>
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 The Akamai Add-on's Modular Input Is NOT Used for Collection in This Architecture</div>
+                    <p>The Akamai SIEM Integration add-on (Splunkbase App ID 4310) does include a Java-based modular input that <em>can</em> poll the Akamai API. <strong>We do not use this capability.</strong> Here is why:</p>
+                    <p><strong>1. Splunk Cloud cannot run it reliably.</strong> In Classic Experience, modular inputs cannot run on search heads. In Victoria Experience, Java-based inputs have additional compatibility constraints. Neither path is universally reliable.</p>
+                    <p><strong>2. Credentials would need to live in Splunk Cloud.</strong> Using the add-on's modular input would require storing Akamai EdgeGrid API secrets inside Splunk's configuration — violating the principle that API credentials belong only on customer-managed infrastructure.</p>
+                    <p><strong>3. The external connector is the supported path.</strong> Akamai provides an official SIEM connector specifically designed to run on customer infrastructure (Linux VM or container), poll the API, and forward events to any SIEM via HEC. This is the architecturally correct and operationally reliable approach.</p>
+                    <p><strong>Bottom line:</strong> Install the add-on on the search head for <em>parsing and CIM mapping only</em>. Deploy the Akamai SIEM connector externally for collection. These are two separate components with two separate responsibilities.</p>
                 </div>
 
                 <h3>What Does the Collector Do?</h3>
@@ -1177,7 +1218,7 @@ flowchart LR
                             <tr><td><strong>Inherent Latency</strong></td><td>5 seconds (offset mode recovers next call).</td></tr>
                             <tr><td><strong>Response Timeout</strong></td><td>2 minutes.</td></tr>
                             <tr><td><strong>Security Products</strong></td><td>App &amp; API Protector, Kona Site Defender, WAP, Client Reputation, Bot Manager, Account Protector.</td></tr>
-                            <tr><td><strong>Splunkbase Add-on</strong></td><td>Akamai SIEM Integration — App ID 4310 — Java modular input. Requires Java 8+, KVStore, no UF.</td></tr>
+                            <tr><td><strong>Splunkbase Add-on</strong></td><td>Akamai SIEM Integration — App ID 4310 — Install on SH for parsing and CIM mapping only. The add-on's modular input capability is NOT used; collection is performed by the Akamai SIEM connector on customer infrastructure.</td></tr>
                         </tbody>
                     </table>
                 </div>

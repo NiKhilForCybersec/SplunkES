@@ -117,7 +117,7 @@
                     <tbody>
                         <tr>
                             <td><strong>Akamai WAF</strong></td>
-                            <td>SIEM Integration → HEC</td>
+                            <td>SIEM Connector (external) → HEC</td>
                             <td>~2-5 minutes</td>
                             <td>Web data model</td>
                         </tr>
@@ -168,6 +168,10 @@ flowchart LR
         APPS[Custom Apps]
     end
     
+    subgraph External["External Collectors"]
+        AKAMAI_CON["Akamai SIEM<br/>Connector"]
+    end
+
     subgraph Collection["Collection Tier"]
         HEC[HTTP Event Collector]
         HF[Heavy Forwarder]
@@ -179,7 +183,8 @@ flowchart LR
         ES[Enterprise Security]
     end
     
-    AKAMAI -->|HTTPS| HEC
+    AKAMAI -->|API Pull| AKAMAI_CON
+    AKAMAI_CON -->|HTTPS POST| HEC
     ENTRA -->|Event Hub| HEC
     CYBERARK -->|Syslog| HF
     NETWORK -->|Syslog| HF
