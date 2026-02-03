@@ -16,692 +16,1168 @@
 
 <div class="content-wrapper">
                 <span class="phase-indicator phase-1">📊 Phase 1 — Log Coverage</span>
-                <h1>Akamai WAF / Security Events Onboarding</h1>
+                <h1>Akamai WAF / Security Events — Complete Onboarding Guide</h1>
 
+                <!-- ============================================== -->
+                <!-- PAGE HEADER                                    -->
+                <!-- ============================================== -->
                 <div class="callout callout-info">
-                    <div class="callout-title">📋 Page Status: ZERO-GUESS RUNBOOK</div>
-                    <p><strong>Last Rewrite:</strong> 2025-02 | <strong>Standard:</strong> Every claim grounded in Akamai techdocs or marked VERIFY</p>
-                    <p><strong>Purpose:</strong> Complete onboarding procedure for Akamai security events into Splunk Cloud / Splunk Enterprise. This page starts from <em>what does the client actually have</em> — not from assumptions about which Akamai product or delivery method is in use.</p>
-                    <p><strong>Ownership:</strong> Detection Engineering (requirements, validation) + Platform Engineering (index, HEC, network) + Web/Network Operations (Akamai Control Center)</p>
+                    <div class="callout-title">📋 Page Standard</div>
+                    <p><strong>Type:</strong> Zero-assumption runbook — every object name is discovered, never guessed.</p>
+                    <p><strong>Platform:</strong> Splunk Cloud with Enterprise Security. No OS access. No indexer configs.</p>
+                    <p><strong>Audience:</strong> A single engineer working alone in a client environment. No external research needed after reading this page.</p>
+                    <p><strong>Ownership:</strong> Detection Engineering (requirements, validation) · Platform Engineering (index, HEC, network) · Web/CDN Operations (Akamai Control Center)</p>
                 </div>
 
                 <!-- ============================================== -->
-                <!-- CRITICAL DEFINITIONS BOX                       -->
+                <!-- CLOUD SAFETY BOX                               -->
                 <!-- ============================================== -->
-                <h2>Definitions — Read Before Proceeding</h2>
-
-                <div class="callout callout-warning">
-                    <div class="callout-title">⚠️ These Terms Are Not Interchangeable</div>
-                    <p><strong>API Polling</strong> = A collector process (running on an HF, Lambda, or other host) that calls the Akamai SIEM Integration REST API to pull security event JSON from the Akamai Security Events Collector (ASEC). The collector is responsible for authentication, offset tracking, pagination, retry logic, and forwarding events to Splunk.</p>
-                    <p><strong>HEC (HTTP Event Collector)</strong> = A Splunk-side ingest endpoint. Data is <em>posted to</em> HEC over HTTPS. HEC does not fetch data from anywhere — it is a receiver. The collector (or DataStream push) sends data <em>to</em> HEC.</p>
-                    <p><strong>Add-on / Connector</strong> = A Splunk app package that <em>may</em> include one or more of: a modular input (the polling logic), props/transforms (parsing rules), field aliases (CIM mapping), and saved searches. The Akamai SIEM Integration add-on on Splunkbase (App ID 4310) includes both a Java-based modular input and CIM-format parsing via props.conf.</p>
-                    <p style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid #30363d;"><strong>Critical distinction: Installing an add-on is NOT the same as configuring HEC.</strong> The add-on's modular input pulls from the Akamai SIEM API and writes to a Splunk index directly (via the Splunk SDK, not via HEC). If you are using a custom collector that posts to HEC, you still need the add-on's props/transforms for parsing — but the modular input is not involved.</p>
+                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
+                    <div class="callout-title">☁️ Splunk Cloud Safety Box — Akamai WAF</div>
+                    <p><strong>✅ Allowed:</strong> Create HEC tokens (UI) · Install Cloud-vetted TAs on search head via SSAI · Create indexes (UI) · Run all validation SPL · Configure CIM Setup page · Manage ES correlation searches (UI).</p>
+                    <p><strong>⚠️ Restricted:</strong> Run vendor modular inputs inside Cloud (Classic Experience) · Edit props.conf/transforms.conf on indexers · Use btool CLI · Restart Splunk services · Deploy unvetted apps to indexers.</p>
+                    <p><strong>🔄 Alternative:</strong> Deploy the collector on YOUR infrastructure (Lambda, EC2, Azure Function, Docker, on-prem server). It POSTs to the Cloud HEC endpoint. Install the vendor TA on the search head for search-time parsing and CIM mapping only.</p>
+                    <p><strong>📋 Verify:</strong> Confirm your Cloud Experience (Classic vs. Victoria) before planning modular input placement. Check Splunkbase for the "Cloud Compatible" badge on any add-on.</p>
                 </div>
 
-                <!-- ============================================== -->
-                <!-- STEP 0 — WHICH AKAMAI LOGGING PRODUCT          -->
-                <!-- ============================================== -->
-                <h2>Step 0 — Which Akamai Logging Product Are We Using?</h2>
-
-                <p>Akamai has two fundamentally different log delivery products. Using the wrong one is the single most common onboarding mistake. Per Akamai's official product documentation:</p>
-
+                <h3>Splunk Cloud Execution Notes</h3>
                 <div class="table-wrapper">
                     <table>
-                        <thead>
-                            <tr>
-                                <th style="width:25%">Product</th>
-                                <th style="width:35%">What It Delivers</th>
-                                <th style="width:40%">When to Use</th>
-                            </tr>
-                        </thead>
                         <tbody>
-                            <tr>
-                                <td><strong>SIEM Integration</strong></td>
-                                <td>Security events from the Akamai platform — attack detections, WAF rule triggers, bot detections, rate-limit actions. Events are generated by App &amp; API Protector, Kona Site Defender, Client Reputation, Web Application Protector, Bot Manager, and Account Protector. <em>(Source: Akamai techdocs — SIEM Integration overview)</em></td>
-                                <td>Use this when the goal is <strong>security event visibility</strong> in your SIEM: WAF blocks, DDoS mitigation, bot scoring, credential-stuffing detection. This is the correct product for ES correlation searches.</td>
-                            </tr>
-                            <tr>
-                                <td><strong>DataStream 2</strong></td>
-                                <td>Transactional/edge performance logs — every HTTP request's status code, response time, cache hit ratio, bytes transferred. Delivery performance metrics and CDN health data. <em>(Source: Akamai techdocs — DataStream 2 overview)</em></td>
-                                <td>Use this when the goal is <strong>CDN performance monitoring</strong>, traffic analytics, or edge delivery troubleshooting. DataStream 2 does include a security rules field, but it contains only rule ID and action — not the full forensic context (no request headers, no rule messages, no attack payload data).</td>
-                            </tr>
+                            <tr><td style="width:35%"><strong>Where does the collector run?</strong></td><td><strong>Outside Splunk Cloud</strong> — your infrastructure. It polls the Akamai API and POSTs JSON to the Cloud HEC endpoint.</td></tr>
+                            <tr><td><strong>Are add-on modular inputs allowed?</strong></td><td><strong>Classic:</strong> IDM or customer HF only. <strong>Victoria:</strong> SH if Cloud-vetted. The Akamai add-on uses a Java modular input — verify with Splunk support before depending on this path.</td></tr>
+                            <tr><td><strong>Where does parsing happen?</strong></td><td><strong>Search-time:</strong> Field extraction, FIELDALIAS, EVAL, LOOKUP, CIM mapping — all on the SH via the TA. <strong>Index-time:</strong> Timestamp and sourcetype assignment at ingest (HEC token metadata or collector).</td></tr>
+                            <tr><td><strong>Who owns credentials?</strong></td><td>Akamai API credentials live on YOUR collector. HEC tokens live in Splunk Cloud (Settings → Data Inputs → HTTP Event Collector). You own both.</td></tr>
+                            <tr><td><strong>Restart authority?</strong></td><td>You restart your collector at will. You <strong>cannot</strong> restart Splunk Cloud. SSAI installs may trigger automatic restart.</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="callout callout-warning">
-                    <div class="callout-title">🔍 Verification: Confirm Which Product Is Licensed</div>
-                    <p>Do not assume. Open Akamai Control Center and verify:</p>
-                    <p><strong>For SIEM Integration:</strong> Navigate to <code>WEB &amp; DATA CENTER SECURITY → Security Configuration → [your config] → Advanced Settings → Data Collection for SIEM Integrations</code>. If SIEM is enabled, you will see a toggle set to "On" and a <code>Security Configuration ID (configId)</code> value displayed.</p>
-                    <p><strong>For DataStream 2:</strong> Navigate to <code>DataStream</code> in Control Center. If active streams exist, you will see their properties, destinations, and status.</p>
-                    <p>If neither is enabled, stop and engage the Akamai account team to provision the correct product before proceeding.</p>
-                </div>
 
                 <!-- ============================================== -->
-                <!-- STEP 1 — IDENTIFY WHAT "WAF/DDoS" MEANS       -->
+                <!-- SECTION 0 — WHAT THIS PAGE GIVES YOU           -->
                 <!-- ============================================== -->
-                <h2>Step 1 — What Exactly Is the Client Calling "WAF / DDoS"?</h2>
+                <h2 id="section-0">Section 0 — What This Page Gives You</h2>
 
-                <p>When a client says "we need WAF logs in Splunk," they could mean several different things. Before any architecture work, identify the actual Akamai security product generating the events.</p>
-
-                <h3>Security Products That Feed SIEM Integration</h3>
-
-                <p>According to Akamai's SIEM Integration documentation, the following products generate security events collectible via the SIEM API:</p>
+                <p>By the end of this page you will have completed the following — start to finish, with no gaps:</p>
 
                 <div class="table-wrapper">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>Product Name</th>
-                                <th>What It Detects</th>
-                                <th>Shares SIEM API?</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th style="width:5%">✓</th><th style="width:45%">Outcome</th><th style="width:50%">Proof</th></tr></thead>
                         <tbody>
-                            <tr><td><strong>App &amp; API Protector</strong></td><td>WAF rules, API abuse, adaptive security, bot management (successor to Kona + WAP)</td><td>Yes</td></tr>
-                            <tr><td><strong>Kona Site Defender</strong></td><td>Legacy WAF rules, IP/Geo blocking, rate controls, slow POST</td><td>Yes</td></tr>
-                            <tr><td><strong>Web Application Protector</strong></td><td>Simplified WAF (subset of Kona)</td><td>Yes</td></tr>
-                            <tr><td><strong>Client Reputation</strong></td><td>Client risk scoring based on Akamai global telemetry</td><td>Yes</td></tr>
-                            <tr><td><strong>Bot Manager / Bot Manager Premier</strong></td><td>Bot classification, challenge actions, bot score</td><td>Yes</td></tr>
-                            <tr><td><strong>Account Protector</strong></td><td>Account-takeover detection, user risk scoring</td><td>Yes (includes username/originUserId fields)</td></tr>
+                            <tr><td>1</td><td>You understand what Akamai WAF security events are and why they matter for detection.</td><td>You can explain this to a non-technical stakeholder.</td></tr>
+                            <tr><td>2</td><td>Akamai API credentials are provisioned and tested.</td><td>You can make a successful API call and receive JSON events.</td></tr>
+                            <tr><td>3</td><td>A collector is running on your infrastructure, polling the Akamai SIEM API.</td><td>Collector logs show successful pulls with event counts &gt; 0.</td></tr>
+                            <tr><td>4</td><td>Events are flowing into a dedicated Splunk Cloud index via HEC.</td><td>SPL query returns events in the last 30 minutes.</td></tr>
+                            <tr><td>5</td><td>Fields are extracted and visible at search time.</td><td>fieldsummary shows vendor-specific and CIM fields.</td></tr>
+                            <tr><td>6</td><td>CIM mapping is validated — ES can find the events.</td><td>CIM field check returns &gt; 90% population.</td></tr>
+                            <tr><td>7</td><td>Data model readiness is evaluated (and optionally validated).</td><td>tstats returns events from the target data model (if using DMs).</td></tr>
+                            <tr><td>8</td><td>All acceptance gates pass.</td><td>No gate shows FAIL.</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="callout callout-info">
-                    <div class="callout-title">🔍 Verification Checklist — What to Ask / Where to Check</div>
-                    <p><strong>In Akamai Control Center:</strong></p>
-                    <p>1. Which security configuration name(s) are in scope? (Record the <code>configId</code> for each.)</p>
-                    <p>2. Which security policies are active within each configuration?</p>
-                    <p>3. Is SIEM Integration toggled ON for each configuration? (Advanced Settings → Data Collection for SIEM Integrations)</p>
-                    <p>4. Which SIEM Event Version is selected? (Affects JSON schema of events)</p>
-                    <p><strong>From the client / Akamai account team:</strong></p>
-                    <p>5. Are DDoS events generated by a <em>separate</em> platform-level DDoS product (e.g., Prolexic)? If so, those events may NOT flow through the SIEM Integration API and require a separate onboarding path. <strong>VERIFY:</strong> Confirm with the Akamai account team whether platform-level DDoS mitigation events are available via SIEM Integration or require a separate feed.</p>
-                    <p>6. Is the Akamai contract licensed for SIEM Integration? (This is a separately licensed capability.)</p>
+                <h3>What This Page Does NOT Cover</h3>
+                <p>This page ends at <strong>data readiness</strong>. It does NOT cover:</p>
+                <div class="table-wrapper">
+                    <table>
+                        <tbody>
+                            <tr><td style="width:40%">Writing detection use cases / correlation searches</td><td>Covered in the WAF &amp; DDoS Detection Use Cases page.</td></tr>
+                            <tr><td>Risk-Based Alerting (RBA) integration</td><td>The client is not using RBA yet. Out of scope.</td></tr>
+                            <tr><td>Akamai DataStream 2 (CDN performance logs)</td><td>Different data type, different onboarding. Not security events.</td></tr>
+                            <tr><td>Splunk Enterprise (on-prem) deployment patterns</td><td>This page is Splunk Cloud only.</td></tr>
+                        </tbody>
+                    </table>
                 </div>
 
-                <!-- ============================================== -->
-                <!-- DECISION TREE — MERMAID                        -->
-                <!-- ============================================== -->
-                <h2>Architecture Decision — Choose the Correct Akamai → Splunk Path</h2>
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>Proceed to <strong>Section 1</strong> to understand what Akamai WAF logs actually are — no Splunk terminology yet, just the fundamentals.</p>
+                </div>
 
-                <p>There are four valid architectures for getting Akamai security events into Splunk. The correct choice depends on your platform (Splunk Cloud vs. Enterprise), connector availability, and network constraints.</p>
+
+                <!-- ============================================== -->
+                <!-- SECTION 1 — WHAT AKAMAI WAF LOGS ARE           -->
+                <!-- ============================================== -->
+                <h2 id="section-1">Section 1 — What Akamai WAF Logs Actually Are</h2>
+
+                <p><em>No Splunk terms in this section. No APIs. Just the fundamentals.</em></p>
+
+                <h3>What Is Akamai?</h3>
+                <p>Akamai Technologies operates one of the world's largest content delivery networks (CDN). When a company like a large retail enterprise puts its website and applications behind Akamai, all customer traffic flows through Akamai's global edge servers before reaching the company's own servers. This means Akamai sits between the internet and the company — it sees every request.</p>
+
+                <h3>What Is Akamai WAF?</h3>
+                <p>Akamai offers a Web Application Firewall (WAF) as part of its edge security products. The WAF inspects every HTTP request passing through the edge and decides whether the request is legitimate traffic or an attack. It applies security rules to detect threats like SQL injection, cross-site scripting (XSS), command injection, path traversal, and other web application attacks defined by standards like the OWASP Top 10.</p>
+
+                <p>When the WAF detects something suspicious, it takes an <strong>action</strong> — it might block the request, allow it with a warning, rate-limit the source, or trigger a captcha challenge. Every one of these decisions generates a <strong>security event</strong>.</p>
+
+                <h3>What Is a "WAF Security Event"?</h3>
+                <p>A security event is a record of a decision the WAF made about a specific HTTP request. Each event contains:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:30%">Information</th><th style="width:70%">What It Tells You</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>Who</strong> made the request</td><td>Source IP address, geographic location (country, city), ASN (network owner).</td></tr>
+                            <tr><td><strong>What</strong> the request looked like</td><td>HTTP method (GET/POST), URL path, query parameters, user-agent, referrer, request headers.</td></tr>
+                            <tr><td><strong>Where</strong> it was going</td><td>Target hostname, destination port.</td></tr>
+                            <tr><td><strong>What rules triggered</strong></td><td>Which security rules matched (rule IDs, rule messages describing the threat type), what the attack payload looked like.</td></tr>
+                            <tr><td><strong>What action was taken</strong></td><td>Alert (logged only), deny (blocked), slow (rate-limited), or other configured actions.</td></tr>
+                            <tr><td><strong>Additional context</strong></td><td>Bot scores (if Bot Manager is enabled), client reputation scores, the Akamai configuration that processed the request.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>What Akamai Security Products Generate These Events?</h3>
+                <p>The security events do not come from just one product — several Akamai products feed into the same event stream:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Product</th><th>What It Does</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>App &amp; API Protector</strong></td><td>Current-generation WAF. Inspects HTTP traffic for application-layer attacks.</td></tr>
+                            <tr><td><strong>Kona Site Defender</strong></td><td>Previous-generation WAF. Same purpose, older product. Still widely deployed.</td></tr>
+                            <tr><td><strong>Web Application Protector</strong></td><td>Simplified WAF for smaller sites. Generates the same event format.</td></tr>
+                            <tr><td><strong>Bot Manager</strong></td><td>Detects and classifies bots. Adds bot score and classification to events.</td></tr>
+                            <tr><td><strong>Client Reputation</strong></td><td>Scores source IPs based on historical behavior across Akamai's network.</td></tr>
+                            <tr><td><strong>Account Protector</strong></td><td>Detects account takeover attempts on login pages.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>All of these products write to the same security event stream. When you collect Akamai security events, you get events from <em>whichever products are enabled</em> on the client's Akamai configuration.</p>
+
+                <h3>Why Do Enterprises Send These Logs to a SIEM?</h3>
+                <p>Akamai's own dashboard shows security events, but it is not a detection and response platform. Enterprises send these logs to a SIEM (like Splunk) because they need to:</p>
+                <div class="table-wrapper">
+                    <table>
+                        <tbody>
+                            <tr><td style="width:35%"><strong>Correlate with other sources</strong></td><td>A blocked WAF request from IP 1.2.3.4 is interesting. That same IP also failing VPN logins and scanning internal ports is a campaign. The SIEM connects these.</td></tr>
+                            <tr><td><strong>Detect patterns over time</strong></td><td>Credential stuffing attacks trickle in slowly — 10 requests per minute across 50 IPs. The WAF sees each request individually. The SIEM sees the pattern.</td></tr>
+                            <tr><td><strong>Build automated alerts</strong></td><td>When attack volume from a country spikes 10x in an hour, the SIEM triggers an alert. Akamai's dashboard does not do this.</td></tr>
+                            <tr><td><strong>Feed incident response workflows</strong></td><td>Investigations need searchable, retainable logs. Akamai retains security events for only 12 hours. The SIEM retains them for months or years.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>Now you know what WAF security events are and why they matter. <strong>Section 2</strong> explains how Akamai actually makes these events available for collection.</p>
+                </div>
+
+
+                <!-- ============================================== -->
+                <!-- SECTION 2 — HOW AKAMAI EXPOSES EVENTS          -->
+                <!-- ============================================== -->
+                <h2 id="section-2">Section 2 — How Akamai Exposes WAF Security Events</h2>
+
+                <h3>Akamai Does NOT Push Logs to You</h3>
+                <p>This is the most important thing to understand upfront: <strong>Akamai does not send security events anywhere automatically.</strong> There is no "enable forwarding to Splunk" toggle. Akamai stores security events temporarily on its platform, and <em>you</em> must actively pull them out.</p>
+
+                <h3>Where Akamai Stores Security Events</h3>
+                <p>When a security event is generated at the edge, Akamai writes it to a short-term buffer called the <strong>Akamai Security Events Collector (ASEC)</strong>. ASEC retains events for exactly <strong>12 hours</strong>. After 12 hours, events are permanently deleted — there is no archive, no backup, no way to recover them. This 12-hour window is the hard constraint that drives everything about your collection strategy.</p>
+
+                <h3>The Akamai SIEM Integration API</h3>
+                <p>The supported way to extract security events from ASEC is the <strong>SIEM Integration API</strong>. This is a REST API with these characteristics:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <tbody>
+                            <tr><td style="width:30%"><strong>Protocol</strong></td><td>HTTPS REST API (authenticated with Akamai EdgeGrid)</td></tr>
+                            <tr><td><strong>Direction</strong></td><td>Pull — your code calls Akamai. Akamai does not call you.</td></tr>
+                            <tr><td><strong>Response format</strong></td><td>Newline-delimited JSON (NDJSON). One JSON object per line per event. The last line is a <code>ResponseContext</code> object with pagination data.</td></tr>
+                            <tr><td><strong>Authentication</strong></td><td>Akamai OPEN EdgeGrid — requires four credential values: <code>client_token</code>, <code>client_secret</code>, <code>access_token</code>, and <code>hostname</code>.</td></tr>
+                            <tr><td><strong>Retention</strong></td><td>12 hours. Non-negotiable. Miss the window and events are gone forever.</td></tr>
+                            <tr><td><strong>Max events per request</strong></td><td>600,000 (default: 10,000, configurable via the <code>limit</code> parameter).</td></tr>
+                            <tr><td><strong>Inherent latency</strong></td><td>5 seconds — the API intentionally delays delivery by 5 seconds.</td></tr>
+                            <tr><td><strong>Response timeout</strong></td><td>2 minutes — Akamai's edge stops sending after 2 minutes per request.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>What About DataStream 2?</h3>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ DataStream 2 Is NOT Security Events — Do Not Confuse Them</div>
+                    <p><strong>DataStream 2</strong> is a separate Akamai product that delivers CDN performance and delivery metrics — things like edge response times, cache hit ratios, origin health. It includes only rule IDs and actions as metadata, NOT the full attack payloads, rule messages, bot scores, or client reputation data that the SIEM Integration API provides.</p>
+                    <p>If someone on the client team says "we already send Akamai logs to Splunk via DataStream" — those are performance logs, not security events. You still need the SIEM Integration API for WAF detection.</p>
+                    <p>DataStream 2 is a separate onboarding with a different index, sourcetype, and data model. It is out of scope for this page.</p>
+                </div>
+
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>Now you know that events must be pulled via the SIEM Integration API. <strong>Section 3</strong> shows the complete end-to-end pipeline from Akamai to Splunk ES.</p>
+                </div>
+
+
+                <!-- ============================================== -->
+                <!-- SECTION 3 — END-TO-END MENTAL MODEL            -->
+                <!-- ============================================== -->
+                <h2 id="section-3">Section 3 — End-to-End Mental Model</h2>
+
+                <p>Before configuring anything, understand the complete chain. Every Akamai WAF → Splunk ES deployment works this way:</p>
 
                 <div class="mermaid">
+flowchart LR
+    subgraph AKAMAI["Akamai Platform"]
+        A1["Edge Security<br/>(WAF, Bot, DDoS)"]
+        A2["ASEC<br/>Security Events<br/>Collector<br/><em>12-hour retention</em>"]
+    end
+
+    subgraph YOUR_INFRA["Your Infrastructure"]
+        C1["Collector<br/><em>(VM, container,<br/>Lambda, or add-on<br/>on customer HF)</em>"]
+    end
+
+    subgraph SPLUNK["Splunk Cloud"]
+        S1["HEC Endpoint<br/><em>(HTTPS ingest)</em>"]
+        S2["Index<br/><em>(events stored)</em>"]
+        S3["Search Head<br/><em>+ TA (search-time parsing)</em><br/><em>+ ES (detections)</em>"]
+        S4["Data Model<br/><em>(if configured)</em>"]
+    end
+
+    A1 -->|"generates"| A2
+    A2 -->|"REST API pull<br/>(JSON, offset-based)"| C1
+    C1 -->|"HTTPS POST"| S1
+    S1 -->|"routes to"| S2
+    S2 -->|"search-time<br/>extraction"| S3
+    S3 -->|"tags, CIM<br/>mapping"| S4
+
+    style AKAMAI fill:#0d1117,stroke:#9e6a03,color:#c9d1d9
+    style YOUR_INFRA fill:#0d1117,stroke:#1f6feb,color:#c9d1d9
+    style SPLUNK fill:#0d1117,stroke:#238636,color:#c9d1d9
+    style S1 fill:#238636,stroke:#3fb950,color:#fff
+                </div>
+
+                <h3>Key Concepts You Will See Throughout This Page</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:25%">Term</th><th style="width:75%">What It Means (Plain English)</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>Collector</strong></td><td>A piece of software that runs on YOUR infrastructure (not inside Splunk Cloud). Its job is to call the Akamai API on a regular schedule, receive events, and forward them to Splunk. It is a middleman between Akamai and Splunk.</td></tr>
+                            <tr><td><strong>HEC (HTTP Event Collector)</strong></td><td>Splunk's built-in HTTPS endpoint for receiving data. The collector sends events to HEC by making POST requests. Think of HEC as Splunk's front door for incoming data.</td></tr>
+                            <tr><td><strong>Index</strong></td><td>A container inside Splunk where events are stored. Like a folder for a specific type of data. Your Akamai events will go into a dedicated index.</td></tr>
+                            <tr><td><strong>Sourcetype</strong></td><td>A label that tells Splunk what format the data is in and how to parse it. Every event gets a sourcetype when it enters Splunk.</td></tr>
+                            <tr><td><strong>TA (Technology Add-on)</strong></td><td>A package of configuration files that tells Splunk how to parse and normalize a specific vendor's data. Some TAs also include a data collection component (modular input). Not all TAs do both — some only parse.</td></tr>
+                            <tr><td><strong>CIM (Common Information Model)</strong></td><td>A standard set of field names that Splunk ES uses across all data sources. Instead of every vendor using different field names (<code>clientIP</code> vs <code>src_addr</code> vs <code>source_ip</code>), CIM normalizes everything to standard names like <code>src</code>. ES searches and dashboards use CIM field names.</td></tr>
+                            <tr><td><strong>Data Model</strong></td><td>A structured representation of CIM-compliant data. ES correlation searches often query data models (via <code>tstats</code>) instead of raw indexes. Data models only contain events that are properly tagged and CIM-mapped.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>Now you see the full pipeline. <strong>Section 4</strong> starts the work — provisioning Akamai API credentials.</p>
+                </div>
+
+
+                <!-- ============================================== -->
+                <!-- SECTION 4 — AKAMAI PREREQUISITES               -->
+                <!-- ============================================== -->
+                <h2 id="section-4">Section 4 — Akamai Prerequisites (Step by Step)</h2>
+
+                <p>Everything in this section happens in the <strong>Akamai Control Center</strong> (the Akamai web UI). You need a login with sufficient permissions. If you do not have access, request it from the client's Akamai account administrator.</p>
+
+                <h3>Step 4.1 — Verify SIEM Integration Is Enabled</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:15%">Aspect</th><th style="width:85%">Detail</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>WHAT</strong></td><td>SIEM Integration is a per-configuration toggle that tells Akamai to write security events for that configuration into ASEC (the 12-hour buffer). If this toggle is off, no events are generated — the API will return empty responses.</td></tr>
+                            <tr><td><strong>WHERE</strong></td><td>Akamai Control Center → <strong>WEB &amp; DATA CENTER SECURITY</strong> → Security Configuration → select the configuration → <strong>Advanced Settings</strong> → <strong>Data Collection for SIEM Integrations</strong>.</td></tr>
+                            <tr><td><strong>HOW</strong></td><td>The toggle must show <strong>On</strong>. If it is Off, turn it on and activate the configuration to production (next step). <strong>Record the <code>configId</code></strong> displayed on this page — you will need it later.</td></tr>
+                            <tr><td><strong>VERIFY</strong></td><td>The toggle is On AND the configId is recorded.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Step 4.2 — Verify Configuration Is Activated to Production</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:15%">Aspect</th><th style="width:85%">Detail</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>WHAT</strong></td><td>An Akamai security configuration must be active on the production network to generate events. Configurations in staging or draft mode do not produce security events.</td></tr>
+                            <tr><td><strong>WHERE</strong></td><td>Same security configuration page → <strong>Activate</strong> tab → check that <strong>Production</strong> shows "Active".</td></tr>
+                            <tr><td><strong>WHY</strong></td><td>If the configuration is not activated, SIEM Integration is enabled but there is nothing to report.</td></tr>
+                            <tr><td><strong>VERIFY</strong></td><td>Production status shows "Active" with a recent activation timestamp.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Step 4.3 — Identify All configIds in Scope</h3>
+                <p>Each Akamai security configuration has a unique <code>configId</code>. The SIEM API fetches events per configId. A large enterprise may have multiple security configurations — one per domain, one per application, or one per business unit.</p>
+                <p><strong>Action:</strong> Ask the client's Akamai administrator how many security configurations are in scope. Record every configId. You will pass these to your collector.</p>
+
+                <h3>Step 4.4 — Create API Credentials</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:15%">Aspect</th><th style="width:85%">Detail</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>WHAT</strong></td><td>API credentials that authenticate your collector when calling the SIEM Integration API. Akamai uses its own authentication scheme called <strong>EdgeGrid</strong>, which requires four values.</td></tr>
+                            <tr><td><strong>WHERE</strong></td><td>Akamai Control Center → <strong>ACCOUNT ADMIN</strong> → <strong>Identity &amp; access</strong> → <strong>API clients</strong> → <strong>Create API Client</strong>.</td></tr>
+                            <tr><td><strong>HOW</strong></td><td>Select the <strong>SIEM</strong> API service → set access to <strong>READ-WRITE</strong>. Click Create. Akamai shows four values <strong>once</strong>: <code>client_token</code>, <code>client_secret</code>, <code>access_token</code>, <code>hostname</code>. Copy all four immediately — <code>client_secret</code> cannot be retrieved again.</td></tr>
+                            <tr><td><strong>WHY</strong></td><td>Without these credentials, the collector cannot authenticate. Without READ-WRITE scope, the collector cannot manage offsets.</td></tr>
+                            <tr><td><strong>VERIFY</strong></td><td>You have all four values saved in a secure location (vault, secrets manager, encrypted file).</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Step 4.5 — Verify the API User Has the Correct Role</h3>
+                <p><strong>WHERE:</strong> Control Center → Identity &amp; access → Users → select the user → Edit roles.</p>
+                <p><strong>VERIFY:</strong> The <strong>Manage SIEM</strong> role is assigned. Without this role, API calls will return 403 Forbidden even with valid credentials.</p>
+
+                <h3>Step 4.6 — Verify Network Path (Collector → Akamai API)</h3>
+                <p>The machine that will run your collector must be able to reach Akamai's API endpoints over HTTPS (port 443). Ensure your firewall and proxy allow traffic to:</p>
+                <div class="table-wrapper">
+                    <table>
+                        <tbody>
+                            <tr><td style="width:35%"><code>*.cloudsecurity.akamaiapis.net</code></td><td>Primary SIEM API endpoint domain.</td></tr>
+                            <tr><td><code>*.luna.akamaiapis.net</code></td><td>Legacy API endpoint (some configurations still use this).</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p><strong>Critical:</strong> If traffic passes through a proxy, the proxy must NOT alter the <code>Host</code> or <code>Authorization</code> headers. EdgeGrid authentication is header-sensitive — any modification causes 401 errors.</p>
+
+                <h3>Akamai Prerequisites Checklist</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:5%">✓</th><th style="width:55%">Prerequisite</th><th style="width:40%">Value / Status</th></tr></thead>
+                        <tbody>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>SIEM Integration toggle: On</td><td>________________</td></tr>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>Configuration activated to production</td><td>________________</td></tr>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>configId(s) recorded</td><td>________________</td></tr>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>client_token</td><td>________________</td></tr>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>client_secret (stored securely)</td><td>________________</td></tr>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>access_token</td><td>________________</td></tr>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>hostname</td><td>________________</td></tr>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>Manage SIEM role confirmed</td><td>________________</td></tr>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>Network path verified (HTTPS to *.akamaiapis.net)</td><td>________________</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>Akamai side is ready. <strong>Section 5</strong> explains where your collector runs and why it cannot be inside Splunk Cloud.</p>
+                </div>
+
+
+                <!-- ============================================== -->
+                <!-- SECTION 5 — WHERE THE COLLECTOR RUNS           -->
+                <!-- ============================================== -->
+                <h2 id="section-5">Section 5 — Where the Collector Runs</h2>
+
+                <h3>The Fundamental Rule</h3>
+                <p><strong>The collector does NOT run inside Splunk Cloud.</strong> In Splunk Cloud, you do not have OS access to the search heads or indexers. You cannot install arbitrary software, run scripts, or execute cron jobs on the Splunk Cloud infrastructure. The collector must run on infrastructure <em>you</em> control.</p>
+
+                <h3>Where Can the Collector Run?</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Option</th><th>Description</th><th>Best For</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>Client VM / Server</strong></td><td>A dedicated VM (Linux or Windows) on the client's network or in their cloud account (AWS EC2, Azure VM, GCP Compute).</td><td>Most enterprise deployments. Easy to manage and troubleshoot.</td></tr>
+                            <tr><td><strong>Container</strong></td><td>Docker container running the collector process. Can be deployed on ECS, EKS, AKS, or any container platform.</td><td>Teams that prefer containerized infrastructure.</td></tr>
+                            <tr><td><strong>Serverless Function</strong></td><td>AWS Lambda, Azure Function, or GCP Cloud Function. Runs on a schedule (every 30–60 seconds).</td><td>Lightweight deployments. Good for lower event volumes. Requires stateless offset management.</td></tr>
+                            <tr><td><strong>Customer Heavy Forwarder</strong></td><td>A Splunk Heavy Forwarder running on client infrastructure. The HF is customer-managed, not part of Splunk Cloud.</td><td>Teams that already have an HF for other data sources.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>What About the Splunk Add-on's Modular Input?</h3>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ The Akamai Add-on Modular Input Has Constraints in Splunk Cloud</div>
+                    <p>The Akamai SIEM Integration add-on (Splunkbase App ID 4310) includes a <strong>Java-based modular input</strong> that can act as a collector — it polls the Akamai API and writes events directly into Splunk. However, running this inside Splunk Cloud has significant restrictions:</p>
+                    <p><strong>Classic Experience:</strong> Modular inputs can only run on the IDM (Inputs Data Manager) or a customer-managed HF — NOT on the search head.</p>
+                    <p><strong>Victoria Experience:</strong> Modular inputs can run on the SH if the add-on is Cloud-vetted. However, the Akamai add-on uses Java, which has additional compatibility requirements.</p>
+                    <p><strong>Recommendation:</strong> Unless you have confirmed with Splunk support that the Akamai add-on's modular input works in your specific Cloud environment, use an external collector. The external collector approach is universally reliable.</p>
+                </div>
+
+                <h3>What Does the Collector Do?</h3>
+                <p>Regardless of where it runs, the collector has exactly four responsibilities:</p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:5%">#</th><th style="width:25%">Responsibility</th><th style="width:70%">Detail</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td><strong>Poll the API</strong></td><td>Call the Akamai SIEM Integration API on a regular schedule (every 30–60 seconds). Pass the configId(s) and credentials.</td></tr>
+                            <tr><td>2</td><td><strong>Track checkpoints</strong></td><td>Store the offset from each API response. Pass it in the next request. This prevents duplicate collection and ensures no events are skipped.</td></tr>
+                            <tr><td>3</td><td><strong>Handle failures</strong></td><td>Implement retry logic for rate limits (HTTP 429), timeouts, and network errors. If the collector goes offline, use time-based replay to catch up within the 12-hour window.</td></tr>
+                            <tr><td>4</td><td><strong>Forward to Splunk</strong></td><td>POST each event as JSON to the Splunk Cloud HEC endpoint with the correct index, sourcetype, and HEC token.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>You know where the collector runs and what it does. <strong>Section 6</strong> explains the API polling mechanics in detail so you can configure or troubleshoot the collector properly.</p>
+                </div>
+
+
+                <!-- ============================================== -->
+                <!-- SECTION 6 — API POLLING EXPLAINED              -->
+                <!-- ============================================== -->
+                <h2 id="section-6">Section 6 — API Polling Mechanics</h2>
+
+                <p><em>No Splunk configuration in this section. This is about how the Akamai API works and what your collector must handle.</em></p>
+
+                <h3>Two Polling Modes</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:20%">Mode</th><th style="width:40%">How It Works</th><th style="width:40%">When to Use</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>Offset-based</strong> (recommended)</td><td>Each API response contains a <code>ResponseContext</code> object (the last line) with an <code>offset</code> string. You store this offset and pass it in the next request. The API returns only events that occurred after that offset.</td><td>Steady-state collection. This is the normal operating mode.</td></tr>
+                            <tr><td><strong>Time-based</strong></td><td>You pass <code>from</code> and <code>to</code> epoch timestamps. The API returns all events in that time range.</td><td>Catching up after collector downtime. Replaying a specific time window. Initial backfill.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>The Offset Lifecycle</h3>
+                <div class="mermaid">
 flowchart TD
-    START["🔍 What data do you need<br/>in Splunk?"] --> Q1{"Security events?<br/>(WAF blocks, bot scores,<br/>attack payloads)"}
-    Q1 -->|Yes| SIEM["Use: SIEM Integration"]
-    Q1 -->|"No — CDN metrics,<br/>edge performance"| DS2["Use: DataStream 2<br/>(See section below)"]
+    START["Collector starts<br/>(first run or restart)"] --> CHECK{"Stored offset<br/>exists?"}
 
-    SIEM --> Q2{"Splunk Cloud<br/>or Enterprise?"}
+    CHECK -->|"Yes"| USE["Call API with<br/>stored offset"]
+    CHECK -->|"No (first run)"| TIME["Call API with<br/>time-based mode<br/>(from=12h ago)"]
 
-    Q2 -->|"Splunk Enterprise<br/>(with HF)"| Q3{"Can install Akamai<br/>Splunk add-on (4310)<br/>on a Heavy Forwarder?"}
-    Q2 -->|"Splunk Cloud<br/>(IDM or Victoria)"| Q4{"Cloud allows<br/>custom modular<br/>inputs?"}
+    USE --> RESP["API returns:<br/>• Event lines (NDJSON)<br/>• Last line = ResponseContext<br/>  with new offset"]
+    TIME --> RESP
 
-    Q3 -->|"Yes — Java 8+ available,<br/>KVStore running,<br/>no UF conflict"| PATH_B["<strong>Path B:</strong> Akamai Splunk<br/>Add-on Modular Input<br/><br/>Add-on polls SIEM API →<br/>writes to index via Splunk SDK<br/><br/>sourcetype = akamaisiem"]
+    RESP --> STORE["Store new offset<br/>durably<br/>(file, DB, KVStore)"]
+    STORE --> HEC["POST events to<br/>Splunk HEC"]
+    HEC --> WAIT["Wait 30-60 seconds"]
+    WAIT --> USE
 
-    Q3 -->|"No — restricted HF,<br/>no Java, or policy blocks"| Q5{"Can deploy a<br/>custom collector?<br/>(Lambda, EC2, container)"}
-
-    Q4 -->|"Yes (IDM with<br/>private apps)"| PATH_B
-    Q4 -->|"No (Victoria /<br/>restricted cloud)"| Q5
-
-    Q5 -->|Yes| PATH_A["<strong>Path A:</strong> Custom Collector<br/>→ HEC<br/><br/>Collector polls SIEM API →<br/>POSTs JSON to HEC endpoint<br/><br/>sourcetype = akamai:siem"]
-    Q5 -->|"No — need<br/>syslog/CEF"| PATH_C["<strong>Path C:</strong> Akamai CEF<br/>Connector → Syslog → HF<br/><br/>CEF connector converts<br/>JSON → CEF → syslog to HF<br/><br/>sourcetype = akamai:cef"]
-
-    DS2 --> PATH_D["<strong>Path D:</strong> DataStream 2<br/>Push → HEC or S3<br/><br/>Akamai pushes edge logs<br/>directly to Splunk HEC<br/>or object storage<br/><br/>sourcetype = akamai:datastream"]
-
-    PATH_A --> VALIDATE["✅ Proceed to<br/>Validation SPL"]
-    PATH_B --> VALIDATE
-    PATH_C --> VALIDATE
-    PATH_D --> VALIDATE_DS["⚠️ Limited security<br/>fields — see<br/>DataStream section"]
+    RESP --> EMPTY{"Empty response?<br/>(only ResponseContext)"}
+    EMPTY -->|"Yes"| STORE2["Store offset anyway<br/>(keeps position)"]
+    STORE2 --> WAIT
 
     style START fill:#1f6feb,stroke:#58a6ff,color:#fff
-    style SIEM fill:#238636,stroke:#3fb950,color:#fff
-    style DS2 fill:#9e6a03,stroke:#d29922,color:#fff
-    style PATH_A fill:#238636,stroke:#3fb950,color:#fff
-    style PATH_B fill:#238636,stroke:#3fb950,color:#fff
-    style PATH_C fill:#9e6a03,stroke:#d29922,color:#fff
-    style PATH_D fill:#9e6a03,stroke:#d29922,color:#fff
-    style VALIDATE fill:#1f6feb,stroke:#58a6ff,color:#fff
-    style VALIDATE_DS fill:#da3633,stroke:#f85149,color:#fff
+    style STORE fill:#238636,stroke:#3fb950,color:#fff
+    style STORE2 fill:#238636,stroke:#3fb950,color:#fff
                 </div>
 
-                <!-- ============================================== -->
-                <!-- PRIMARY PATH — SIEM INTEGRATION API PULL       -->
-                <!-- ============================================== -->
-                <h2>Primary Path — SIEM Integration API Pull (Paths A &amp; B)</h2>
+                <h3>Critical API Behaviors Your Collector Must Handle</h3>
 
-                <p>This section covers the ultra-low-level steps for the primary recommended architecture: polling the Akamai SIEM Integration API and ingesting security events into Splunk.</p>
-
-                <!-- PREREQUISITES -->
-                <h3>Prerequisites Checklist</h3>
-
-                <div class="callout callout-warning">
-                    <div class="callout-title">🚫 Do Not Proceed Until Every Item Is Confirmed</div>
-                </div>
-
-                <h4>Akamai Side</h4>
                 <div class="table-wrapper">
                     <table>
-                        <thead>
-                            <tr><th style="width:5%">✓</th><th style="width:40%">Prerequisite</th><th style="width:55%">How to Verify</th></tr>
-                        </thead>
+                        <thead><tr><th style="width:25%">Behavior</th><th style="width:75%">What Your Collector Must Do</th></tr></thead>
                         <tbody>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td>SIEM Integration enabled in security configuration</td>
-                                <td>Control Center → Security Configuration → Advanced Settings → Data Collection for SIEM Integrations → toggle = <strong>On</strong>. Record the <code>configId</code> displayed.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td>Security configuration activated to production network</td>
-                                <td>Security Configuration → Activate → Production must show active. SIEM will not emit events for configurations that are not activated.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td>API credentials provisioned (client_token, client_secret, access_token, hostname)</td>
-                                <td>Control Center → ACCOUNT ADMIN → Identity &amp; access → API clients. The API client must have the <strong>SIEM</strong> API service selected with <strong>READ-WRITE</strong> access. Save all four credential values.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td>User assigned to Manage SIEM role</td>
-                                <td>Control Center → Identity &amp; access → Users → [user] → Edit roles → find the group → Roles dropdown must include <strong>Manage SIEM</strong>.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td>All config IDs recorded</td>
-                                <td>Each security configuration has a unique <code>configId</code>. The API fetches events per configId. If you have multiple configurations, you need all IDs.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td>Network path open from collector to Akamai API</td>
-                                <td>Proxy must whitelist <code>*.cloudsecurity.akamaiapis.net</code> and <code>*.luna.akamaiapis.net</code>. Proxy must NOT alter the <code>Host</code> or <code>Authorization</code> headers. <em>(Source: Akamai techdocs — API Get Started)</em></td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td>Test client validates connectivity</td>
-                                <td>Download the SIEM Test Client from the SIEM Integration page in Control Center. Run it on the collector host to confirm events are returned before configuring the production connector.</td>
-                            </tr>
+                            <tr><td><strong>NDJSON format</strong></td><td>The response body is newline-delimited JSON. Each line except the last is one security event. The last line is the <code>ResponseContext</code> — consume it for offset/pagination, do NOT send it to Splunk.</td></tr>
+                            <tr><td><strong>5-second latency</strong></td><td>The API has a built-in 5-second delay. In offset mode, the next call recovers those 5 seconds. Do not try to compensate for this.</td></tr>
+                            <tr><td><strong>600K event cap</strong></td><td>Default <code>limit</code> is 10,000. If your response consistently contains <code>"limit": true</code> in the ResponseContext, you are not keeping up — increase the limit (up to 600,000) or poll more frequently.</td></tr>
+                            <tr><td><strong>2-minute timeout</strong></td><td>Akamai's edge servers stop sending after 2 minutes per request. A truncated response has no ResponseContext on the last line. Re-call with the same offset and a lower limit.</td></tr>
+                            <tr><td><strong>HTTP 429 — Rate limited</strong></td><td>Akamai returns 429 with no <code>X-RateLimit-Reset</code> header. Implement exponential backoff: wait 30s → 60s → 120s before retrying.</td></tr>
+                            <tr><td><strong>Base64-encoded fields</strong></td><td>Fields <code>ruleActions</code>, <code>ruleData</code>, <code>ruleMessages</code>, <code>ruleSelectors</code>, <code>ruleTags</code> are base64-encoded. Each contains semicolon-delimited values (one per triggered rule). Decode in the collector before posting, or leave encoded and decode at search time.</td></tr>
+                            <tr><td><strong>12-hour replay</strong></td><td>If the collector goes offline, events remain available for 12 hours. Use time-based mode with <code>from</code> and <code>to</code> epochs to replay. After 12 hours, events are permanently lost.</td></tr>
+                            <tr><td><strong>Offset persistence</strong></td><td>If the offset is lost (e.g., disk failure), you must fall back to time-based mode. Use the last known collection time as the <code>from</code> parameter. Accept that some duplicates may occur.</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <h4>Splunk Side</h4>
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr><th style="width:5%">✓</th><th style="width:40%">Prerequisite</th><th style="width:55%">How to Verify</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td>Dedicated index created</td>
-                                <td><code>index=akamai_waf</code> (or per your naming convention). Set retention per compliance requirements. Create on indexer cluster via CM.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td>HEC token created (Path A only)</td>
-                                <td>Settings → Data Inputs → HTTP Event Collector → New Token. Bind to the dedicated index. Record the token value.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td>Sourcetype defined</td>
-                                <td><strong>Path B (add-on):</strong> Use <code>akamaisiem</code> — this is what the add-on's props.conf expects. <strong>Path A (custom HEC):</strong> Use <code>akamai:siem</code> or <code>akamaisiem</code> — but ensure matching props/transforms exist.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td>Source metadata convention agreed</td>
-                                <td>Recommended: <code>source=akamai:siem:&lt;configId&gt;</code> so you can filter per security configuration.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td>Timestamp extraction verified</td>
-                                <td>Akamai SIEM events include <code>httpMessage.start</code> as epoch seconds. Ensure your props.conf extracts this as <code>_time</code> and not the ingest time. The add-on handles this automatically for sourcetype <code>akamaisiem</code>.</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>You understand the API. Now <strong>Section 7</strong> sets up the Splunk side — creating the HEC endpoint that receives the events.</p>
                 </div>
 
-                <!-- SIEM API BEHAVIORS -->
-                <h3>SIEM Integration API — Critical Behaviors</h3>
-
-                <p>These behaviors are documented in Akamai's techdocs and directly affect your collector design. Ignoring them causes data loss, duplicates, or silent gaps.</p>
-
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr><th style="width:28%">Behavior</th><th style="width:72%">Details (from Akamai techdocs)</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><strong>Two fetch modes</strong></td>
-                                <td><strong>Offset mode</strong> uses an opaque offset string returned in the <code>ResponseContext</code> of each response. <strong>Time-based mode</strong> uses <code>from</code> and <code>to</code> epoch parameters. Both modes order events by <em>storage time</em> in the Akamai database, <strong>not</strong> by the time the event actually occurred.</td>
-                            </tr>
-                            <tr>
-                                <td><strong>5-second latency</strong></td>
-                                <td>Both modes have a built-in 5-second latency. In offset mode, subsequent calls recover those 5 seconds. In time-based mode, events from the last 5 seconds before your requested range are <strong>permanently omitted</strong>. Therefore, offset mode is the recommended steady-state mode.</td>
-                            </tr>
-                            <tr>
-                                <td><strong>12-hour replay window</strong></td>
-                                <td>The Akamai Security Events Collector (ASEC) retains events for 12 hours. If your collector goes offline, you can use time-based mode to replay any events from the past 12 hours. After 12 hours, events are gone.</td>
-                            </tr>
-                            <tr>
-                                <td><strong>600,000 event max per request</strong></td>
-                                <td>The API returns at most 600,000 events per call. During high-traffic periods, configurations may generate far more. The connector must call the API continuously, using the returned offset, to keep up. The default limit is 10,000; maximum is 600,000.</td>
-                            </tr>
-                            <tr>
-                                <td><strong>2-minute response timeout</strong></td>
-                                <td>Edge servers stop sending the response after 2 minutes. An incomplete response may lack the <code>ResponseContext</code> offset on the final line. If this happens: re-call with the previous offset and a <strong>lower limit</strong> to get a complete response.</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Multi-JSON response format</strong></td>
-                                <td>Each response is newline-delimited JSON (NDJSON): one JSON object per line for each event, and the <strong>last line</strong> is the <code>ResponseContext</code> object containing <code>total</code>, <code>offset</code>, and <code>limit</code>. Your parser must handle this — it is NOT a JSON array.</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Base64-encoded fields</strong></td>
-                                <td>Several <code>attackData</code> fields (<code>ruleActions</code>, <code>ruleData</code>, <code>ruleMessages</code>, <code>ruleSelectors</code>, <code>ruleTags</code>) are base64-encoded and semicolon-delimited. Each semicolon-separated segment corresponds to one triggered rule. Decode before indexing or at search time.</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Rate limiting (429)</strong></td>
-                                <td>The API may apply rate limiting. Excess requests return HTTP 429 with a JSON error body including <code>"title": "Too many requests"</code>. The API does NOT provide an <code>X-RateLimit-Reset</code> header — the client must implement its own backoff.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- COLLECTOR CONFIGURATION CHECKLIST -->
-                <h3>Collector Configuration Checklist</h3>
-
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr><th style="width:5%">✓</th><th style="width:30%">Setting</th><th style="width:65%">Guidance</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td><strong>Query mode</strong></td>
-                                <td>Use <strong>offset mode</strong> for steady-state collection (leave epoch time fields blank in the add-on). Reserve time-based mode only for replaying missed events after an outage (within the 12-hour window).</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td><strong>Checkpoint / cursor handling</strong></td>
-                                <td>The <code>offset</code> string from <code>ResponseContext</code> must be persisted between polls. The Akamai Splunk add-on stores this in KVStore. Custom collectors must store it durably (file, database, S3 state object). A lost offset means restarting collection — potentially causing duplicates or a gap.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td><strong>Limit per request</strong></td>
-                                <td>Default is 10,000; maximum is 600,000. Start with 10,000–50,000. If the collector cannot ingest within 2 minutes, lower the limit. If falling behind (every response returns <code>limit</code> = true in ResponseContext), increase the limit or poll more frequently.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td><strong>Multi-JSON parsing</strong></td>
-                                <td>Split response on newlines. Parse each line as an individual JSON object. The <strong>last line</strong> is the <code>ResponseContext</code> — do not send it to Splunk as an event. Akamai strongly recommends using a standard JSON parser to handle schema changes.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td><strong>Retries and backoff</strong></td>
-                                <td>On HTTP 429: implement exponential backoff (e.g., 30s → 60s → 120s). On 5xx: retry up to 3 times with backoff. On incomplete response (no ResponseContext): retry with same offset and lower limit. On network failure: retry with same offset.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td><strong>Deduplication strategy</strong></td>
-                                <td>If you switch from offset mode to time-based mode for replay, expect duplicates in the overlap window. Akamai's Splunk connector documentation explicitly warns about this. Mitigate by deduplicating on <code>httpMessage.requestId</code> + <code>attackData.configId</code> at search time, or by carefully managing the time window to minimize overlap.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td><strong>Poll interval</strong></td>
-                                <td>Call the API continuously as long as it returns events. Only pause (e.g., 30 seconds) when no new events are returned. Do not set fixed long intervals — you will fall behind during traffic spikes.</td>
-                            </tr>
-                            <tr>
-                                <td><div class="checklist-checkbox"></div></td>
-                                <td><strong>Connection/socket timeouts</strong></td>
-                                <td>The Akamai Splunk connector (v1.4.14+) supports <code>AKAMAI_SIEM_HTTP_CONNECTION_TIMEOUT</code> and <code>AKAMAI_SIEM_HTTP_SOCKET_TIMEOUT</code> environment variables (in seconds). Custom collectors should set a socket timeout ≥ 120s (matching the 2-minute edge server limit) and a connection timeout of 30s.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
 
                 <!-- ============================================== -->
-                <!-- AKAMAI SPLUNK ADD-ON SECTION                   -->
+                <!-- SECTION 7 — SPLUNK CLOUD HEC                   -->
                 <!-- ============================================== -->
-                <h2>Akamai Splunk Add-on (Splunkbase 4310) — What It Provides and How to Verify</h2>
+                <h2 id="section-7">Section 7 — Configuring Splunk Cloud HEC</h2>
 
-                <p>The <strong>Akamai SIEM Integration</strong> add-on (Splunkbase App ID 4310) is built by Akamai Technologies and is the official Splunk connector. Understanding exactly what it includes prevents misconfiguration.</p>
+                <h3>What Is HEC and Why Is It the Right Choice?</h3>
+                <p>HEC (HTTP Event Collector) is Splunk's built-in HTTPS endpoint for receiving data. It accepts JSON payloads over HTTPS and routes them to a configured index. In Splunk Cloud, HEC is the <strong>primary supported ingestion method</strong> for external data — you do not have alternative options like file monitoring or TCP inputs on the Cloud infrastructure.</p>
 
-                <h3>What the Add-on Contains</h3>
+                <h3>Step 7.1 — Create a Dedicated Index</h3>
 
                 <div class="table-wrapper">
                     <table>
-                        <thead>
-                            <tr><th style="width:25%">Component</th><th style="width:35%">Function</th><th style="width:40%">Verification</th></tr>
-                        </thead>
+                        <thead><tr><th style="width:15%">Aspect</th><th style="width:85%">Detail</th></tr></thead>
                         <tbody>
-                            <tr>
-                                <td><strong>Java-based modular input</strong></td>
-                                <td>Polls the Akamai SIEM API using offset mode. Stores offset state in KVStore. Writes events to Splunk index via the Splunk Java SDK (not HEC).</td>
-                                <td>After install: Settings → Data Inputs → look for <code>Akamai Security Incident Event Manager API</code>. If missing: check Java 8+ is installed, KVStore is running, and Splunk forwarder is NOT installed on the same host.</td>
-                            </tr>
-                            <tr>
-                                <td><strong>props.conf</strong></td>
-                                <td>Parsing rules for sourcetype <code>akamaisiem</code>. Extracts JSON fields, handles timestamp, and maps to CIM field names.</td>
-                                <td>Run: <code>btool props list akamaisiem --debug</code> — verify stanzas exist and point to the add-on's config files.</td>
-                            </tr>
-                            <tr>
-                                <td><strong>CIM mapping</strong></td>
-                                <td>Field aliases and calculated fields that map Akamai's native JSON keys to CIM-compatible field names (Web and Intrusion Detection data models).</td>
-                                <td>After ingesting data: <code>| datamodel Web search | head 5</code> — if Akamai events appear, CIM mapping is working. If not, check that the add-on is deployed to search heads (not just the HF).</td>
-                            </tr>
-                            <tr>
-                                <td><strong>System requirements</strong></td>
-                                <td>Oracle JRE 1.8+, KVStore running, no Splunk Universal Forwarder on the same host, 4 CPU cores / 16 GB RAM / 2 GB disk recommended.</td>
-                                <td>Run <code>java -version</code> on the host. Verify KVStore status: <code>splunk show kvstore-status</code>. Verify no UF: <code>splunk version</code> should show Enterprise, not Forwarder.</td>
-                            </tr>
+                            <tr><td><strong>WHAT</strong></td><td>A new index specifically for Akamai security events. Isolating WAF data in its own index makes searching faster, retention management easier, and access control clearer.</td></tr>
+                            <tr><td><strong>WHERE</strong></td><td>Splunk Cloud → <strong>Settings</strong> → <strong>Indexes</strong> → <strong>New Index</strong>.</td></tr>
+                            <tr><td><strong>HOW</strong></td><td>Choose a descriptive name. Set retention per your compliance policy. Leave other settings at defaults unless instructed otherwise.</td></tr>
+                            <tr><td><strong>WHY</strong></td><td>If WAF events land in <code>main</code> or a shared index, they become difficult to manage, hard to find, and impossible to set separate retention.</td></tr>
+                            <tr><td><strong>VERIFY</strong></td><td><code>| eventcount index=&lt;your_index&gt;</code> — this confirms the index exists (count will be 0 initially).</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="callout callout-warning">
-                    <div class="callout-title">⚠️ Known Issues with the Add-on</div>
-                    <p><strong>PKIX certificate errors:</strong> Multiple Splunk Community reports document <code>PKIX path building failed</code> errors on versions &gt; 1.4.15. Workarounds include: (a) downgrading to v1.4.15, (b) importing the Akamai certificate into the JRE's cacerts keystore, or (c) adding <code>disable_splunk_cert_check = true</code> to each input stanza.</p>
-                    <p><strong>Splunk Cloud IDM limitation:</strong> Some users report that after installing the add-on on Splunk Cloud IDM, the data input for Akamai does not appear in Settings → Data Inputs. <strong>VERIFY:</strong> Check with Splunk Cloud support whether Java-based modular inputs are permitted on your specific Cloud stack (Victoria vs. Classic).</p>
-                    <p><strong>Input cannot be edited after enabling:</strong> Akamai's docs note that once a data input is enabled, you cannot edit and re-run it. Instead, disable the input, clone it, make changes to the clone, then enable the clone.</p>
-                </div>
+                <p><strong>Record your value:</strong> Index name = <code>&lt;your_index&gt;</code> = ________________</p>
 
-                <h3>What to Do If CIM Fields Are Missing</h3>
+                <h3>Step 7.2 — Choose a Sourcetype</h3>
+                <p>The sourcetype is the label Splunk uses to determine how to parse the data. You set this at the HEC token level. Choose a descriptive name that conveys the vendor and data type. The name itself is arbitrary — what matters is that it matches any parsing configuration (TA stanza) on the search head.</p>
+                <p>If you plan to install a vendor TA that expects a specific sourcetype, discover what it expects <em>first</em> (see Section 10) and use that. If you are not using a TA, choose any descriptive name.</p>
+                <p><strong>Record your value:</strong> Sourcetype = <code>&lt;your_sourcetype&gt;</code> = ________________</p>
 
-                <p>If the add-on is installed and data is flowing but CIM data model fields are not populated:</p>
+                <h3>Step 7.3 — Create the HEC Token</h3>
 
                 <div class="table-wrapper">
                     <table>
-                        <thead><tr><th style="width:5%">Step</th><th style="width:95%">Action</th></tr></thead>
+                        <thead><tr><th style="width:15%">Aspect</th><th style="width:85%">Detail</th></tr></thead>
                         <tbody>
-                            <tr><td>1</td><td>Confirm the add-on is deployed to <strong>search heads</strong> (not just the HF). CIM mapping happens at search time via props/transforms, so the SH must have them.</td></tr>
-                            <tr><td>2</td><td>Run <code>| datamodel Web search | where sourcetype="akamaisiem" | head 5</code> — check if any fields are populated.</td></tr>
-                            <tr><td>3</td><td>If empty: check <code>btool props list akamaisiem --debug</code> on the SH. Look for <code>FIELDALIAS</code> and <code>EVAL</code> directives. If missing, the add-on may need to be re-installed or its configs may be overridden by a local stanza.</td></tr>
-                            <tr><td>4</td><td>If partially populated: identify which specific CIM fields are missing. Add scoped <code>FIELDALIAS</code> or <code>EVAL</code> entries in a custom props.conf in <code>local/</code> (not default/). Example: <code>FIELDALIAS-src_akamai = attackData.clientIP AS src</code>.</td></tr>
-                            <tr><td>5</td><td><strong>Rollback plan:</strong> Before editing any props/transforms, back up the current config. If your additions break parsing, remove the local/ overrides and restart Splunk to revert to the add-on's defaults.</td></tr>
+                            <tr><td><strong>WHAT</strong></td><td>A HEC token is an authentication key that the collector includes in every POST request to prove it is authorized to send data to this Splunk Cloud instance.</td></tr>
+                            <tr><td><strong>WHERE</strong></td><td>Splunk Cloud → <strong>Settings</strong> → <strong>Data Inputs</strong> → <strong>HTTP Event Collector</strong> → <strong>New Token</strong>.</td></tr>
+                            <tr><td><strong>HOW</strong></td><td>Name: descriptive (e.g., "Akamai WAF Collector"). Source type: set to <code>&lt;your_sourcetype&gt;</code>. Allowed indexes: select <code>&lt;your_index&gt;</code>. Default index: <code>&lt;your_index&gt;</code>. Click Submit. Record the generated token value.</td></tr>
+                            <tr><td><strong>WHY</strong></td><td>The token controls what the collector can write to. By restricting it to a single index and sourcetype, you prevent accidental data landing in wrong locations.</td></tr>
+                            <tr><td><strong>VERIFY</strong></td><td>The token appears in the HEC list with status "Enabled".</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <!-- ============================================== -->
-                <!-- VALIDATION SPL — PASS/FAIL                     -->
-                <!-- ============================================== -->
-                <h2>Validation SPL — Pass/Fail Checks</h2>
+                <h3>Step 7.4 — Record the HEC Endpoint URL</h3>
+                <p>Your Splunk Cloud HEC endpoint URL follows this pattern:</p>
+                <p><code>https://http-inputs-&lt;your-stack&gt;.splunkcloud.com:443/services/collector</code></p>
+                <p>Check your Splunk Cloud admin panel for the exact URL. Record it — the collector needs this.</p>
 
-                <p>Run these queries after data has been flowing for at least 1 hour. Each query includes a pass/fail interpretation. Replace <code>index=akamai_waf</code> and <code>sourcetype=akamaisiem</code> with your actual values.</p>
+                <h3>Step 7.5 — Test HEC Independently</h3>
+                <p>Before connecting the collector, verify HEC works by sending a test event from the collector machine:</p>
 
-                <h3>V1 — Ingestion Count Trend (Are Events Arriving?)</h3>
                 <div class="code-block">
                     <button class="copy-btn">Copy</button>
-                    <pre><code>index=akamai_waf sourcetype=akamaisiem earliest=-24h
-| timechart span=1h count AS event_count
-| eval status=if(event_count>0, "PASS", "FAIL — no events this hour")</code></pre>
+                    <pre><code>curl -k "https://&lt;HEC_ENDPOINT&gt;/services/collector/event" \
+  -H "Authorization: Splunk &lt;HEC_TOKEN&gt;" \
+  -d '{"event":"HEC test from collector host","sourcetype":"&lt;your_sourcetype&gt;","index":"&lt;your_index&gt;"}'</code></pre>
                 </div>
-                <p><strong>PASS:</strong> Every hour shows &gt; 0 events with no sustained gaps. <strong>FAIL:</strong> Gaps &gt; 2 hours indicate collector outage, credential expiry, or API issue.</p>
 
-                <h3>V2 — Ingestion Lag Percentiles (How Stale Is the Data?)</h3>
+                <p><strong>Expected response:</strong> <code>{"text":"Success","code":0}</code></p>
+                <p><strong>Verify in Splunk:</strong></p>
+
                 <div class="code-block">
                     <button class="copy-btn">Copy</button>
-                    <pre><code>index=akamai_waf sourcetype=akamaisiem earliest=-4h
-| eval lag_seconds = _indextime - _time
-| stats p50(lag_seconds) AS p50_lag, p90(lag_seconds) AS p90_lag, p99(lag_seconds) AS p99_lag, max(lag_seconds) AS max_lag
-| eval status=if(p90_lag < 600, "PASS", "FAIL — p90 lag exceeds 10 minutes")</code></pre>
+                    <pre><code>index=&lt;your_index&gt; "HEC test" earliest=-5m</code></pre>
                 </div>
-                <p><strong>PASS:</strong> p90 lag &lt; 600 seconds (10 min). <strong>FAIL:</strong> High lag means the collector is falling behind — increase the limit parameter or poll frequency. If max_lag &gt; 43,200 (12h), you may have replayed stale events.</p>
 
-                <h3>V3 — Duplicate Indicator</h3>
+                <p>If you see the test event, HEC is working. If not, check: token enabled? Correct URL? Firewall allows HTTPS to Cloud? Index name spelled correctly?</p>
+
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>HEC is ready. <strong>Section 8</strong> connects the full pipeline — Akamai credentials + collector + HEC.</p>
+                </div>
+
+
+                <!-- ============================================== -->
+                <!-- SECTION 8 — CONNECTING THE PIPELINE            -->
+                <!-- ============================================== -->
+                <h2 id="section-8">Section 8 — Connecting Akamai → Collector → HEC</h2>
+
+                <p>At this point you have three things ready: Akamai API credentials (Section 4), a collector host (Section 5), and a working HEC endpoint (Section 7). This section connects them.</p>
+
+                <h3>Data Flow With All Configuration Points</h3>
+
+                <div class="mermaid">
+flowchart LR
+    subgraph AKAMAI["Akamai SIEM API"]
+        API["GET /siem/v1/configs/{configId}<br/>Auth: EdgeGrid<br/>Response: NDJSON"]
+    end
+
+    subgraph COLLECTOR["Your Collector"]
+        CRED["Credentials:<br/>client_token<br/>client_secret<br/>access_token<br/>hostname"]
+        POLL["Polling Loop:<br/>offset tracking<br/>retry logic<br/>base64 decoding"]
+        FWD["Forward:<br/>POST to HEC<br/>Include: index,<br/>sourcetype, token"]
+    end
+
+    subgraph SPLUNK["Splunk Cloud"]
+        HEC["HEC Endpoint<br/>Token: &lt;HEC_TOKEN&gt;<br/>Index: &lt;your_index&gt;<br/>Sourcetype: &lt;your_sourcetype&gt;"]
+    end
+
+    API -->|"JSON events"| CRED
+    CRED --> POLL
+    POLL --> FWD
+    FWD -->|"HTTPS POST"| HEC
+
+    style AKAMAI fill:#0d1117,stroke:#9e6a03,color:#c9d1d9
+    style COLLECTOR fill:#0d1117,stroke:#1f6feb,color:#c9d1d9
+    style SPLUNK fill:#0d1117,stroke:#238636,color:#c9d1d9
+                </div>
+
+                <h3>Configuration That Lives on the Collector</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:30%">Setting</th><th style="width:40%">Value</th><th style="width:30%">Where It Came From</th></tr></thead>
+                        <tbody>
+                            <tr><td>Akamai client_token</td><td><em>(from Step 4.4)</em></td><td>Akamai Control Center</td></tr>
+                            <tr><td>Akamai client_secret</td><td><em>(from Step 4.4)</em></td><td>Akamai Control Center</td></tr>
+                            <tr><td>Akamai access_token</td><td><em>(from Step 4.4)</em></td><td>Akamai Control Center</td></tr>
+                            <tr><td>Akamai hostname</td><td><em>(from Step 4.4)</em></td><td>Akamai Control Center</td></tr>
+                            <tr><td>configId(s)</td><td><em>(from Step 4.3)</em></td><td>Akamai Control Center</td></tr>
+                            <tr><td>HEC endpoint URL</td><td><em>(from Step 7.4)</em></td><td>Splunk Cloud admin panel</td></tr>
+                            <tr><td>HEC token</td><td><em>(from Step 7.3)</em></td><td>Splunk Cloud HEC config</td></tr>
+                            <tr><td>Target index</td><td><code>&lt;your_index&gt;</code></td><td>Step 7.1</td></tr>
+                            <tr><td>Target sourcetype</td><td><code>&lt;your_sourcetype&gt;</code></td><td>Step 7.2</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Payload Format</h3>
+                <p>The collector should POST each Akamai event to HEC as a JSON envelope:</p>
                 <div class="code-block">
                     <button class="copy-btn">Copy</button>
-                    <pre><code>index=akamai_waf sourcetype=akamaisiem earliest=-24h
-| stats count BY httpMessage.requestId attackData.configId
-| where count > 1
-| stats count AS duplicate_groups, sum(count) AS total_duplicate_events
-| eval status=if(duplicate_groups=0, "PASS", "FAIL — ".duplicate_groups." groups with duplicates")</code></pre>
+                    <pre><code>{
+  "index": "&lt;your_index&gt;",
+  "sourcetype": "&lt;your_sourcetype&gt;",
+  "event": { ... the Akamai security event JSON ... }
+}</code></pre>
                 </div>
-                <p><strong>PASS:</strong> 0 duplicate groups. <strong>FAIL:</strong> Duplicates usually indicate a mode switch between offset and time-based, or a cursor reset. Investigate the collector's offset state management.</p>
 
-                <h3>V4 — Sourcetype Consistency</h3>
+                <h3>Timestamp Handling</h3>
+                <p>Akamai events include an epoch timestamp. The collector should extract it and pass it as the <code>time</code> field in the HEC payload. If omitted, Splunk uses the time it received the event (index time), which is always later than the actual event time and creates lag in your data.</p>
+
+                <h3>Start the Collector</h3>
+                <p>Start the collector and monitor its logs for the first 5–10 minutes. Look for:</p>
+                <div class="table-wrapper">
+                    <table>
+                        <tbody>
+                            <tr><td style="width:35%"><strong>✅ Good signs</strong></td><td>Successful API calls, events returned, successful HEC POSTs, offset advancing.</td></tr>
+                            <tr><td><strong>❌ Bad signs</strong></td><td>HTTP 401/403 from Akamai (credentials issue — back to Step 4.4). HTTP 403 from HEC (token issue — back to Step 7.3). Empty responses (SIEM not enabled — back to Step 4.1). Timeouts (network issue — back to Step 4.6).</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>The pipeline is connected. <strong>Section 9</strong> verifies that events are actually arriving in Splunk.</p>
+                </div>
+
+
+                <!-- ============================================== -->
+                <!-- SECTION 9 — FIRST VALIDATION                   -->
+                <!-- ============================================== -->
+                <h2 id="section-9">Section 9 — First Validation: Is Data Arriving?</h2>
+
+                <p>Before worrying about parsing, CIM, or data models, answer one question: <strong>are events landing in Splunk?</strong></p>
+
+                <h3>Step 9.1 — Discover What Arrived</h3>
+                <p>If you created the index and HEC token yourself, you know the expected values. If you inherited the setup, discover them:</p>
+
                 <div class="code-block">
                     <button class="copy-btn">Copy</button>
-                    <pre><code>index=akamai_waf earliest=-24h
-| stats count BY sourcetype
-| eval status=if(sourcetype="akamaisiem" OR sourcetype="akamai:siem", "PASS", "FAIL — unexpected sourcetype: ".sourcetype)</code></pre>
+                    <pre><code>| tstats count WHERE index=* earliest=-24h by index
+| sort -count
+| head 20</code></pre>
                 </div>
-                <p><strong>PASS:</strong> Only the expected sourcetype appears. <strong>FAIL:</strong> Mixed sourcetypes indicate misconfigured inputs or data landing in the wrong index.</p>
+                <p><strong>What this does:</strong> Lists all indexes with recent events. Look for the index you created or one with an Akamai-related name.</p>
 
-                <h3>V5 — Minimum Viable Field Set</h3>
                 <div class="code-block">
                     <button class="copy-btn">Copy</button>
-                    <pre><code>index=akamai_waf sourcetype=akamaisiem earliest=-1h
+                    <pre><code>index=&lt;your_index&gt; earliest=-24h
+| stats count by sourcetype source
+| sort -count</code></pre>
+                </div>
+                <p><strong>What this does:</strong> Shows all sourcetype/source combinations in your index. Record them.</p>
+
+                <h3>Step 9.2 — Confirm Event Flow</h3>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>index=&lt;your_index&gt; sourcetype=&lt;your_sourcetype&gt; earliest=-30m
+| stats count
+| eval status=if(count>0,
+    "✅ PASS — ".count." events in last 30 minutes",
+    "❌ FAIL — no events. Check collector logs, HEC token, network path.")</code></pre>
+                </div>
+
+                <h3>Step 9.3 — Inspect Raw Events</h3>
+                <p>Look at actual events to understand the data format:</p>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>index=&lt;your_index&gt; sourcetype=&lt;your_sourcetype&gt; earliest=-1h
+| head 1
+| table _time host source sourcetype _raw</code></pre>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>If _raw looks like…</th><th>Format</th><th>What It Means</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>{"type":"akamai_siem","attackData":{...},"httpMessage":{...}}</code></td><td><strong>JSON</strong></td><td>Expected format from SIEM API. Parsing should work with JSON auto-extraction or a TA.</td></tr>
+                            <tr><td><code>CEF:0|Akamai|...</code></td><td><strong>CEF</strong></td><td>Events passed through a CEF connector. Different parsing rules needed.</td></tr>
+                            <tr><td>key=value pairs or syslog wrapper</td><td><strong>Structured text</strong></td><td>Reformatted by an intermediary. Custom parsing needed.</td></tr>
+                            <tr><td>Binary / garbled / base64 blob</td><td><strong>Problem</strong></td><td>Collector output is broken. Fix before proceeding.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Step 9.4 — Check for Continuous Flow</h3>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>index=&lt;your_index&gt; sourcetype=&lt;your_sourcetype&gt; earliest=-24h
+| timechart span=1h count AS event_count</code></pre>
+                </div>
+                <p>Every hour should have events. Gaps indicate collector outage, credential expiry, or API issues. If you see gaps, check collector logs first.</p>
+
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>If events are arriving → <strong>Section 10</strong> verifies that fields are properly extracted.</p>
+                    <p>If NO events → go back: check collector logs, verify HEC token (Step 7.5), verify Akamai credentials (Step 4.4), verify network (Step 4.6). See also <strong>Section 13 — Failure Reference</strong>.</p>
+                </div>
+
+
+                <!-- ============================================== -->
+                <!-- SECTION 10 — PARSING & FIELD EXTRACTION        -->
+                <!-- ============================================== -->
+                <h2 id="section-10">Section 10 — Parsing &amp; Field Extraction (Splunk Cloud Reality)</h2>
+
+                <p>Events are in Splunk. Now verify that Splunk can actually extract meaningful fields from them — not just store them as blobs of text.</p>
+
+                <h3>Where Parsing Happens in Splunk Cloud</h3>
+                <p>In Splunk Cloud, you cannot configure parsing on the indexers. You have three possible parsing locations:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Location</th><th>What Happens</th><th>Who Controls It</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>Collector (before Splunk)</strong></td><td>Your collector code transforms the Akamai JSON — flattening nested objects, decoding base64, renaming fields — before POSTing to HEC.</td><td>You. Full control.</td></tr>
+                            <tr><td><strong>Customer HF (before Splunk Cloud)</strong></td><td>If using a customer-managed Heavy Forwarder, it can apply props.conf/transforms.conf at index time before forwarding to Cloud.</td><td>You. Full control of HF configs.</td></tr>
+                            <tr><td><strong>Search Head (search-time)</strong></td><td>A TA installed on the SH applies extraction rules (EXTRACT, REPORT, FIELDALIAS, EVAL) when you search. Fields do not exist in the stored data — they are computed dynamically.</td><td>You install the TA via SSAI. The TA controls the rules.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p><strong>The most common Splunk Cloud pattern:</strong> Events arrive as raw JSON → a TA on the SH provides search-time extraction → fields appear when you search.</p>
+
+                <h3>Step 10.1 — Field Population Check</h3>
+                <p>Run this to see what fields Splunk currently extracts from your events:</p>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>index=&lt;your_index&gt; sourcetype=&lt;your_sourcetype&gt; earliest=-1h
 | head 100
-| eval has_clientIP=if(isnotnull('attackData.clientIP'), 1, 0)
-| eval has_configId=if(isnotnull('attackData.configId'), 1, 0)
-| eval has_policyId=if(isnotnull('attackData.policyId'), 1, 0)
-| eval has_ruleActions=if(isnotnull('attackData.ruleActions'), 1, 0)
-| eval has_httpMethod=if(isnotnull('httpMessage.method'), 1, 0)
-| eval has_httpHost=if(isnotnull('httpMessage.host'), 1, 0)
-| eval has_httpPath=if(isnotnull('httpMessage.path'), 1, 0)
-| eval has_httpStatus=if(isnotnull('httpMessage.status'), 1, 0)
-| eval has_geo=if(isnotnull('geo.country'), 1, 0)
-| stats avg(has_clientIP) AS pct_clientIP, avg(has_configId) AS pct_configId, avg(has_policyId) AS pct_policyId, avg(has_ruleActions) AS pct_ruleActions, avg(has_httpMethod) AS pct_httpMethod, avg(has_httpHost) AS pct_httpHost, avg(has_httpPath) AS pct_httpPath, avg(has_httpStatus) AS pct_httpStatus, avg(has_geo) AS pct_geo
-| eval status=if(pct_clientIP>0.95 AND pct_configId>0.95 AND pct_ruleActions>0.90, "PASS", "FAIL — critical fields below 95% population")</code></pre>
+| fieldsummary
+| where count > 0 AND NOT match(field, "^(date_|_|punct|timeendpos|timestartpos)")
+| eval pct=round(count/100*100, 1)."%"
+| sort -count
+| table field count distinct_count pct</code></pre>
                 </div>
-                <p><strong>PASS:</strong> Core fields &gt; 95% populated. <strong>FAIL:</strong> Missing fields suggest parsing failures, wrong sourcetype, or base64-encoded fields not being decoded.</p>
 
-                <h3>V6 — Config ID Coverage</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>If You See…</th><th>It Means…</th><th>Action</th></tr></thead>
+                        <tbody>
+                            <tr><td>Many fields: <code>attackData.clientIP</code>, <code>httpMessage.host</code>, etc.</td><td>JSON extraction or TA is working.</td><td>Proceed to Step 10.2.</td></tr>
+                            <tr><td>Only metadata: <code>_raw</code>, <code>_time</code>, <code>host</code>, <code>source</code>, <code>sourcetype</code></td><td>No field extraction happening.</td><td>Install a TA (Step 10.3) or fix the collector output.</td></tr>
+                            <tr><td>CIM-style fields: <code>src</code>, <code>dest</code>, <code>action</code></td><td>TA is installed AND providing CIM mapping.</td><td>Jump to Section 11.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Step 10.2 — Critical Field Verification</h3>
+                <p>For Akamai WAF events to be useful for detection, these concepts must be extractable. This query checks across multiple possible field name variants:</p>
+
                 <div class="code-block">
                     <button class="copy-btn">Copy</button>
-                    <pre><code>index=akamai_waf sourcetype=akamaisiem earliest=-24h
-| stats dc(attackData.configId) AS unique_configs, values(attackData.configId) AS config_ids
-| eval status=if(unique_configs >= 1, "PASS — receiving from ".unique_configs." config(s): ".config_ids, "FAIL — no configId values found")</code></pre>
+                    <pre><code>index=&lt;your_index&gt; sourcetype=&lt;your_sourcetype&gt; earliest=-1h
+| head 50
+| eval has_client_ip=if(isnotnull(coalesce('attackData.clientIP','clientIP','src','src_ip')),1,0)
+| eval has_method=if(isnotnull(coalesce('httpMessage.method','method','http_method')),1,0)
+| eval has_host=if(isnotnull(coalesce('httpMessage.host','hostname','dest')),1,0)
+| eval has_path=if(isnotnull(coalesce('httpMessage.path','uri_path','url')),1,0)
+| eval has_status=if(isnotnull(coalesce('httpMessage.status','status','http_status')),1,0)
+| eval has_rule=if(isnotnull(coalesce('attackData.ruleActions','ruleActions','action')),1,0)
+| eval has_geo=if(isnotnull(coalesce('geo.country','country','src_country')),1,0)
+| stats avg(has_client_ip) AS client_ip, avg(has_method) AS method, avg(has_host) AS host,
+        avg(has_path) AS path, avg(has_status) AS status, avg(has_rule) AS rule_action, avg(has_geo) AS geo
+| foreach * [eval &lt;&lt;FIELD&gt;&gt;=round(&lt;&lt;FIELD&gt;&gt;*100,0)."%"]</code></pre>
                 </div>
-                <p><strong>PASS:</strong> Count matches the number of configIds you provided to the collector. <strong>FAIL:</strong> Missing configIds mean those security configurations are not emitting events — re-check SIEM enablement in Control Center.</p>
+
+                <p><strong>Pass:</strong> Client IP, method, host, and rule action &gt; 90%. <strong>Fail:</strong> Any critical field at 0% — fix before proceeding.</p>
+
+                <h3>Step 10.3 — Check If a TA Is Installed on the Search Head</h3>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>| rest /services/apps/local splunk_server=local
+| search label="*kamai*" OR label="*SIEM*" OR title="*kamai*" OR title="*TA-Akamai*"
+| table title label version updated</code></pre>
+                </div>
+
+                <p>If no results: no Akamai TA is installed on the SH. If fields are also missing (Step 10.1), installing a TA is the most likely fix.</p>
+
+                <h3>Step 10.4 — If Fields Are Missing: Diagnosis and Fix</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:5%">#</th><th style="width:25%">Cause</th><th style="width:30%">How to Check</th><th style="width:40%">Fix</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td><strong>No TA on SH</strong></td><td>Step 10.3 returns empty.</td><td>Install the vendor TA via SSAI.</td></tr>
+                            <tr><td>2</td><td><strong>TA installed, sourcetype mismatch</strong></td><td><code>| rest /services/configs/conf-props splunk_server=local | search title="*kamai*" | table title</code> — compare with your sourcetype.</td><td>Change your sourcetype to match the TA, or create a custom props stanza.</td></tr>
+                            <tr><td>3</td><td><strong>Events are not JSON</strong></td><td>Step 9.3 showed CEF or other format.</td><td>Change collector to output JSON, or write custom extraction rules.</td></tr>
+                            <tr><td>4</td><td><strong>Nested JSON not extracted</strong></td><td>Top-level OK, <code>attackData.*</code> missing.</td><td>Set <code>KV_MODE=json</code> via custom app on SH, or flatten in collector.</td></tr>
+                            <tr><td>5</td><td><strong>Non-standard field names</strong></td><td>Fields exist but with unexpected names.</td><td>Create FIELDALIAS entries in a custom app.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Step 10.5 — Verify Active Parsing Configuration (Cloud-Safe)</h3>
+                <p>In Splunk Cloud, you cannot use <code>btool</code>. Use the REST API instead:</p>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>| rest /services/configs/conf-props/&lt;your_sourcetype&gt; splunk_server=local
+| transpose
+| rename column AS setting, "row 1" AS value</code></pre>
+                </div>
+
+                <p>Look for <code>EXTRACT-</code>, <code>REPORT-</code>, <code>FIELDALIAS-</code>, <code>EVAL-</code>, <code>LOOKUP-</code>, and <code>KV_MODE</code> entries. If none exist, the sourcetype has no search-time extraction rules.</p>
+
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>Fields are extracting → <strong>Section 11</strong> checks CIM mapping for ES readiness.</p>
+                    <p>Fields still missing → fix per Step 10.4, then re-run Step 10.1.</p>
+                </div>
+
 
                 <!-- ============================================== -->
-                <!-- STOP & ESCALATE                                -->
+                <!-- SECTION 11 — CIM & ES READINESS                -->
                 <!-- ============================================== -->
-                <h2>Stop &amp; Escalate Conditions</h2>
+                <h2 id="section-11">Section 11 — CIM &amp; ES Readiness (Verify, Do Not Assume)</h2>
+
+                <h3>What Is CIM and Why Does ES Need It?</h3>
+                <p>The <strong>Common Information Model (CIM)</strong> is a set of standard field names that Splunk ES uses across all data sources. Without CIM mapping, ES cannot find your events — its dashboards, correlation searches, and threat intelligence all query CIM field names, not vendor-specific ones.</p>
+
+                <p>For example, the attacker's IP address might be stored as <code>attackData.clientIP</code> in the raw Akamai event. ES does not know that field name. ES looks for <code>src</code>. CIM mapping creates the bridge: <code>attackData.clientIP</code> → <code>src</code>.</p>
+
+                <p><strong>CIM mapping does NOT happen automatically.</strong> It requires either a TA that defines FIELDALIAS/EVAL rules for your sourcetype, or manual configuration.</p>
+
+                <h3>Step 11.1 — Check If CIM Fields Exist</h3>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>index=&lt;your_index&gt; sourcetype=&lt;your_sourcetype&gt; earliest=-1h
+| head 50
+| eval has_src=if(isnotnull(src),1,0), has_dest=if(isnotnull(dest),1,0),
+       has_action=if(isnotnull(action),1,0), has_http_method=if(isnotnull(http_method),1,0),
+       has_url=if(isnotnull(url),1,0), has_status=if(isnotnull(status),1,0),
+       has_vendor=if(isnotnull(vendor_product),1,0), has_app=if(isnotnull(app),1,0)
+| stats avg(has_src) AS src, avg(has_dest) AS dest, avg(has_action) AS action,
+        avg(has_http_method) AS http_method, avg(has_url) AS url,
+        avg(has_status) AS status, avg(has_vendor) AS vendor_product, avg(has_app) AS app
+| foreach * [eval &lt;&lt;FIELD&gt;&gt;=round(&lt;&lt;FIELD&gt;&gt;*100,0)."%"]</code></pre>
+                </div>
+
+                <p><strong>Pass:</strong> <code>src</code> and <code>action</code> near 100%. <code>http_method</code>, <code>url</code>, <code>dest</code> &gt; 80% for web-type events.</p>
+                <p><strong>Fail:</strong> If all CIM fields are at 0%, the TA is either not installed, not mapping your sourcetype, or missing.</p>
+
+                <h3>Step 11.2 — Map Required CIM Fields for WAF Events</h3>
+                <p>This table shows what ES needs for WAF-style events. The "Your Field Name" column is what you discovered in Section 10. Fill it in.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>CIM Field</th><th>Meaning</th><th>Your Field Name</th><th>Status</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>src</code></td><td>Attacker IP</td><td>________________</td><td>✅ / ❌</td></tr>
+                            <tr><td><code>dest</code></td><td>Target hostname</td><td>________________</td><td>✅ / ❌</td></tr>
+                            <tr><td><code>action</code></td><td>WAF decision (allowed/blocked)</td><td>________________</td><td>✅ / ❌</td></tr>
+                            <tr><td><code>http_method</code></td><td>GET, POST, etc.</td><td>________________</td><td>✅ / ❌</td></tr>
+                            <tr><td><code>url</code></td><td>Request URL / path</td><td>________________</td><td>✅ / ❌</td></tr>
+                            <tr><td><code>status</code></td><td>HTTP status code</td><td>________________</td><td>✅ / ❌</td></tr>
+                            <tr><td><code>http_user_agent</code></td><td>User-agent string</td><td>________________</td><td>✅ / ❌</td></tr>
+                            <tr><td><code>vendor_product</code></td><td>Vendor name (e.g., "Akamai WAF")</td><td>________________</td><td>✅ / ❌</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Step 11.3 — Remediation Options for Missing CIM Fields</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Option</th><th>Approach</th><th>When to Use</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>1</strong></td><td>Install/update vendor TA on SH via SSAI</td><td>The TA includes FIELDALIAS rules. Most reliable path.</td></tr>
+                            <tr><td><strong>2</strong></td><td>Fix sourcetype to match the TA's expected value</td><td>TA is installed but its props.conf stanza targets a different sourcetype.</td></tr>
+                            <tr><td><strong>3</strong></td><td>Create custom mapping app on SH</td><td>No vendor TA for your format. Create props.conf with FIELDALIAS entries. Deploy via SSAI.</td></tr>
+                            <tr><td><strong>4</strong></td><td>Search-time compensation (temporary)</td><td>Use eval/rename in searches for immediate detection. Not sustainable for production.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>CIM fields populated → <strong>Section 12</strong> (optional: data model validation).</p>
+                    <p>CIM fields missing → fix per Step 11.3, re-run Step 11.1.</p>
+                </div>
+
+
+                <!-- ============================================== -->
+                <!-- SECTION 12 — DATA MODEL (CONDITIONAL)          -->
+                <!-- ============================================== -->
+                <h2 id="section-12">Section 12 — Data Model Validation (Optional, Conditional)</h2>
+
+                <h3>When Do Data Models Matter?</h3>
+                <p>ES correlation searches can query data in two ways: (1) directly against the index using standard <code>search</code> commands, or (2) against accelerated data models using <code>| tstats</code>. Data models are faster for large-scale searches but require proper CIM tagging and acceleration.</p>
 
                 <div class="callout callout-warning">
-                    <div class="callout-title">🛑 Do Not Proceed Past Validation If Any of These Are True</div>
-                    <p>Capture the evidence listed and escalate to the appropriate team.</p>
+                    <div class="callout-title">⚠️ Decision Point — Do You Need Data Models Now?</div>
+                    <p>If you are not yet building <code>tstats</code>-based correlation searches for Akamai WAF events, you can <strong>skip this section</strong> and use raw index searches for initial detection. Data models can be enabled later without re-onboarding the data.</p>
+                    <p>→ <strong>Using tstats / data models now:</strong> Complete this section.</p>
+                    <p>→ <strong>Not yet:</strong> Skip to <strong>Section 13 — Acceptance Gates</strong>.</p>
+                </div>
+
+                <h3>Step 12.1 — Discover Available Data Models</h3>
+                <p>Do NOT assume "Web" or any other data model name. Discover what exists:</p>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>| rest /services/datamodel/model splunk_server=local
+| table title description acceleration eai:acl.app
+| search title="*Web*" OR title="*Intrusion*" OR title="*Network*"</code></pre>
+                </div>
+                <p>Record the exact <code>title</code> of candidate data models. <strong>Your value:</strong> <code>&lt;candidate_dm&gt;</code> = ________________</p>
+
+                <h3>Step 12.2 — Check If Your Events Populate the Data Model</h3>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>| tstats count FROM datamodel=&lt;candidate_dm&gt;
+    WHERE (index=&lt;your_index&gt;) earliest=-4h by sourcetype
+| sort -count</code></pre>
                 </div>
 
                 <div class="table-wrapper">
                     <table>
-                        <thead>
-                            <tr><th style="width:35%">Condition</th><th style="width:35%">Evidence to Capture</th><th style="width:30%">Escalation Target</th></tr>
-                        </thead>
+                        <thead><tr><th>Result</th><th>Meaning</th><th>Action</th></tr></thead>
                         <tbody>
-                            <tr><td>V1 shows zero events for &gt; 2 hours</td><td>Collector logs, last known offset value, Akamai API response status codes</td><td>Platform Engineering + Akamai account team</td></tr>
-                            <tr><td>V2 p90 lag &gt; 30 minutes and growing</td><td>Collector throughput metrics, API response sizes (ResponseContext.total), limit setting</td><td>Platform Engineering (collector capacity)</td></tr>
-                            <tr><td>V3 shows &gt; 5% duplicate rate</td><td>Offset/cursor state file, collector restart logs, mode-switch history</td><td>Detection Engineering (dedup strategy)</td></tr>
-                            <tr><td>V5 shows &lt; 50% population on any core field</td><td>Sample raw events (<code>| head 5</code>), <code>btool props list</code> output, add-on version</td><td>Platform Engineering (parsing config)</td></tr>
-                            <tr><td>API returns 403 consistently</td><td>Full HTTP response body, credential details (redacted), API client permissions screenshot</td><td>Akamai account team (credential/role issue)</td></tr>
-                            <tr><td>API returns 429 frequently</td><td>Request rate logs, number of collectors polling same account</td><td>Akamai account team (rate limit increase) + Platform Engineering (reduce polling aggression)</td></tr>
+                            <tr><td>Your sourcetype, count &gt; 0</td><td>✅ Events are in the data model.</td><td>Check acceleration (Step 12.3).</td></tr>
+                            <tr><td>Empty / no results</td><td>Events NOT in the data model.</td><td>See "Why empty?" below.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4>Why Events May Not Appear in a Data Model</h4>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:5%">#</th><th style="width:25%">Cause</th><th style="width:30%">Check</th><th style="width:40%">Fix</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td><strong>CIM tags not set</strong></td><td><code>index=&lt;your_index&gt; sourcetype=&lt;your_sourcetype&gt; earliest=-1h | head 1 | table tag::*</code></td><td>TA must define eventtypes.conf + tags.conf. Install/update TA.</td></tr>
+                            <tr><td>2</td><td><strong>Index not in allow list</strong></td><td>Apps → Manage Apps → Splunk Common Information Model → Set Up → check index constraint.</td><td>Add <code>&lt;your_index&gt;</code> to the data model's allowed indexes.</td></tr>
+                            <tr><td>3</td><td><strong>Acceleration not enabled</strong></td><td>Settings → Data Models → check acceleration status.</td><td>Enable acceleration for the target data model.</td></tr>
+                            <tr><td>4</td><td><strong>Acceleration still building</strong></td><td>Settings → Data Models → expand → check completion %.</td><td>Wait 5–15 minutes for new data to appear.</td></tr>
+                            <tr><td>5</td><td><strong>Tag allow list restrictive</strong></td><td>CIM Setup page → Tag Allow List.</td><td>Add required tags.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Step 12.3 — Verify Acceleration Health</h3>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>| rest /services/admin/summarization splunk_server=local
+| search title="*&lt;candidate_dm&gt;*"
+| table title summary.complete summary.is_inprogress summary.earliest_time summary.latest_time</code></pre>
+                </div>
+                <p><strong>Pass:</strong> <code>summary.complete</code> close to 1.0 and <code>summary.latest_time</code> within the last hour.</p>
+
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>Data model validated (or skipped) → <strong>Section 13 — Acceptance Gates</strong>.</p>
+                </div>
+
+
+                <!-- ============================================== -->
+                <!-- SECTION 13 — ACCEPTANCE GATES                  -->
+                <!-- ============================================== -->
+                <h2 id="section-13">Section 13 — Acceptance Gates</h2>
+
+                <p>Run every gate below. <strong>All must pass</strong> before declaring the onboarding complete. Replace all placeholders with your discovered values.</p>
+
+                <h3>Gate 1 — Ingestion: Events Are Arriving Continuously</h3>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>index=&lt;your_index&gt; sourcetype=&lt;your_sourcetype&gt; earliest=-24h
+| timechart span=1h count AS event_count
+| eval gate=if(event_count>0, "PASS", "❌ FAIL — gap in this hour")</code></pre>
+                </div>
+                <p><strong>PASS:</strong> No hour with zero events in 24 hours. <strong>FAIL:</strong> Gaps = collector outage or credential issue.</p>
+
+                <h3>Gate 2 — Ingestion: Lag Is Acceptable</h3>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>index=&lt;your_index&gt; sourcetype=&lt;your_sourcetype&gt; earliest=-4h
+| eval lag=_indextime - _time
+| stats p50(lag) AS p50, p90(lag) AS p90, max(lag) AS max_lag
+| eval gate=if(p90 < 600, "PASS", "❌ FAIL — p90 lag > 10 minutes")</code></pre>
+                </div>
+
+                <h3>Gate 3 — Ingestion: No Significant Duplicates</h3>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>index=&lt;your_index&gt; sourcetype=&lt;your_sourcetype&gt; earliest=-24h
+| stats count by _raw | where count > 1
+| stats count AS dup_groups
+| eval gate=if(dup_groups < 10, "PASS", "⚠️ REVIEW — ".dup_groups." duplicate groups")</code></pre>
+                </div>
+
+                <h3>Gate 4 — Parsing: Critical Fields Extractable</h3>
+                <p>Re-run the Step 10.2 query. Client IP, method, host, and rule action must be &gt; 90%.</p>
+
+                <h3>Gate 5 — CIM: Core Fields Populated</h3>
+                <p>Re-run the Step 11.1 query. <code>src</code> and <code>action</code> must be &gt; 90%.</p>
+
+                <h3>Gate 6 — Data Model (If Applicable): Events Appear in tstats</h3>
+                <p>Re-run the Step 12.2 query. Count must be &gt; 0.</p>
+
+                <h3>Gate 7 — Hygiene: No Unexpected Sourcetypes</h3>
+
+                <div class="code-block">
+                    <button class="copy-btn">Copy</button>
+                    <pre><code>index=&lt;your_index&gt; earliest=-24h
+| stats count by sourcetype</code></pre>
+                </div>
+                <p>Only your expected sourcetype(s) should appear. Unexpected sourcetypes indicate misconfigured inputs or shared index contamination.</p>
+
+                <h3>Gate Summary</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Gate</th><th>Domain</th><th>Status</th><th>If FAIL</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td>Continuous flow</td><td>PASS / FAIL</td><td>Check collector logs → Section 8</td></tr>
+                            <tr><td>2</td><td>Ingestion lag</td><td>PASS / FAIL</td><td>Increase collector poll rate → Section 6</td></tr>
+                            <tr><td>3</td><td>Duplicates</td><td>PASS / REVIEW</td><td>Check offset persistence → Section 6</td></tr>
+                            <tr><td>4</td><td>Field extraction</td><td>PASS / FAIL</td><td>Fix parsing → Section 10</td></tr>
+                            <tr><td>5</td><td>CIM mapping</td><td>PASS / FAIL</td><td>Install/fix TA → Section 11</td></tr>
+                            <tr><td>6</td><td>Data model</td><td>PASS / N/A</td><td>Fix tags/indexes → Section 12</td></tr>
+                            <tr><td>7</td><td>Index hygiene</td><td>PASS / REVIEW</td><td>Fix HEC/collector config → Section 8</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Escalation Triggers</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Condition</th><th>Evidence to Capture</th><th>Escalation Target</th></tr></thead>
+                        <tbody>
+                            <tr><td>Zero events &gt; 2 consecutive hours</td><td>Collector logs, last offset, API response codes</td><td>Platform Eng + Akamai account team</td></tr>
+                            <tr><td>p90 lag &gt; 30 min and growing</td><td>Collector throughput, API response sizes</td><td>Platform Eng (collector capacity)</td></tr>
+                            <tr><td>Critical fields at 0% despite TA installed</td><td>Sample _raw, fieldsummary, REST conf-props output</td><td>Detection Eng (parsing fix)</td></tr>
+                            <tr><td>Akamai API returning 403 persistently</td><td>Full HTTP response body</td><td>Akamai account team</td></tr>
+                            <tr><td>Akamai API returning 429 frequently</td><td>Request rate logs, number of collectors</td><td>Akamai account team + Platform Eng</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Failure Modes Quick Reference</h3>
+
+                <h4>API-Side Failures</h4>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:4%">#</th><th style="width:18%">Failure</th><th style="width:38%">Symptoms</th><th style="width:40%">Fix</th></tr></thead>
+                        <tbody>
+                            <tr><td>F1</td><td>429 rate limit</td><td>Collector gets 429. No reset header.</td><td>Exponential backoff. Reduce poll frequency. Check for competing collectors.</td></tr>
+                            <tr><td>F2</td><td>Expired credentials</td><td>401/403 from API.</td><td>Re-provision in Control Center. Update collector.</td></tr>
+                            <tr><td>F3</td><td>Offset lost</td><td>Duplicate spike after restart.</td><td>Time-based replay. Dedup at search time.</td></tr>
+                            <tr><td>F4</td><td>Offline &gt; 12h</td><td>Permanent event gap.</td><td>Document gap. No recovery.</td></tr>
+                            <tr><td>F5</td><td>2-min timeout</td><td>Incomplete response, no ResponseContext.</td><td>Lower limit parameter. Re-call with same offset.</td></tr>
+                            <tr><td>F6</td><td>SIEM not enabled</td><td>Empty API responses.</td><td>Toggle On in Control Center (Step 4.1).</td></tr>
+                            <tr><td>F7</td><td>Proxy interference</td><td>Cannot reach API or garbled responses.</td><td>Whitelist *.akamaiapis.net. Preserve headers.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4>Splunk-Side Failures</h4>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:4%">#</th><th style="width:18%">Failure</th><th style="width:38%">Symptoms</th><th style="width:40%">Fix</th></tr></thead>
+                        <tbody>
+                            <tr><td>F8</td><td>HEC token disabled</td><td>403 from HEC. No events.</td><td>Re-enable in Settings → Data Inputs → HEC.</td></tr>
+                            <tr><td>F9</td><td>Wrong index</td><td>Events in main or unexpected index.</td><td>Check HEC token's index settings.</td></tr>
+                            <tr><td>F10</td><td>Sourcetype mismatch</td><td>TA rules do not fire.</td><td>Match sourcetype to TA, or create custom stanza.</td></tr>
+                            <tr><td>F11</td><td>TA not on SH</td><td>No vendor fields extracted.</td><td>Install via SSAI.</td></tr>
+                            <tr><td>F12</td><td>Nested JSON</td><td>Top-level OK, nested missing.</td><td>KV_MODE=json or flatten in collector.</td></tr>
+                            <tr><td>F13</td><td>Base64 not decoded</td><td>Rule fields show encoded strings.</td><td>Decode in collector or search-time EVAL.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-info" style="background: #161b22; border-left-color: #3fb950;">
+                    <div class="callout-title">➡️ Next</div>
+                    <p>All gates pass → <strong>Section 14 — You Are Ready</strong>.</p>
+                    <p>Any gate fails → fix using the referenced section, then re-run the gate.</p>
+                </div>
+
+
+                <!-- ============================================== -->
+                <!-- SECTION 14 — READY FOR DETECTION               -->
+                <!-- ============================================== -->
+                <h2 id="section-14">Section 14 — You Are Ready for Detection Use Cases</h2>
+
+                <p>If you have reached this section with all acceptance gates passing, the following is true:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <tbody>
+                            <tr><td style="width:5%">✅</td><td>Akamai WAF security events are flowing continuously into Splunk Cloud via a collector you control.</td></tr>
+                            <tr><td>✅</td><td>Events land in a dedicated index with a consistent sourcetype.</td></tr>
+                            <tr><td>✅</td><td>Critical fields (source IP, destination, HTTP method, URL, rule action) are extractable at search time.</td></tr>
+                            <tr><td>✅</td><td>CIM fields (<code>src</code>, <code>dest</code>, <code>action</code>, <code>http_method</code>) are populated — ES can find the events.</td></tr>
+                            <tr><td>✅</td><td>Ingestion lag is &lt; 10 minutes p90. No sustained gaps.</td></tr>
+                            <tr><td>✅</td><td>(If applicable) Target data model returns events via tstats.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>What Must Be True Before Writing Detections</h3>
+                <p>Every statement above must be verified by a passing gate — not assumed. If any gate was skipped or showed FAIL, go back and fix it. Writing correlation searches against broken data creates false confidence.</p>
+
+                <h3>What Should NOT Be Done Yet</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <tbody>
+                            <tr><td style="width:40%"><strong>Do not enable RBA risk scoring</strong></td><td>The client is not using RBA yet. Adding risk scores before the RBA framework is operational creates noise.</td></tr>
+                            <tr><td><strong>Do not build complex multi-source correlations</strong></td><td>Until other data sources (VPN, endpoint, identity) are also onboarded and CIM-mapped, cross-source detection will not work reliably.</td></tr>
+                            <tr><td><strong>Do not tune detection thresholds yet</strong></td><td>Let the data flow for at least 1–2 weeks to establish baselines before setting alert thresholds.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>What Comes Next</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th style="width:5%">✓</th><th style="width:40%">Next Step</th><th style="width:55%">Where to Go</th></tr></thead>
+                        <tbody>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>Build WAF / DDoS detection use cases</td><td><a href="../use-cases/waf-ddos.html">WAF &amp; DDoS Detection Use Cases</a></td></tr>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>Data quality validation (Phase 2)</td><td><a href="../phase2-data-quality/index.html">Data Quality &amp; Normalization</a></td></tr>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>Document onboarding for change management</td><td>Record: index, sourcetype, source, parsing location, add-on version, DM target, all gate results.</td></tr>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>Set up ingestion monitoring alert</td><td>Create a scheduled search on Gate 1 that alerts when any hour drops to zero events.</td></tr>
+                            <tr><td><div class="checklist-checkbox"></div></td><td>Onboard additional configIds (if applicable)</td><td>Add to collector config, verify with the same gates.</td></tr>
                         </tbody>
                     </table>
                 </div>
 
                 <!-- ============================================== -->
-                <!-- DATASTREAM 2 SECTION                           -->
+                <!-- REFERENCE — QUICK FACTS                        -->
                 <!-- ============================================== -->
-                <h2>Why DataStream 2 Is Not the Default for Security Events</h2>
+                <h2>Reference — Akamai SIEM Integration Quick Facts</h2>
 
-                <p>DataStream 2 is Akamai's log delivery product for <strong>transactional/edge performance data</strong>. It captures every HTTP request's delivery metrics and pushes them to destinations (including Splunk HEC) at 30- or 60-second intervals.</p>
-
-                <p>While DataStream 2 includes a <code>securityRules</code> field, this field contains only rule IDs and actions in a condensed format (e.g., <code>ULnR_28976|3900000:3900001|</code>). It does <strong>not</strong> include:</p>
-
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr><th style="width:40%">Missing from DataStream 2</th><th style="width:60%">Available in SIEM Integration</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>Full attack payload / rule data</td><td><code>attackData.ruleData</code> (base64-decoded matched content)</td></tr>
-                            <tr><td>Rule messages</td><td><code>attackData.ruleMessages</code> (human-readable rule descriptions)</td></tr>
-                            <tr><td>Rule selectors</td><td><code>attackData.ruleSelectors</code> (which part of the request matched)</td></tr>
-                            <tr><td>Rule tags (OWASP classification)</td><td><code>attackData.ruleTags</code> (e.g., OWASP_CRS/WEB_ATTACK/SQL_INJECTION)</td></tr>
-                            <tr><td>Bot score &amp; bot classification</td><td><code>botData.score</code>, <code>botData.responseSegment</code></td></tr>
-                            <tr><td>Client reputation risk details</td><td><code>clientData</code> fields (app bundle, SDK version, telemetry type)</td></tr>
-                            <tr><td>User risk data (Account Protector)</td><td><code>userRiskData.username</code>, <code>userRiskData.originUserId</code></td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="callout callout-info">
-                    <div class="callout-title">🔍 Verification: Is DataStream 2 Appropriate for Your Use Case?</div>
-                    <p><strong>Answer YES to all three of these:</strong></p>
-                    <p>1. You need CDN performance metrics (response time, cache hit ratio, bytes transferred) — not security forensics.</p>
-                    <p>2. You do NOT need to build ES correlation searches on attack rule details, bot scores, or attack payloads.</p>
-                    <p>3. Your compliance or SOC requirements do NOT mandate full WAF event detail in the SIEM.</p>
-                    <p><strong>If any answer is NO</strong> → use SIEM Integration, not DataStream 2.</p>
-                    <p><strong>Note:</strong> You can run both. DataStream 2 for operational CDN monitoring, and SIEM Integration for security event analysis in ES. They serve different purposes and should land in different indexes with different sourcetypes.</p>
-                </div>
-
-                <!-- ============================================== -->
-                <!-- FAILURE MODES — 15 TOTAL                       -->
-                <!-- ============================================== -->
-                <h2>Failure Modes Reference</h2>
-
-                <p>This section catalogs every known failure mode for Akamai → Splunk ingestion, organized by origin (API-side vs. Splunk-side). Each entry includes detection method and remediation.</p>
-
-                <h3>API-Side Failures</h3>
-
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr><th style="width:4%">#</th><th style="width:20%">Failure</th><th style="width:38%">Symptoms &amp; Detection</th><th style="width:38%">Remediation</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>F1</td>
-                                <td><strong>HTTP 429 — Rate limited</strong></td>
-                                <td>API returns 429 with JSON body: <code>"title": "Too many requests"</code>, <code>"detail": "Too many requests made from clients of this account"</code>. Collector logs show repeated 429s. Events stop flowing.</td>
-                                <td>Implement exponential backoff. Reduce poll frequency. Check if multiple collectors or API clients from the same account are competing. Akamai does not publish a specific rate limit number for the SIEM API — contact the account team to understand current limits.</td>
-                            </tr>
-                            <tr>
-                                <td>F2</td>
-                                <td><strong>Expired / revoked API credentials</strong></td>
-                                <td>API returns 401 or 403. Collector logs show authentication failures. No new events in Splunk.</td>
-                                <td>Re-provision credentials in Control Center → Identity &amp; access → API clients. Update all four credential values (client_token, client_secret, access_token, hostname) in the connector config. Restart the collector.</td>
-                            </tr>
-                            <tr>
-                                <td>F3</td>
-                                <td><strong>Cursor/offset reset — duplicates</strong></td>
-                                <td>V3 validation shows spike in duplicates. Collector was restarted without persisted offset, or KVStore was cleared.</td>
-                                <td>If offset is lost: switch to time-based mode to replay from the last known good timestamp (within 12-hour window). Accept that duplicates may occur in the overlap. Implement dedup at search time on <code>httpMessage.requestId</code>.</td>
-                            </tr>
-                            <tr>
-                                <td>F4</td>
-                                <td><strong>Time-based mode returns older/stale logs</strong></td>
-                                <td>V2 shows large max_lag after a mode switch. Events with timestamps far in the past appear.</td>
-                                <td>This is expected behavior — the API orders by storage time, not event time. After replay is complete, switch back to offset mode. Ensure your time-based <code>from</code> and <code>to</code> parameters are within the 12-hour window.</td>
-                            </tr>
-                            <tr>
-                                <td>F5</td>
-                                <td><strong>Offset mode gap — events missed</strong></td>
-                                <td>V1 shows gap in event count trend. Collector was offline for &gt; 12 hours, or offset became invalid.</td>
-                                <td>If within 12 hours: use time-based mode to replay the gap. If beyond 12 hours: events are permanently lost — document the gap. The Sumo Logic documentation notes that an offset token can become invalid if a collector stops for an extended period.</td>
-                            </tr>
-                            <tr>
-                                <td>F6</td>
-                                <td><strong>Timezone / timestamp shift</strong></td>
-                                <td>V2 shows consistent negative lag (events appear to be from the future) or exactly N-hour offset.</td>
-                                <td>Akamai SIEM event timestamps (<code>httpMessage.start</code>) are epoch seconds (UTC). Verify your props.conf uses <code>TIME_FORMAT = %s</code> and <code>TZ = UTC</code>. The add-on handles this for sourcetype <code>akamaisiem</code>.</td>
-                            </tr>
-                            <tr>
-                                <td>F7</td>
-                                <td><strong>Multi-JSON parsing failure</strong></td>
-                                <td>V5 shows missing fields on most events. Raw events in Splunk contain multiple JSON objects concatenated on one line, or the ResponseContext is indexed as an event.</td>
-                                <td>The collector's JSON parser is not splitting on newlines correctly. Each line is one event. The last line (ResponseContext) must be consumed by the collector, not forwarded to Splunk. If using HEC, ensure each event is sent as a separate HEC event, not the entire response body as one event.</td>
-                            </tr>
-                            <tr>
-                                <td>F8</td>
-                                <td><strong>2-minute timeout — incomplete response</strong></td>
-                                <td>Collector logs show truncated responses. Offset is not updated (ResponseContext missing from response). Events may be partially ingested and then re-fetched, causing duplicates.</td>
-                                <td>Lower the <code>limit</code> parameter so the API returns fewer events per call, completing within the 2-minute window. Akamai's documentation explicitly states: re-call with the previous offset and a lower limit.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3>Splunk-Side Failures</h3>
-
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr><th style="width:4%">#</th><th style="width:20%">Failure</th><th style="width:38%">Symptoms &amp; Detection</th><th style="width:38%">Remediation</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>F9</td>
-                                <td><strong>HEC token revoked or disabled</strong></td>
-                                <td>Custom collector (Path A) receives HTTP 403 from HEC endpoint. No events in Splunk. Collector may log <code>Invalid token</code>.</td>
-                                <td>Re-enable the token in Settings → Data Inputs → HTTP Event Collector. Verify the token is bound to the correct index. Generate a new token if revoked.</td>
-                            </tr>
-                            <tr>
-                                <td>F10</td>
-                                <td><strong>Wrong index or insufficient retention</strong></td>
-                                <td>Events land in <code>main</code> or wrong index. Historical searches return gaps because old events were rolled to frozen.</td>
-                                <td>Verify HEC token or add-on input is bound to the correct index. Check index retention: <code>| rest /services/data/indexes/akamai_waf | table title frozenTimePeriodInSecs maxTotalDataSizeMB</code>.</td>
-                            </tr>
-                            <tr>
-                                <td>F11</td>
-                                <td><strong>Sourcetype mismatch</strong></td>
-                                <td>V4 shows unexpected sourcetype. Props/transforms for <code>akamaisiem</code> don't apply because data arrived with a different sourcetype.</td>
-                                <td>For the Akamai add-on: Akamai's Splunkbase documentation explicitly states to use <code>akamaisiem</code> as the sourcetype. For custom HEC: set the sourcetype in the HEC token or in the event metadata. Check <code>| metadata type=sourcetypes index=akamai_waf</code>.</td>
-                            </tr>
-                            <tr>
-                                <td>F12</td>
-                                <td><strong>Parsing not applied (props/transforms missing on SH)</strong></td>
-                                <td>V5 shows fields as raw JSON strings instead of extracted. CIM data model shows no Akamai events.</td>
-                                <td>The add-on must be deployed to search heads (not just the HF) for field extraction and CIM mapping to work at search time. Verify with <code>btool props list akamaisiem --debug</code> on the SH.</td>
-                            </tr>
-                            <tr>
-                                <td>F13</td>
-                                <td><strong>Base64 fields not decoded</strong></td>
-                                <td>Fields like <code>attackData.ruleActions</code> show base64 strings (e.g., <code>YWxlcnQ=</code>) instead of readable values (e.g., <code>alert</code>).</td>
-                                <td>The add-on's props.conf should handle decoding. If using a custom collector: decode base64 fields before sending to HEC, or add search-time <code>EVAL</code> in props.conf. Each base64 field is semicolon-delimited (one segment per triggered rule).</td>
-                            </tr>
-                            <tr>
-                                <td>F14</td>
-                                <td><strong>Java / KVStore failure on HF (add-on path)</strong></td>
-                                <td>Splunkd.log shows <code>Unable to initialize modular input "TA-Akamai_SIEM"</code> or <code>Permission denied</code> for <code>TA-Akamai_SIEM.sh</code>.</td>
-                                <td>Verify: (a) Java 8+ is installed and in PATH — run <code>java -version</code> as the Splunk user, (b) KVStore is running — <code>splunk show kvstore-status</code>, (c) the .sh script is executable — <code>chmod +x bin/TA-Akamai_SIEM.sh</code>, (d) no Universal Forwarder is installed on the same host.</td>
-                            </tr>
-                            <tr>
-                                <td>F15</td>
-                                <td><strong>PKIX certificate error (add-on path)</strong></td>
-                                <td>Collector logs show <code>PKIX path building failed: SunCertPathBuilderException</code>. Data input cannot be saved or started.</td>
-                                <td>Import Akamai's certificate into the JRE cacerts: <code>keytool -importcert -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit -file akamai-cert.crt</code>. Alternatively, add <code>disable_splunk_cert_check = true</code> to the input stanza. Some users report success by downgrading to add-on version 1.4.15.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- ============================================== -->
-                <!-- SOURCE METADATA SUMMARY TABLE                  -->
-                <!-- ============================================== -->
-                <h2>Source Metadata Summary</h2>
+                <p>From Akamai official documentation. These do NOT replace your discovered environment values.</p>
 
                 <div class="table-wrapper">
                     <table>
                         <tbody>
-                            <tr><td><strong>Vendor</strong></td><td>Akamai Technologies</td></tr>
-                            <tr><td><strong>Log Type</strong></td><td>Security Events (JSON via SIEM Integration API)</td></tr>
-                            <tr><td><strong>Delivery Methods</strong></td><td>Path A: Custom collector → HEC | Path B: Akamai Splunk add-on modular input | Path C: CEF connector → syslog → HF | Path D: DataStream 2 push (not for security events)</td></tr>
-                            <tr><td><strong>Official Splunk Add-on</strong></td><td>Akamai SIEM Integration — Splunkbase App ID 4310 — built by Akamai Technologies</td></tr>
-                            <tr><td><strong>Expected Sourcetype</strong></td><td><code>akamaisiem</code> (add-on default; props.conf keyed to this value)</td></tr>
-                            <tr><td><strong>CIM Data Models</strong></td><td>Web, Intrusion Detection</td></tr>
-                            <tr><td><strong>API Endpoint</strong></td><td><code>GET /siem/v1/configs/{configId}?offset={offset}&amp;limit={limit}</code></td></tr>
-                            <tr><td><strong>Authentication</strong></td><td>Akamai OPEN EdgeGrid (client_token, client_secret, access_token)</td></tr>
-                            <tr><td><strong>Data Retention (Akamai side)</strong></td><td>12 hours in the Security Events Collector (ASEC)</td></tr>
-                            <tr><td><strong>Max Events Per Request</strong></td><td>600,000 (default: 10,000)</td></tr>
-                            <tr><td><strong>Typical Latency</strong></td><td>5-second built-in API latency + collector poll interval + HEC ingest time. Typical end-to-end: 30 seconds to 5 minutes in steady state.</td></tr>
-                            <tr><td><strong>Typical Volume</strong></td><td>Highly variable — 1 GB/day to 500+ GB/day depending on traffic, security policy verbosity, and attack patterns. Size your index accordingly.</td></tr>
+                            <tr><td style="width:30%"><strong>Vendor</strong></td><td>Akamai Technologies</td></tr>
+                            <tr><td><strong>API Endpoint</strong></td><td><code>GET /siem/v1/configs/{configId}</code></td></tr>
+                            <tr><td><strong>Authentication</strong></td><td>Akamai OPEN EdgeGrid (client_token, client_secret, access_token, hostname)</td></tr>
+                            <tr><td><strong>Event Retention</strong></td><td>12 hours in ASEC. Non-negotiable.</td></tr>
+                            <tr><td><strong>Max Events/Request</strong></td><td>600,000 (default: 10,000)</td></tr>
+                            <tr><td><strong>Response Format</strong></td><td>NDJSON. Last line = ResponseContext.</td></tr>
+                            <tr><td><strong>Base64 Fields</strong></td><td>ruleActions, ruleData, ruleMessages, ruleSelectors, ruleTags — semicolon-delimited.</td></tr>
+                            <tr><td><strong>Rate Limiting</strong></td><td>HTTP 429, no reset header.</td></tr>
+                            <tr><td><strong>Inherent Latency</strong></td><td>5 seconds (offset mode recovers next call).</td></tr>
+                            <tr><td><strong>Response Timeout</strong></td><td>2 minutes.</td></tr>
+                            <tr><td><strong>Security Products</strong></td><td>App &amp; API Protector, Kona Site Defender, WAP, Client Reputation, Bot Manager, Account Protector.</td></tr>
+                            <tr><td><strong>Splunkbase Add-on</strong></td><td>Akamai SIEM Integration — App ID 4310 — Java modular input. Requires Java 8+, KVStore, no UF.</td></tr>
                         </tbody>
                     </table>
                 </div>
