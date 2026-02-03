@@ -1,30 +1,82 @@
 /* ═══════════════════════════════════════════════════════════════
    SPLUNK ES DETECTION ENGINEERING HANDBOOK
    Application JavaScript — Sidebar Engine + Utilities
+   v2.1 — Fixed base path computation + hard diagnostics
    ═══════════════════════════════════════════════════════════════ */
 
 document.addEventListener('DOMContentLoaded', function () {
-    renderSidebar();
-    renderBreadcrumbs();
-    initSidebarCollapse();
-    initSidebarAccordion();
-    initMobileMenu();
-    initCopyButtons();
-    initChecklists();
-    initCollapsibles();
-    initTabs();
-    initMermaid();
+    try {
+        renderSidebar();
+    } catch (e) {
+        showSidebarError('renderSidebar crashed: ' + e.message);
+        console.error('[Handbook] renderSidebar error:', e);
+    }
+    try {
+        renderBreadcrumbs();
+    } catch (e) {
+        console.error('[Handbook] renderBreadcrumbs error:', e);
+    }
+    try { initSidebarCollapse(); } catch (e) { console.error('[Handbook] initSidebarCollapse error:', e); }
+    try { initSidebarAccordion(); } catch (e) { console.error('[Handbook] initSidebarAccordion error:', e); }
+    try { initMobileMenu(); } catch (e) { console.error('[Handbook] initMobileMenu error:', e); }
+    try { initCopyButtons(); } catch (e) { console.error('[Handbook] initCopyButtons error:', e); }
+    try { initChecklists(); } catch (e) { console.error('[Handbook] initChecklists error:', e); }
+    try { initCollapsibles(); } catch (e) { console.error('[Handbook] initCollapsibles error:', e); }
+    try { initTabs(); } catch (e) { console.error('[Handbook] initTabs error:', e); }
+    try { initMermaid(); } catch (e) { console.error('[Handbook] initMermaid error:', e); }
 });
 
 /* ═══════════════════════════════════════════════════════════════
+   DIAGNOSTICS — Visible error rendering
+   ═══════════════════════════════════════════════════════════════ */
+
+function showSidebarError(message) {
+    var container = document.getElementById('sidebar');
+    if (!container) return;
+    container.innerHTML = '<div style="padding:1rem;margin:0.5rem;background:#f8514922;border:1px solid #f85149;border-radius:6px;color:#f85149;font-size:0.85rem;">'
+        + '<strong>⚠ Sidebar Error</strong><br>'
+        + '<span style="color:#e6edf3;font-size:0.8rem;">' + message + '</span>'
+        + '</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════
    PATH UTILITIES
+   ═══════════════════════════════════════════════════════════════
+
+   getBasePath() returns the relative path from the current page's
+   directory back to the project root (where index.html and the
+   assets/ folder live).
+
+   Works for:
+     A) Custom domain:    https://mydomain.com/pages/section/file.html      → '../../'
+     B) GitHub Pages:     https://user.github.io/repo/pages/section/f.html  → '../../'
+     C) Local file://     file:///path/to/repo/pages/section/file.html      → '../../'
+     D) Root-level page:  https://user.github.io/repo/index.html            → ''
+     E) Trailing-slash:   https://mydomain.com/pages/section/               → '../../'
+
+   Strategy: extract DIRECTORY path only (strip filename), then count
+   segments from 'pages' onward. Each such segment is one '../'.
    ═══════════════════════════════════════════════════════════════ */
 
 function getBasePath() {
     var path = window.location.pathname;
-    var segments = path.split('/').filter(Boolean);
-    var pagesIdx = segments.lastIndexOf('pages');
+
+    // Extract directory: everything up to and including the last '/'
+    // '/repo/pages/section/file.html' → '/repo/pages/section/'
+    // '/repo/pages/section/'          → '/repo/pages/section/'
+    var dir = path.substring(0, path.lastIndexOf('/') + 1);
+
+    // Split into directory-only segments (no filename)
+    var segments = dir.split('/').filter(Boolean);
+
+    // Find 'pages' in the directory path
+    var pagesIdx = segments.indexOf('pages');
+
+    // No 'pages' → root-level page (index.html), base is empty
     if (pagesIdx === -1) return '';
+
+    // segments from pagesIdx onward are directories we must climb out of.
+    // e.g. ['repo','pages','section'] pagesIdx=1 → depth=2 → '../../'
     var depth = segments.length - pagesIdx;
     var result = '';
     for (var i = 0; i < depth; i++) result += '../';
@@ -53,7 +105,21 @@ function isActivePage(href) {
 
 function renderSidebar() {
     var container = document.getElementById('sidebar');
-    if (!container || typeof NAV_CONFIG === 'undefined') return;
+    if (!container) {
+        console.warn('[Handbook] No #sidebar element found');
+        return;
+    }
+
+    // Hard diagnostic: NAV_CONFIG must exist and be non-empty
+    if (typeof NAV_CONFIG === 'undefined' || !NAV_CONFIG || !NAV_CONFIG.length) {
+        showSidebarError(
+            'NAV_CONFIG not loaded &mdash; check that nav.js is loaded before app.js.<br>'
+            + '<code>&lt;script src="&hellip;/assets/nav.js"&gt;</code> must appear before <code>app.js</code>'
+        );
+        console.error('[Handbook] NAV_CONFIG is', typeof NAV_CONFIG === 'undefined' ? 'undefined' : 'empty',
+            '— nav.js failed to load or was loaded after app.js');
+        return;
+    }
 
     var base = getBasePath();
     var collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
