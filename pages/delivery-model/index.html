@@ -9,84 +9,12 @@
 </head>
 <body>
     <div class="layout">
-        <nav class="sidebar">
-            <div class="sidebar-header">
-                <a href="../../index.html" class="sidebar-logo">
-                    <div class="sidebar-logo-icon">ES</div>
-                    <div>
-                        <div class="sidebar-logo-text">Detection Engineering</div>
-                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
-                    </div>
-                </a>
-            </div>
-            <div class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Getting Started</div>
-                    <a href="../../index.html" class="nav-item">Home</a>
-                    <a href="index.html" class="nav-item active">Delivery Operating Model</a>
-                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
-                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
-                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
-                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Primary Onboarding</div>
-                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
-                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
-                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
-                    <a href="../onboarding-primary/syslog-devices.html" class="nav-item nav-item-sub">Syslog Devices</a>
-                    <a href="../onboarding-primary/endpoint-logs.html" class="nav-item nav-item-sub">Endpoint Logs</a>
-                    <a href="../onboarding-primary/custom-apps-hec.html" class="nav-item nav-item-sub">Custom Apps (HEC)</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Alternate Onboarding</div>
-                    <a href="../onboarding-alternate/index.html" class="nav-item">Overview</a>
-                    <a href="../onboarding-alternate/akamai-external.html" class="nav-item nav-item-sub">Akamai via Collector</a>
-                    <a href="../onboarding-alternate/entra-api.html" class="nav-item nav-item-sub">Entra ID via API</a>
-                    <a href="../onboarding-alternate/cyberark-mobile.html" class="nav-item nav-item-sub">CyberArk Mobile</a>
-                    <a href="../onboarding-alternate/azure-event-hubs.html" class="nav-item nav-item-sub">Azure Event Hubs</a>
-                    <a href="../onboarding-alternate/kafka.html" class="nav-item nav-item-sub">Kafka</a>
-                    <a href="../onboarding-alternate/db-connect.html" class="nav-item nav-item-sub">DB Connect</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 2 — Data Quality</div>
-                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 3 — Detection</div>
-                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
-                    <a href="../use-cases/akamai-waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
-                    <a href="../use-cases/mfa-authentication.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 4 — Automation</div>
-                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 5 — Future</div>
-                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Appendix</div>
-                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
-                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
-                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
-                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
-                </div>
-            </div>
-        </nav>
+        <aside id="sidebar" class="sidebar"></aside>
 
         <main class="main-content">
-            <div class="breadcrumbs">
-                <a href="../../index.html">Home</a>
-                <span class="separator">/</span>
-                <span class="current">Delivery Operating Model</span>
-            </div>
-            
-            <div class="content-wrapper">
+            <nav id="breadcrumbs" class="breadcrumbs"></nav>
+
+<div class="content-wrapper">
                 <h1>Delivery Operating Model</h1>
 
                 <!-- ============================================== -->
@@ -518,7 +446,9 @@ flowchart LR
         </main>
     </div>
     
-    <button class="mobile-menu-toggle">☰</button>
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
+    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
 </body>
 </html>

@@ -9,68 +9,12 @@
 </head>
 <body>
     <div class="layout">
-        <nav class="sidebar">
-            <div class="sidebar-header">
-                <a href="../../index.html" class="sidebar-logo">
-                    <div class="sidebar-logo-icon">ES</div>
-                    <div>
-                        <div class="sidebar-logo-text">Detection Engineering</div>
-                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
-                    </div>
-                </a>
-            </div>
-            <div class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Getting Started</div>
-                    <a href="../../index.html" class="nav-item">Home</a>
-                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
-                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 2 — Data Quality</div>
-                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">ES Data Layer & CIM ⚠️</div>
-                    <a href="how-es-uses-data.html" class="nav-item nav-item-sub">How ES Uses Data</a>
-                    <a href="cim-fundamentals.html" class="nav-item nav-item-sub">CIM Fundamentals for ES</a>
-                    <a href="data-models-deep-dive.html" class="nav-item nav-item-sub">Data Models Deep Dive</a>
-                    <a href="validating-es-data.html" class="nav-item nav-item-sub">Validating ES Data ⛔</a>
-                    <a href="missing-fields.html" class="nav-item nav-item-sub">Missing Fields After Add-ons</a>
-                    <a href="safe-addon-tuning.html" class="nav-item nav-item-sub active">Safe Add-on Tuning</a>
-                    <a href="safe-correlation-path.html" class="nav-item nav-item-sub">Data Model → Correlation</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 3 — Detection</div>
-                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">ES Content Management</div>
-                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
-                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">ES Operations</div>
-                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
-                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Appendix</div>
-                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
-                </div>
-            </div>
-        </nav>
+        <aside id="sidebar" class="sidebar"></aside>
 
         <main class="main-content">
-            <div class="breadcrumbs">
-                <a href="../../index.html">Home</a>
-                <span class="separator">/</span>
-                <a href="how-es-uses-data.html">ES Data Layer</a>
-                <span class="separator">/</span>
-                <span class="current">Safe Add-on Tuning & Field Fixes</span>
-            </div>
-            
-            <div class="content-wrapper">
+            <nav id="breadcrumbs" class="breadcrumbs"></nav>
+
+<div class="content-wrapper">
                 <span class="phase-indicator phase-2">⚠️ ES DATA LAYER — CRITICAL</span>
                 <h1>Safe Add-on Tuning & Field Fixes</h1>
 
@@ -664,7 +608,9 @@ index=_internal sourcetype=splunkd log_level=ERROR earliest=-30m
         </main>
     </div>
     
-    <button class="mobile-menu-toggle">☰</button>
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
+    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
 </body>
 </html>

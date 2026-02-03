@@ -9,87 +9,12 @@
 </head>
 <body>
     <div class="layout">
-        <nav class="sidebar">
-            <div class="sidebar-header">
-                <a href="../../index.html" class="sidebar-logo">
-                    <div class="sidebar-logo-icon">ES</div>
-                    <div>
-                        <div class="sidebar-logo-text">Detection Engineering</div>
-                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
-                    </div>
-                </a>
-            </div>
-            <div class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Getting Started</div>
-                    <a href="../../index.html" class="nav-item">Home</a>
-                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
-                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
-                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
-                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
-                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 2 — Data Quality</div>
-                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 3 — Detection</div>
-                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
-                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
-                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">ES Content Management</div>
-                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
-                    <a href="../es-content-management/ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
-                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
-                    <a href="../es-content-management/tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
-                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
-                    <a href="../es-content-management/health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
-                    <a href="../es-content-management/governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
-                    <a href="../es-content-management/escu-overview.html" class="nav-item nav-item-sub">ESCU Overview</a>
-                    <a href="../es-content-management/escu-operationalize.html" class="nav-item nav-item-sub">Operationalizing ESCU</a>
-                    <a href="../es-content-management/escu-log-mapping.html" class="nav-item nav-item-sub">ESCU Log Mapping</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">ES Operations</div>
-                    <a href="incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
-                    <a href="notable-suppression.html" class="nav-item nav-item-sub">Notable Suppression</a>
-                    <a href="investigations-evidence.html" class="nav-item nav-item-sub active">Investigations & Evidence</a>
-                    <a href="enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 4 — Automation</div>
-                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 5 — Future</div>
-                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Appendix</div>
-                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
-                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
-                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
-                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
-                </div>
-            </div>
-        </nav>
+        <aside id="sidebar" class="sidebar"></aside>
 
         <main class="main-content">
-            <div class="breadcrumbs">
-                <a href="../../index.html">Home</a>
-                <span class="separator">/</span>
-                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
-                <span class="separator">/</span>
-                <span class="current">Investigations & Evidence Handling</span>
-            </div>
-            
-            <div class="content-wrapper">
+            <nav id="breadcrumbs" class="breadcrumbs"></nav>
+
+<div class="content-wrapper">
                 <span class="phase-indicator phase-3">🎯 Phase 3 — ES Operations</span>
                 <h1>Investigations & Evidence Handling</h1>
 
@@ -647,7 +572,9 @@ flowchart TD
         </main>
     </div>
     
-    <button class="mobile-menu-toggle">☰</button>
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
+    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
 </body>
 </html>

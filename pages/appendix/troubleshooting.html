@@ -10,58 +10,11 @@
     <link rel="stylesheet" href="../../assets/style.css">
 </head>
 <body>
-    <button class="mobile-menu-toggle" aria-label="Toggle navigation">
-        <span></span><span></span><span></span>
-    </button>
+<div class="layout">
+        <aside id="sidebar" class="sidebar"></aside>
 
-    <nav class="sidebar">
-        <div class="sidebar-header">
-            <h1><a href="../../index.html">Splunk ES</a></h1>
-            <span class="version">Detection Engineering</span>
-        </div>
-        <ul class="nav-tree">
-            <li><a href="../delivery-model/index.html">Delivery Model</a></li>
-            <li><a href="../planning/index.html">Planning & Scoping</a></li>
-            <li>
-                <span class="nav-section">Phase 1: Log Coverage</span>
-                <ul>
-                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
-                    <li><a href="../universal-onboarding/index.html">Universal Framework</a></li>
-                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
-                    <li><a href="../onboarding-primary/index.html">Primary Paths</a></li>
-                    <li><a href="../onboarding-alternate/index.html">Alternate Paths</a></li>
-                </ul>
-            </li>
-            <li><a href="../phase2-data-quality/index.html">Phase 2: Data Quality</a></li>
-            <li><a href="../phase3-detection/index.html">Phase 3: Detection</a></li>
-            <li>
-                <span class="nav-section">Use Case Library</span>
-                <ul>
-                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS</a></li>
-                    <li><a href="../use-cases/mfa-auth.html">MFA & Authentication</a></li>
-                </ul>
-            </li>
-            <li><a href="../phase4-automation/index.html">Phase 4: Automation</a></li>
-            <li><a href="../phase5-rba/index.html">Phase 5: RBA</a> <span class="badge badge-future">Future</span></li>
-            <li>
-                <span class="nav-section">Appendix</span>
-                <ul>
-                    <li><a href="spl-library.html">SPL Library</a></li>
-                    <li><a href="troubleshooting.html" class="active">Troubleshooting</a></li>
-                    <li><a href="checklists.html">Checklists</a></li>
-                </ul>
-            </li>
-        </ul>
-    </nav>
-
-    <main class="content">
-        <nav class="breadcrumb">
-            <a href="../../index.html">Home</a>
-            <span class="separator">›</span>
-            <a href="#">Appendix</a>
-            <span class="separator">›</span>
-            <span class="current">Troubleshooting</span>
-        </nav>
+        <main class="main-content">
+            <nav id="breadcrumbs" class="breadcrumbs"></nav>
 
         <header class="page-header">
             <div class="phase-indicator" style="background: linear-gradient(135deg, #6e7681, #484f58);">Appendix</div>
@@ -685,8 +638,14 @@ FIELDALIAS-action = event_result AS action</code></pre>
             </div>
         </section>
     </main>
+    </div>
+
+
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
 
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
 </body>
 </html>

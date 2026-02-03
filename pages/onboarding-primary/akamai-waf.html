@@ -9,88 +9,12 @@
 </head>
 <body>
     <div class="layout">
-        <nav class="sidebar">
-            <div class="sidebar-header">
-                <a href="../../index.html" class="sidebar-logo">
-                    <div class="sidebar-logo-icon">ES</div>
-                    <div>
-                        <div class="sidebar-logo-text">Detection Engineering</div>
-                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
-                    </div>
-                </a>
-            </div>
-            <div class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Getting Started</div>
-                    <a href="../../index.html" class="nav-item">Home</a>
-                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
-                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
-                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
-                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
-                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Primary Onboarding</div>
-                    <a href="index.html" class="nav-item">Overview</a>
-                    <a href="akamai-waf.html" class="nav-item nav-item-sub active">Akamai WAF</a>
-                    <a href="authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
-                    <a href="syslog-hf.html" class="nav-item nav-item-sub">Syslog via HF</a>
-                    <a href="endpoint-telemetry.html" class="nav-item nav-item-sub">Endpoint Telemetry</a>
-                    <a href="hec-ingestion.html" class="nav-item nav-item-sub">HEC Ingestion</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 2 — Data Quality</div>
-                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">ES Data Layer & CIM ⚠️</div>
-                    <a href="../es-data-layer/how-es-uses-data.html" class="nav-item nav-item-sub">How ES Uses Data</a>
-                    <a href="../es-data-layer/cim-fundamentals.html" class="nav-item nav-item-sub">CIM Fundamentals for ES</a>
-                    <a href="../es-data-layer/data-models-deep-dive.html" class="nav-item nav-item-sub">Data Models Deep Dive</a>
-                    <a href="../es-data-layer/validating-es-data.html" class="nav-item nav-item-sub">Validating ES Data ⛔</a>
-                    <a href="../es-data-layer/missing-fields.html" class="nav-item nav-item-sub">Missing Fields After Add-ons</a>
-                    <a href="../es-data-layer/safe-addon-tuning.html" class="nav-item nav-item-sub">Safe Add-on Tuning</a>
-                    <a href="../es-data-layer/safe-correlation-path.html" class="nav-item nav-item-sub">Data Model → Correlation</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 3 — Detection</div>
-                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
-                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
-                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">ES Content Management</div>
-                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
-                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
-                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">ES Operations</div>
-                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
-                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Appendix</div>
-                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
-                </div>
-            </div>
-        </nav>
+        <aside id="sidebar" class="sidebar"></aside>
 
         <main class="main-content">
-            <div class="breadcrumbs">
-                <a href="../../index.html">Home</a>
-                <span class="separator">/</span>
-                <a href="../phase1-log-coverage/index.html">Phase 1</a>
-                <span class="separator">/</span>
-                <a href="index.html">Primary Onboarding</a>
-                <span class="separator">/</span>
-                <span class="current">Akamai WAF</span>
-            </div>
-            
-            <div class="content-wrapper">
+            <nav id="breadcrumbs" class="breadcrumbs"></nav>
+
+<div class="content-wrapper">
                 <span class="phase-indicator phase-1">📊 Phase 1 — Log Coverage</span>
                 <h1>Akamai WAF Onboarding</h1>
 
@@ -1577,7 +1501,9 @@ flowchart TB
         </main>
     </div>
 
-    <button class="mobile-menu-toggle">☰</button>
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
+    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
     <script>
         mermaid.initialize({

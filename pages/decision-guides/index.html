@@ -5,82 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Decision Guides - Splunk ES Handbook</title>
     <link rel="stylesheet" href="../../assets/style.css">
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
+
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
     <div class="layout">
-        <nav class="sidebar">
-            <div class="sidebar-header">
-                <a href="../../index.html" class="sidebar-logo">
-                    <div class="sidebar-logo-icon">ES</div>
-                    <div>
-                        <div class="sidebar-logo-text">Detection Engineering</div>
-                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
-                    </div>
-                </a>
-            </div>
-            <div class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Getting Started</div>
-                    <a href="../../index.html" class="nav-item">Home</a>
-                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
-                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
-                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
-                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
-                    <a href="index.html" class="nav-item active">Decision Guides</a>
-                    <a href="edge-processor.html" class="nav-item nav-item-sub">Edge Processor</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Primary Onboarding</div>
-                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
-                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
-                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
-                    <a href="../onboarding-primary/syslog-devices.html" class="nav-item nav-item-sub">Syslog Devices</a>
-                    <a href="../onboarding-primary/endpoint-logs.html" class="nav-item nav-item-sub">Endpoint Logs</a>
-                    <a href="../onboarding-primary/custom-apps-hec.html" class="nav-item nav-item-sub">Custom Apps (HEC)</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Alternate Onboarding</div>
-                    <a href="../onboarding-alternate/index.html" class="nav-item">Overview</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 2 — Data Quality</div>
-                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 3 — Detection</div>
-                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
-                    <a href="../use-cases/akamai-waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
-                    <a href="../use-cases/mfa-authentication.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 4 — Automation</div>
-                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 5 — Future</div>
-                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Appendix</div>
-                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
-                </div>
-            </div>
-        </nav>
+        <aside id="sidebar" class="sidebar"></aside>
 
         <main class="main-content">
-            <div class="breadcrumbs">
-                <a href="../../index.html">Home</a>
-                <span class="separator">/</span>
-                <a href="../phase1-log-coverage/index.html">Phase 1</a>
-                <span class="separator">/</span>
-                <span class="current">Decision Guides</span>
-            </div>
-            
-            <div class="content-wrapper">
+            <nav id="breadcrumbs" class="breadcrumbs"></nav>
+
+<div class="content-wrapper">
                 <span class="phase-indicator phase-1">📊 Phase 1 — Log Coverage</span>
                 <h1>Decision Guides</h1>
 
@@ -609,6 +546,7 @@ Effort: Moderate (2-3 days to reconfigure)</code></pre>
             </div>
         </main>
     </div>
+    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
 </body>
 </html>

@@ -5,75 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WAF & DDoS Detection Use Cases - Splunk ES Handbook</title>
     <link rel="stylesheet" href="../../assets/style.css">
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
+
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
     <div class="layout">
-        <nav class="sidebar">
-            <div class="sidebar-header">
-                <a href="../../index.html" class="sidebar-logo">
-                    <div class="sidebar-logo-icon">ES</div>
-                    <div>
-                        <div class="sidebar-logo-text">Detection Engineering</div>
-                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
-                    </div>
-                </a>
-            </div>
-            <div class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Getting Started</div>
-                    <a href="../../index.html" class="nav-item">Home</a>
-                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
-                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
-                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
-                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
-                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Primary Onboarding</div>
-                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
-                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
-                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 2 — Data Quality</div>
-                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 3 — Detection</div>
-                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
-                    <a href="waf-ddos.html" class="nav-item nav-item-sub active">WAF / DDoS Use Cases</a>
-                    <a href="mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 4 — Automation</div>
-                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Phase 5 — Future</div>
-                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Appendix</div>
-                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
-                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
-                </div>
-            </div>
-        </nav>
+        <aside id="sidebar" class="sidebar"></aside>
 
         <main class="main-content">
-            <div class="breadcrumbs">
-                <a href="../../index.html">Home</a>
-                <span class="separator">/</span>
-                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
-                <span class="separator">/</span>
-                <span class="current">WAF & DDoS Use Cases</span>
-            </div>
-            
-            <div class="content-wrapper">
+            <nav id="breadcrumbs" class="breadcrumbs"></nav>
+
+<div class="content-wrapper">
                 <span class="phase-indicator phase-3">🎯 Phase 3 — Detection Engineering</span>
                 <h1>WAF & DDoS Detection Use Cases</h1>
 
@@ -1731,6 +1675,7 @@ Always notify SOC and management when disabling detections</code></pre>
         </main>
     </div>
 
+    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
     <script>
         mermaid.initialize({ 
