@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planning & Project Intake - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="index.html" class="nav-item active">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
+                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
+                    <a href="../onboarding-primary/syslog-devices.html" class="nav-item nav-item-sub">Syslog Devices</a>
+                    <a href="../onboarding-primary/endpoint-logs.html" class="nav-item nav-item-sub">Endpoint Logs</a>
+                    <a href="../onboarding-primary/custom-apps-hec.html" class="nav-item nav-item-sub">Custom Apps (HEC)</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Alternate Onboarding</div>
+                    <a href="../onboarding-alternate/index.html" class="nav-item">Overview</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/akamai-waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-authentication.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <span class="current">Planning & Project Intake</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <h1>Planning & Project Intake</h1>
+
+                <!-- ============================================== -->
+                <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This page includes explicit intake requirements, timeline guidance, and escalation procedures.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 HARD GATE — Complete Intake Before ANY Work Begins</div>
+                    <p><strong>DO NOT start detection engineering work without completing the intake checklist below.</strong> The most common project failures occur because teams skip planning and discover blockers mid-project. Required before work begins:</p>
+                    <ul>
+                        <li><strong>Stakeholder sign-off</strong> on scope document</li>
+                        <li><strong>Log source availability confirmed</strong> (or onboarding timeline agreed)</li>
+                        <li><strong>Success criteria documented</strong> in writing</li>
+                        <li><strong>SOC capacity confirmed</strong> for alert triage</li>
+                    </ul>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Retail Business Timing — Project Scheduling</div>
+                    <p>Detection engineering projects must account for retail business cycles:</p>
+                    <ul>
+                        <li><strong>Avoid go-live during:</strong> Black Friday through New Year, major promotions, inventory periods</li>
+                        <li><strong>SOC capacity:</strong> Verify SOC staffing during monitoring-only period</li>
+                        <li><strong>Change freezes:</strong> No new detections during code freezes</li>
+                    </ul>
+                </div>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Purpose</div>
+                    <p>Define scope, stakeholders, and acceptance criteria BEFORE starting any detection engineering work. This prevents scope creep, misaligned expectations, and failed deliveries.</p>
+                </div>
+
+                <h2>Intake Checklist</h2>
+                
+                <p>Complete this checklist before starting any project:</p>
+                
+                <ul class="checklist">
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Business Objective Defined</strong>
+                            What threat or risk does this project address?
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Stakeholders Identified</strong>
+                            Who owns approval? Who owns log sources? Who triages alerts?
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Log Sources Confirmed</strong>
+                            Are required logs available? If not, what's the onboarding timeline?
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Success Criteria Documented</strong>
+                            How will we know the project is complete?
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Timeline Agreed</strong>
+                            Realistic delivery dates for each phase
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Constraints Acknowledged</strong>
+                            Single Splunk Cloud environment, no RBA, etc.
+                        </div>
+                    </li>
+                </ul>
+
+                <h2>Project Scope Template</h2>
+                
+                <div class="card">
+                    <h4>Project: [Detection Engineering Initiative Name]</h4>
+                    
+                    <p><strong>Business Objective:</strong><br>
+                    [What threat/risk does this address? Why now?]</p>
+                    
+                    <p><strong>In Scope:</strong></p>
+                    <ul>
+                        <li>[Specific detection use case 1]</li>
+                        <li>[Specific detection use case 2]</li>
+                        <li>[Log onboarding if required]</li>
+                    </ul>
+                    
+                    <p><strong>Out of Scope:</strong></p>
+                    <ul>
+                        <li>Risk-Based Alerting (RBA) — future phase</li>
+                        <li>[Other exclusions]</li>
+                    </ul>
+                    
+                    <p><strong>Dependencies:</strong></p>
+                    <ul>
+                        <li>[Log source X must be onboarded first]</li>
+                        <li>[Team Y must provide field mappings]</li>
+                    </ul>
+                    
+                    <p><strong>Constraints:</strong></p>
+                    <ul>
+                        <li>Single Splunk Cloud environment (no DEV/UAT)</li>
+                        <li>All testing via backtest → monitoring-only → production</li>
+                        <li>No changes during peak business hours</li>
+                    </ul>
+                </div>
+
+                <h2>RACI Matrix</h2>
+                
+                <p>Define responsibilities for every project:</p>
+                
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Activity</th>
+                                <th>Detection Engineer</th>
+                                <th>SOC Lead</th>
+                                <th>Log Source Owner</th>
+                                <th>Security Manager</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Define use case requirements</td>
+                                <td>C</td>
+                                <td>R</td>
+                                <td>C</td>
+                                <td>A</td>
+                            </tr>
+                            <tr>
+                                <td>Verify log availability</td>
+                                <td>R</td>
+                                <td>I</td>
+                                <td>C</td>
+                                <td>I</td>
+                            </tr>
+                            <tr>
+                                <td>Onboard new log sources</td>
+                                <td>R</td>
+                                <td>I</td>
+                                <td>A</td>
+                                <td>I</td>
+                            </tr>
+                            <tr>
+                                <td>Build correlation search</td>
+                                <td>R</td>
+                                <td>C</td>
+                                <td>I</td>
+                                <td>I</td>
+                            </tr>
+                            <tr>
+                                <td>Backtest detection</td>
+                                <td>R</td>
+                                <td>C</td>
+                                <td>I</td>
+                                <td>I</td>
+                            </tr>
+                            <tr>
+                                <td>Review monitoring-only results</td>
+                                <td>R</td>
+                                <td>A</td>
+                                <td>I</td>
+                                <td>I</td>
+                            </tr>
+                            <tr>
+                                <td>Approve production enablement</td>
+                                <td>C</td>
+                                <td>R</td>
+                                <td>I</td>
+                                <td>A</td>
+                            </tr>
+                            <tr>
+                                <td>Write triage runbook</td>
+                                <td>R</td>
+                                <td>A</td>
+                                <td>C</td>
+                                <td>I</td>
+                            </tr>
+                            <tr>
+                                <td>Triage production alerts</td>
+                                <td>C</td>
+                                <td>A</td>
+                                <td>I</td>
+                                <td>I</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <p><strong>Legend:</strong> R = Responsible, A = Accountable, C = Consulted, I = Informed</p>
+
+                <h2>Acceptance Criteria Framework</h2>
+                
+                <p>Every project phase needs explicit acceptance criteria:</p>
+                
+                <h3>Phase 1: Log Coverage</h3>
+                <div class="acceptance-criteria">
+                    <div class="acceptance-criteria-title">✅ Phase 1 Complete When:</div>
+                    <ul>
+                        <li>All required log sources identified in coverage matrix</li>
+                        <li>Each log source has confirmed ownership</li>
+                        <li>Logs are ingesting with &lt;5 minute latency</li>
+                        <li>Data volume matches expected baseline (±20%)</li>
+                        <li>No critical parsing errors in last 24 hours</li>
+                    </ul>
+                </div>
+                
+                <h3>Phase 2: Data Quality</h3>
+                <div class="acceptance-criteria">
+                    <div class="acceptance-criteria-title">✅ Phase 2 Complete When:</div>
+                    <ul>
+                        <li>All required fields are populated (&gt;95% completeness)</li>
+                        <li>Timestamps are correctly parsed to _time</li>
+                        <li>No timezone offset issues</li>
+                        <li>Field names match expected schema</li>
+                    </ul>
+                </div>
+                
+                <h3>Phase 3: Detection</h3>
+                <div class="acceptance-criteria">
+                    <div class="acceptance-criteria-title">✅ Phase 3 Complete When:</div>
+                    <ul>
+                        <li>Correlation search passes backtest validation</li>
+                        <li>7-14 day monitoring-only period complete</li>
+                        <li>False positive rate &lt;5% (or agreed threshold)</li>
+                        <li>Triage runbook documented and reviewed</li>
+                        <li>SOC team trained on new detection</li>
+                    </ul>
+                </div>
+
+                <h2>Stop & Escalate Conditions</h2>
+                
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 Stop Work & Escalate When:</div>
+                    <ul>
+                        <li><strong>Missing Log Sources:</strong> Required logs are not available and no onboarding timeline exists</li>
+                        <li><strong>No Data Owner:</strong> Cannot identify who owns the log source</li>
+                        <li><strong>Scope Expansion:</strong> Stakeholders request additional use cases without timeline adjustment</li>
+                        <li><strong>Quality Issues:</strong> Data quality issues cannot be resolved with available resources</li>
+                        <li><strong>Production Risk:</strong> Detection would generate &gt;50 alerts/day without tuning</li>
+                        <li><strong>RBA Requests:</strong> Stakeholders request RBA features that are out of scope</li>
+                    </ul>
+                </div>
+                
+                <p><strong>Escalation Path:</strong></p>
+                <ol>
+                    <li>Document the blocker in writing</li>
+                    <li>Notify project stakeholders within 24 hours</li>
+                    <li>Propose alternatives or timeline adjustments</li>
+                    <li>Do not proceed until blocker is resolved or accepted</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: RISK ASSESSMENT -->
+                <!-- ============================================== -->
+                <h2>Project Risk Assessment</h2>
+
+                <p>Complete this risk assessment during intake to identify potential blockers early:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Risk Category</th>
+                                <th>Risk Indicators</th>
+                                <th>Mitigation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Data Availability</strong></td>
+                                <td>Log source not yet onboarded, vendor TA not available, parsing not validated</td>
+                                <td>Add Phase 1 onboarding time to project plan; do not commit detection dates until data confirmed</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data Quality</strong></td>
+                                <td>Known timestamp issues, missing fields, high volume/noise</td>
+                                <td>Add Phase 2 data quality time; document known limitations</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SOC Capacity</strong></td>
+                                <td>SOC already at alert capacity, staffing changes planned, training gaps</td>
+                                <td>Confirm SOC readiness before monitoring mode; consider phased rollout</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Stakeholder Alignment</strong></td>
+                                <td>Multiple stakeholders with different priorities, unclear ownership, executive sponsor missing</td>
+                                <td>Get written sign-off on scope; identify single decision-maker</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Technical Complexity</strong></td>
+                                <td>Cross-source correlation required, custom parsing needed, performance concerns</td>
+                                <td>Add buffer time; prototype complex detections before committing</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Business Timing</strong></td>
+                                <td>Project overlaps with holiday freeze, major system changes, SOC training</td>
+                                <td>Adjust timeline to avoid conflicts; document constraints</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Risk Assessment Checklist</h3>
+                <div class="checklist-group">
+                    <div class="checklist-title">Complete Before Committing to Project Timeline</div>
+                    <ul class="checklist">
+                        <li>
+                            <span class="checklist-checkbox"></span>
+                            <div class="checklist-content">
+                                <strong>Log source availability verified</strong>
+                                Confirmed data is flowing OR onboarding timeline agreed
+                            </div>
+                        </li>
+                        <li>
+                            <span class="checklist-checkbox"></span>
+                            <div class="checklist-content">
+                                <strong>Data quality assessed</strong>
+                                Sample data reviewed for required fields and timestamps
+                            </div>
+                        </li>
+                        <li>
+                            <span class="checklist-checkbox"></span>
+                            <div class="checklist-content">
+                                <strong>SOC capacity confirmed</strong>
+                                SOC manager acknowledged ability to handle expected alert volume
+                            </div>
+                        </li>
+                        <li>
+                            <span class="checklist-checkbox"></span>
+                            <div class="checklist-content">
+                                <strong>Business timing checked</strong>
+                                No conflicts with freezes, holidays, or major changes
+                            </div>
+                        </li>
+                        <li>
+                            <span class="checklist-checkbox"></span>
+                            <div class="checklist-content">
+                                <strong>Stakeholder sign-off obtained</strong>
+                                Written approval on scope, timeline, and success criteria
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <h2>Timeline Planning</h2>
+                
+                <p>Realistic timelines for detection engineering work:</p>
+                
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Activity</th>
+                                <th>Duration</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Log source onboarding (existing integration)</td>
+                                <td>1-2 days</td>
+                                <td>Add-on already available</td>
+                            </tr>
+                            <tr>
+                                <td>Log source onboarding (custom)</td>
+                                <td>1-2 weeks</td>
+                                <td>Requires parsing development</td>
+                            </tr>
+                            <tr>
+                                <td>Data quality validation</td>
+                                <td>2-3 days</td>
+                                <td>Per source</td>
+                            </tr>
+                            <tr>
+                                <td>Single detection development</td>
+                                <td>2-4 hours</td>
+                                <td>Including backtesting</td>
+                            </tr>
+                            <tr>
+                                <td>Monitoring-only period</td>
+                                <td>7-14 days</td>
+                                <td>Cannot be shortened</td>
+                            </tr>
+                            <tr>
+                                <td>Triage runbook creation</td>
+                                <td>2-4 hours</td>
+                                <td>Per detection</td>
+                            </tr>
+                            <tr>
+                                <td>SOC training</td>
+                                <td>1-2 hours</td>
+                                <td>Per detection batch</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Documentation Requirements</h2>
+                
+                <p>Every project must produce these artifacts:</p>
+                
+                <ul class="checklist">
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Project Scope Document</strong>
+                            Using template above
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Log Coverage Matrix</strong>
+                            All sources with ownership and status
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Detection Specification</strong>
+                            SPL, thresholds, notable configuration
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Triage Runbook</strong>
+                            Step-by-step investigation guide
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Backtest Results</strong>
+                            Documented findings and tuning decisions
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Monitoring-Only Report</strong>
+                            14-day observation summary
+                        </div>
+                    </li>
+                </ul>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE COLLECTION -->
+                <!-- ============================================== -->
+                <h2>Evidence Collection for Project Sign-Off</h2>
+
+                <p>Collect these artifacts at project completion for audit trail:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Artifact</th>
+                                <th>Purpose</th>
+                                <th>Location</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Signed Scope Document</strong></td>
+                                <td>Proves stakeholder agreement on deliverables</td>
+                                <td>SharePoint / Project folder</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Backtest Screenshots</strong></td>
+                                <td>Proves detection tested against historical data</td>
+                                <td>Project folder / JIRA ticket</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Monitoring-Only Dashboard Export</strong></td>
+                                <td>Proves 14-day observation period completed</td>
+                                <td>PDF export in project folder</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SOC Training Acknowledgment</strong></td>
+                                <td>Proves SOC team trained on new detection</td>
+                                <td>Email confirmation / Training log</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Go-Live Approval Email</strong></td>
+                                <td>Proves stakeholder approved production deployment</td>
+                                <td>Email archive / JIRA ticket</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Project Completion Query</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Generate Project Completion Evidence</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Run this query to generate evidence of detection deployment")`
+`comment("Replace [detection_name] with your correlation search name")`
+
+index=_audit action="correlation_search" search_name="*[detection_name]*" earliest=-30d
+| stats 
+    min(_time) AS first_run,
+    max(_time) AS last_run,
+    count AS total_runs,
+    dc(search_name) AS detection_count
+| eval first_run = strftime(first_run, "%Y-%m-%d %H:%M:%S")
+| eval last_run = strftime(last_run, "%Y-%m-%d %H:%M:%S")
+| eval evidence = "Detection '".search_name."' has been running since ".first_run." with ".total_runs." executions"
+| table evidence, first_run, last_run, total_runs
+
+`comment("Export this as PDF for project sign-off documentation")`</code></pre>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="../phase1-log-coverage/index.html" class="next-steps-link">Start Phase 1: Log Coverage Assessment</a>
+                        <a href="../decision-guides/index.html" class="next-steps-link">Review Decision Guides for specific scenarios</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

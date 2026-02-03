@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scripted Inputs | Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>Splunk ES</h1>
+            <span class="version">Detection Engineering</span>
+        </div>
+        <ul class="nav-tree">
+            <li><a href="../../index.html"><span class="nav-icon">◈</span> Home</a></li>
+            <li><a href="../delivery-model/index.html"><span class="nav-icon">◆</span> Delivery Model</a></li>
+            <li><a href="../planning/index.html"><span class="nav-icon">◇</span> Planning & Scoping</a></li>
+            <li class="nav-section">
+                <span class="section-title">Phase 1: Log Coverage</span>
+                <ul>
+                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
+                    <li><a href="../universal-onboarding/index.html">Universal Onboarding</a></li>
+                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
+                </ul>
+            </li>
+            <li class="nav-section">
+                <span class="section-title">Onboarding - Primary</span>
+                <ul>
+                    <li><a href="../onboarding-primary/index.html">Overview</a></li>
+                    <li><a href="../onboarding-primary/akamai-waf.html">Akamai WAF</a></li>
+                    <li><a href="../onboarding-primary/authentication-mfa.html">Authentication/MFA</a></li>
+                    <li><a href="../onboarding-primary/syslog-hf.html">Syslog via HF</a></li>
+                    <li><a href="../onboarding-primary/endpoint-telemetry.html">Endpoint Telemetry</a></li>
+                    <li><a href="../onboarding-primary/hec-ingestion.html">HEC Ingestion</a></li>
+                </ul>
+            </li>
+            <li class="nav-section">
+                <span class="section-title">Onboarding - Alternate</span>
+                <ul>
+                    <li><a href="index.html">Overview</a></li>
+                    <li><a href="azure-event-hubs.html">Azure Event Hubs</a></li>
+                    <li><a href="kafka-connect.html">Kafka Connect</a></li>
+                    <li><a href="db-connect.html">DB Connect</a></li>
+                    <li><a href="scripted-inputs.html" class="active">Scripted Inputs</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase2-data-quality/index.html"><span class="nav-icon">◆</span> Phase 2: Data Quality</a></li>
+            <li><a href="../phase3-detection/index.html"><span class="nav-icon">◇</span> Phase 3: Detection</a></li>
+            <li class="nav-section">
+                <span class="section-title">Use Cases</span>
+                <ul>
+                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS Detection</a></li>
+                    <li><a href="../use-cases/mfa-auth.html">MFA Authentication</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase4-automation/index.html"><span class="nav-icon">◈</span> Phase 4: Automation</a></li>
+            <li><a href="../phase5-rba/index.html"><span class="nav-icon">◇</span> Phase 5: RBA <span class="badge future">Future</span></a></li>
+            <li class="nav-section">
+                <span class="section-title">Appendix</span>
+                <ul>
+                    <li><a href="../appendix/index.html">Reference Index</a></li>
+                    <li><a href="../appendix/spl-library.html">SPL Library</a></li>
+                    <li><a href="../appendix/troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="../appendix/checklists.html">Checklists</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <nav class="breadcrumb">
+            <a href="../../index.html">Home</a>
+            <span class="separator">›</span>
+            <a href="index.html">Onboarding - Alternate</a>
+            <span class="separator">›</span>
+            <span class="current">Scripted Inputs</span>
+        </nav>
+
+        <header class="page-header">
+            <div class="phase-indicator">Phase 1 · Alternate Path</div>
+            <h1>Scripted Inputs</h1>
+            <p class="subtitle">Custom scripts and API polling for data sources without native Splunk integration</p>
+        </header>
+
+        <!-- ============================================== -->
+        <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <div class="callout callout-info">
+                <div class="callout-title">📋 Page Status: HARDENED</div>
+                <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                <p>This page includes custom script security requirements, checkpoint management, and rollback procedures.</p>
+            </div>
+
+            <div class="callout callout-danger">
+                <div class="callout-title">🚨 CRITICAL: Scripted Inputs Require Custom Code Maintenance</div>
+                <p><strong>Scripts are custom code that YOU must maintain.</strong> Before implementing:</p>
+                <ul>
+                    <li><strong>Document ownership:</strong> Who maintains this script when it breaks?</li>
+                    <li><strong>Credential security:</strong> NEVER hardcode credentials in scripts</li>
+                    <li><strong>Error handling:</strong> Scripts MUST handle API failures gracefully</li>
+                    <li><strong>Checkpoint required:</strong> Without checkpointing, you WILL get duplicates or gaps</li>
+                </ul>
+            </div>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">⚠️ API Rate Limiting Considerations</div>
+                <p>Most APIs have rate limits that can cause data gaps:</p>
+                <ul>
+                    <li><strong>Microsoft Graph:</strong> ~10,000 requests per 10 minutes</li>
+                    <li><strong>AWS APIs:</strong> Varies by service, often 1-10 requests/second</li>
+                    <li><strong>Custom APIs:</strong> Check vendor documentation for limits</li>
+                </ul>
+                <p>Design scripts to respect rate limits and implement backoff logic.</p>
+            </div>
+        </section>
+
+        <!-- Architecture Overview -->
+        <section class="content-section">
+            <h2>Architecture Overview</h2>
+            <p>Scripted inputs execute custom scripts on a schedule to collect data from APIs, files, or other sources. Use scripted inputs when no Splunk add-on exists, when you need custom data transformation, or when integrating with proprietary systems. Scripts output data to stdout, which Splunk indexes.</p>
+
+            <div class="mermaid-container">
+                <div class="mermaid">
+flowchart LR
+    subgraph Sources["Data Sources"]
+        direction TB
+        API1["REST APIs"]
+        API2["SOAP Services"]
+        FILE["Custom Files"]
+        CMD["CLI Tools"]
+        PROP["Proprietary<br/>Systems"]
+    end
+    
+    subgraph Script["Scripted Input Layer"]
+        direction TB
+        PY["Python Scripts"]
+        SH["Shell Scripts"]
+        PS["PowerShell"]
+        CP["Checkpoint<br/>Management"]
+    end
+    
+    subgraph Splunk["Splunk Infrastructure"]
+        direction TB
+        HF["Heavy Forwarder<br/>or UF"]
+        IDX["Indexer Cluster"]
+        SH2["Search Head<br/>+ ES"]
+    end
+    
+    API1 --> PY
+    API2 --> PY
+    FILE --> SH
+    CMD --> SH
+    PROP --> PS
+    
+    PY --> CP
+    SH --> CP
+    PS --> CP
+    
+    CP --> HF --> IDX --> SH2
+    
+    style Sources fill:#6366f1,color:#fff
+    style Script fill:#f59e0b,color:#000
+    style Splunk fill:#65a637,color:#fff
+                </div>
+            </div>
+
+            <div class="callout info">
+                <div class="callout-title">When to Use Scripted Inputs</div>
+                <p>Scripted inputs are ideal for: APIs without native Splunk add-ons, proprietary vendor systems, custom file formats, command-line tool output, and data requiring complex transformation before indexing. For standard APIs, always check Splunkbase for existing add-ons first.</p>
+            </div>
+        </section>
+
+        <!-- Prerequisites -->
+        <section class="content-section">
+            <h2>Prerequisites</h2>
+            
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Requirement</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Script Runtime</strong></td>
+                            <td>Python 3.9+, Bash, or PowerShell</td>
+                            <td>Python preferred for API integrations</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Splunk Add-on Builder</strong></td>
+                            <td>Optional: for packaging scripts as apps</td>
+                            <td>Recommended for production deployments</td>
+                        </tr>
+                        <tr>
+                            <td><strong>API Credentials</strong></td>
+                            <td>Service account or API keys</td>
+                            <td>Store securely in passwords.conf</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Network Access</strong></td>
+                            <td>Outbound access to API endpoints</td>
+                            <td>HTTPS (443) or custom ports</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Checkpoint Storage</strong></td>
+                            <td>Writable directory for state files</td>
+                            <td>Prevents duplicate data on restart</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Script Development Principles -->
+        <section class="content-section">
+            <h2>Script Development Principles</h2>
+
+            <div class="callout warning">
+                <div class="callout-title">Critical Requirements</div>
+                <p>All scripted inputs must: output to stdout (not files), handle errors gracefully, implement checkpointing for incremental collection, respect API rate limits, and never store credentials in script files.</p>
+            </div>
+
+            <h3>Script Requirements Checklist</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Requirement</th>
+                            <th>Description</th>
+                            <th>Impact if Missing</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>stdout Output</strong></td>
+                            <td>All data written to stdout</td>
+                            <td>Data not indexed</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Checkpointing</strong></td>
+                            <td>Track last processed timestamp/ID</td>
+                            <td>Duplicate events on restart</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Error Handling</strong></td>
+                            <td>Catch exceptions, log to stderr</td>
+                            <td>Silent failures, data gaps</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Rate Limiting</strong></td>
+                            <td>Respect API throttling</td>
+                            <td>API blocks, data gaps</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Timeout Handling</strong></td>
+                            <td>Set connection/read timeouts</td>
+                            <td>Script hangs, queue buildup</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Exit Codes</strong></td>
+                            <td>Return 0 on success, non-zero on failure</td>
+                            <td>Can't monitor script health</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Step 1: Create Script Directory Structure -->
+        <section class="content-section">
+            <h2>Step 1: Create Add-on Structure</h2>
+
+            <p>Package scripted inputs as a Splunk add-on for easier deployment, updates, and credential management.</p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Add-on Directory Structure</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>TA-custom-api-input/
+├── bin/
+│   ├── custom_api_input.py          # Main collection script
+│   ├── lib/                          # Shared libraries
+│   │   ├── __init__.py
+│   │   ├── api_client.py            # API wrapper
+│   │   └── checkpoint.py            # Checkpoint utilities
+│   └── requirements.txt              # Python dependencies
+├── default/
+│   ├── app.conf                      # App metadata
+│   ├── inputs.conf                   # Input definitions
+│   └── props.conf                    # Event parsing
+├── local/
+│   └── inputs.conf                   # Local overrides
+├── metadata/
+│   └── default.meta                  # Permissions
+└── README.md</code></pre>
+            </div>
+
+            <h3>App Configuration</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>default/app.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>[install]
+is_configured = false
+build = 1
+
+[ui]
+is_visible = false
+label = Custom API Input
+
+[launcher]
+author = Security Team
+description = Custom scripted input for API data collection
+version = 1.0.0
+
+[package]
+id = TA-custom-api-input
+check_for_updates = false</code></pre>
+            </div>
+        </section>
+
+        <!-- Step 2: Python Script Template -->
+        <section class="content-section">
+            <h2>Step 2: Script Templates</h2>
+
+            <h3>Python REST API Script</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>bin/custom_api_input.py</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>#!/usr/bin/env python3
+"""
+Custom API Input Script
+Collects security events from REST API with checkpoint support
+"""
+
+import sys
+import os
+import json
+import time
+import logging
+from datetime import datetime, timedelta
+
+# Add lib directory to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
+
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+# Configuration
+CHECKPOINT_DIR = os.environ.get('SPLUNK_HOME', '/opt/splunk') + '/var/lib/splunk/modinputs/custom_api'
+CHECKPOINT_FILE = os.path.join(CHECKPOINT_DIR, 'checkpoint.json')
+API_BASE_URL = os.environ.get('API_BASE_URL', 'https://api.vendor.com/v1')
+API_KEY = os.environ.get('API_KEY', '')
+PAGE_SIZE = 100
+MAX_PAGES = 50
+REQUEST_TIMEOUT = 30
+
+# Logging setup - stderr for logs, stdout for events
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(message)s',
+    stream=sys.stderr
+)
+logger = logging.getLogger(__name__)
+
+
+def get_session():
+    """Create requests session with retry logic"""
+    session = requests.Session()
+    
+    # Retry strategy for transient errors
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET", "POST"]
+    )
+    
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    
+    # Set default headers
+    session.headers.update({
+        'Authorization': f'Bearer {API_KEY}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    })
+    
+    return session
+
+
+def load_checkpoint():
+    """Load checkpoint from file"""
+    try:
+        if os.path.exists(CHECKPOINT_FILE):
+            with open(CHECKPOINT_FILE, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"Failed to load checkpoint: {e}")
+    
+    # Default: start from 24 hours ago
+    return {
+        'last_timestamp': (datetime.utcnow() - timedelta(hours=24)).isoformat() + 'Z',
+        'last_id': None
+    }
+
+
+def save_checkpoint(checkpoint):
+    """Save checkpoint to file"""
+    try:
+        os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+        with open(CHECKPOINT_FILE, 'w') as f:
+            json.dump(checkpoint, f)
+    except Exception as e:
+        logger.error(f"Failed to save checkpoint: {e}")
+
+
+def fetch_events(session, since_timestamp, cursor=None):
+    """Fetch events from API with pagination"""
+    params = {
+        'since': since_timestamp,
+        'limit': PAGE_SIZE,
+        'sort': 'timestamp:asc'
+    }
+    
+    if cursor:
+        params['cursor'] = cursor
+    
+    try:
+        response = session.get(
+            f'{API_BASE_URL}/events',
+            params=params,
+            timeout=REQUEST_TIMEOUT
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    except requests.exceptions.Timeout:
+        logger.error("API request timed out")
+        raise
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 429:
+            # Rate limited - wait and retry
+            retry_after = int(e.response.headers.get('Retry-After', 60))
+            logger.warning(f"Rate limited, waiting {retry_after} seconds")
+            time.sleep(retry_after)
+            return fetch_events(session, since_timestamp, cursor)
+        raise
+    except Exception as e:
+        logger.error(f"API request failed: {e}")
+        raise
+
+
+def format_event(event):
+    """Format event for Splunk ingestion"""
+    # Output as JSON with timestamp
+    output = {
+        'timestamp': event.get('timestamp'),
+        'event_type': event.get('type'),
+        'severity': event.get('severity'),
+        'user': event.get('user', {}).get('email'),
+        'src_ip': event.get('source_ip'),
+        'action': event.get('action'),
+        'resource': event.get('resource'),
+        'result': event.get('result'),
+        'message': event.get('message'),
+        'raw': event  # Include full event for reference
+    }
+    return json.dumps(output)
+
+
+def main():
+    """Main collection loop"""
+    logger.info("Starting custom API input collection")
+    
+    # Validate configuration
+    if not API_KEY:
+        logger.error("API_KEY environment variable not set")
+        sys.exit(1)
+    
+    session = get_session()
+    checkpoint = load_checkpoint()
+    
+    since_timestamp = checkpoint['last_timestamp']
+    cursor = None
+    total_events = 0
+    latest_timestamp = since_timestamp
+    
+    try:
+        for page in range(MAX_PAGES):
+            logger.info(f"Fetching page {page + 1}, since={since_timestamp}")
+            
+            data = fetch_events(session, since_timestamp, cursor)
+            events = data.get('events', [])
+            
+            if not events:
+                logger.info("No more events to process")
+                break
+            
+            for event in events:
+                # Output event to stdout for Splunk indexing
+                print(format_event(event))
+                total_events += 1
+                
+                # Track latest timestamp
+                event_timestamp = event.get('timestamp')
+                if event_timestamp and event_timestamp > latest_timestamp:
+                    latest_timestamp = event_timestamp
+            
+            # Check for next page
+            cursor = data.get('next_cursor')
+            if not cursor:
+                break
+            
+            # Rate limit between pages
+            time.sleep(0.5)
+        
+        # Update checkpoint
+        checkpoint['last_timestamp'] = latest_timestamp
+        save_checkpoint(checkpoint)
+        
+        logger.info(f"Collection complete: {total_events} events processed")
+        sys.exit(0)
+        
+    except Exception as e:
+        logger.error(f"Collection failed: {e}")
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()</code></pre>
+            </div>
+
+            <h3>Shell Script Template</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>bin/system_inventory.sh</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>#!/bin/bash
+#
+# System Inventory Collection Script
+# Outputs JSON for Splunk indexing
+#
+
+set -e
+
+# Get system information
+HOSTNAME=$(hostname -f)
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+UPTIME=$(uptime -s 2>/dev/null || echo "unknown")
+KERNEL=$(uname -r)
+OS_VERSION=$(cat /etc/os-release 2>/dev/null | grep "VERSION_ID" | cut -d= -f2 | tr -d '"')
+
+# Get CPU info
+CPU_COUNT=$(nproc)
+CPU_MODEL=$(grep "model name" /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)
+
+# Get memory info (in MB)
+TOTAL_MEM=$(free -m | awk '/Mem:/ {print $2}')
+USED_MEM=$(free -m | awk '/Mem:/ {print $3}')
+FREE_MEM=$(free -m | awk '/Mem:/ {print $4}')
+
+# Get disk info
+DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | tr -d '%')
+
+# Get network interfaces
+INTERFACES=$(ip -j addr show 2>/dev/null | jq -c '[.[] | {name: .ifname, addresses: [.addr_info[]? | select(.family=="inet") | .local]}]' 2>/dev/null || echo "[]")
+
+# Get listening ports
+LISTENING_PORTS=$(ss -tlnp 2>/dev/null | awk 'NR>1 {print $4}' | cut -d: -f2 | sort -u | tr '\n' ',' | sed 's/,$//')
+
+# Get installed security packages
+SECURITY_PACKAGES=""
+if command -v dpkg &>/dev/null; then
+    SECURITY_PACKAGES=$(dpkg -l | grep -E "(crowdstrike|falcon|defender|eset|symantec)" | awk '{print $2}' | tr '\n' ',' | sed 's/,$//')
+elif command -v rpm &>/dev/null; then
+    SECURITY_PACKAGES=$(rpm -qa | grep -E "(crowdstrike|falcon|defender|eset|symantec)" | tr '\n' ',' | sed 's/,$//')
+fi
+
+# Output JSON to stdout
+cat << EOF
+{
+    "timestamp": "${TIMESTAMP}",
+    "event_type": "system_inventory",
+    "host": "${HOSTNAME}",
+    "kernel": "${KERNEL}",
+    "os_version": "${OS_VERSION}",
+    "uptime_since": "${UPTIME}",
+    "cpu": {
+        "count": ${CPU_COUNT},
+        "model": "${CPU_MODEL}"
+    },
+    "memory_mb": {
+        "total": ${TOTAL_MEM},
+        "used": ${USED_MEM},
+        "free": ${FREE_MEM}
+    },
+    "disk_usage_percent": ${DISK_USAGE},
+    "network_interfaces": ${INTERFACES},
+    "listening_ports": "${LISTENING_PORTS}",
+    "security_packages": "${SECURITY_PACKAGES}"
+}
+EOF
+
+exit 0</code></pre>
+            </div>
+
+            <h3>PowerShell Script Template (Windows)</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>bin/windows_security_events.ps1</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Collects Windows Security Events for Splunk
+.DESCRIPTION
+    Reads Security event log with checkpoint support
+#>
+
+param(
+    [int]$MaxEvents = 1000,
+    [string]$CheckpointPath = "$env:SPLUNK_HOME\var\lib\splunk\modinputs\win_security\checkpoint.txt"
+)
+
+$ErrorActionPreference = "Stop"
+
+# Ensure checkpoint directory exists
+$CheckpointDir = Split-Path $CheckpointPath -Parent
+if (-not (Test-Path $CheckpointDir)) {
+    New-Item -ItemType Directory -Path $CheckpointDir -Force | Out-Null
+}
+
+# Load checkpoint (last processed RecordId)
+$LastRecordId = 0
+if (Test-Path $CheckpointPath) {
+    $LastRecordId = [int64](Get-Content $CheckpointPath)
+}
+
+# Event IDs to collect (security-relevant)
+$SecurityEventIds = @(
+    4624,  # Successful logon
+    4625,  # Failed logon
+    4648,  # Explicit credential logon
+    4672,  # Special privileges assigned
+    4720,  # User account created
+    4722,  # User account enabled
+    4724,  # Password reset attempt
+    4728,  # Member added to security-enabled global group
+    4732,  # Member added to security-enabled local group
+    4756,  # Member added to security-enabled universal group
+    4768,  # Kerberos TGT requested
+    4769,  # Kerberos service ticket requested
+    4776,  # NTLM authentication
+    7045   # Service installed
+)
+
+try {
+    # Query Security event log
+    $FilterXml = @"
+<QueryList>
+    <Query Id="0" Path="Security">
+        <Select Path="Security">
+            *[System[(EventRecordID > $LastRecordId) and ($(($SecurityEventIds | ForEach-Object { "EventID=$_" }) -join " or "))]]
+        </Select>
+    </Query>
+</QueryList>
+"@
+
+    $Events = Get-WinEvent -FilterXml $FilterXml -MaxEvents $MaxEvents -ErrorAction SilentlyContinue
+
+    if ($Events) {
+        $NewMaxRecordId = $LastRecordId
+        
+        foreach ($Event in $Events | Sort-Object RecordId) {
+            # Parse event to JSON
+            $EventData = @{
+                timestamp = $Event.TimeCreated.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+                event_id = $Event.Id
+                record_id = $Event.RecordId
+                level = $Event.LevelDisplayName
+                provider = $Event.ProviderName
+                computer = $Event.MachineName
+                user_sid = $Event.UserId.Value
+                message = $Event.Message -replace "`r`n", " " -replace "`n", " "
+            }
+            
+            # Extract key fields from XML
+            $XmlData = [xml]$Event.ToXml()
+            $EventXmlData = $XmlData.Event.EventData.Data
+            
+            if ($EventXmlData) {
+                foreach ($Data in $EventXmlData) {
+                    if ($Data.Name -and $Data.'#text') {
+                        $EventData[$Data.Name] = $Data.'#text'
+                    }
+                }
+            }
+            
+            # Output JSON to stdout
+            $EventData | ConvertTo-Json -Compress
+            
+            # Track max record ID
+            if ($Event.RecordId -gt $NewMaxRecordId) {
+                $NewMaxRecordId = $Event.RecordId
+            }
+        }
+        
+        # Save checkpoint
+        $NewMaxRecordId | Out-File -FilePath $CheckpointPath -NoNewline
+        
+        Write-Host "Processed $($Events.Count) events" -ForegroundColor Green
+    }
+    else {
+        Write-Host "No new events found" -ForegroundColor Yellow
+    }
+    
+    exit 0
+}
+catch {
+    Write-Error "Collection failed: $_"
+    exit 1
+}</code></pre>
+            </div>
+        </section>
+
+        <!-- Step 3: Input Configuration -->
+        <section class="content-section">
+            <h2>Step 3: Configure Inputs</h2>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span>default/inputs.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Python API Script Input
+[script://./bin/custom_api_input.py]
+disabled = true
+index = api_events
+sourcetype = custom:api:events
+interval = 300
+source = custom_api_input
+
+# Pass credentials via environment variables
+passAuth = splunk-system-user
+
+# Shell Script Input
+[script://./bin/system_inventory.sh]
+disabled = true
+index = inventory
+sourcetype = system:inventory
+interval = 3600
+source = system_inventory
+
+# PowerShell Script Input (Windows)
+[script://.\bin\windows_security_events.ps1]
+disabled = true
+index = wineventlog
+sourcetype = windows:security:scripted
+interval = 60
+source = win_security_scripted</code></pre>
+            </div>
+
+            <h3>Enable Input in local/inputs.conf</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>local/inputs.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Enable and configure for environment
+[script://./bin/custom_api_input.py]
+disabled = false
+interval = 300
+
+# Environment-specific settings
+[custom_api_settings]
+api_base_url = https://api.vendor.com/v1
+# API key stored in passwords.conf, referenced via passAuth</code></pre>
+            </div>
+        </section>
+
+        <!-- Credential Management -->
+        <section class="content-section">
+            <h2>Secure Credential Management</h2>
+
+            <div class="callout danger">
+                <div class="callout-title">Security Warning</div>
+                <p>Never hardcode credentials in scripts. Use Splunk's credential storage (passwords.conf) or environment variables passed via passAuth.</p>
+            </div>
+
+            <h3>Store Credentials via REST API</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Store API Key</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Store credential in Splunk
+curl -k -u admin:password \
+  https://localhost:8089/servicesNS/nobody/TA-custom-api-input/storage/passwords \
+  -d name=api_key \
+  -d password='your-api-key-here'</code></pre>
+            </div>
+
+            <h3>Retrieve Credentials in Script</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Python Credential Retrieval</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>import os
+import sys
+
+# For modular inputs, Splunk passes credentials via stdin
+def get_credentials():
+    """Read credentials from Splunk modular input framework"""
+    # Check for environment variable first (simpler scripts)
+    api_key = os.environ.get('API_KEY')
+    if api_key:
+        return api_key
+    
+    # For modular inputs, read from stdin XML
+    # This is handled by the Splunk SDK
+    try:
+        import splunklib.modularinput as smi
+        # Credentials passed via session_key for REST calls
+        return None
+    except ImportError:
+        pass
+    
+    # Fallback: read from checkpoint file (not recommended)
+    return None
+
+
+# Alternative: Use Splunk SDK for modular inputs
+"""
+from splunklib.modularinput import Script, Scheme, Event
+import splunklib.client as client
+
+class CustomAPIInput(Script):
+    def get_scheme(self):
+        scheme = Scheme("Custom API Input")
+        scheme.description = "Collects events from custom API"
+        scheme.use_external_validation = False
+        return scheme
+    
+    def stream_events(self, inputs, ew):
+        # Access credentials via service
+        service = client.connect(token=self._input_definition.metadata['session_key'])
+        
+        for input_name, input_item in inputs.inputs.items():
+            # Get stored credentials
+            passwords = service.storage_passwords
+            api_key = None
+            for password in passwords:
+                if password.name == 'api_key':
+                    api_key = password.clear_password
+                    break
+            
+            # Collect and stream events
+            events = fetch_api_events(api_key)
+            for event in events:
+                ew.write_event(Event(data=json.dumps(event)))
+"""</code></pre>
+            </div>
+        </section>
+
+        <!-- Checkpoint Management -->
+        <section class="content-section">
+            <h2>Checkpoint Management</h2>
+
+            <p>Checkpointing prevents duplicate data and enables incremental collection across script restarts.</p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span>lib/checkpoint.py</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>"""
+Checkpoint management utilities for scripted inputs
+"""
+
+import os
+import json
+import logging
+from datetime import datetime, timedelta
+from typing import Optional, Any, Dict
+
+logger = logging.getLogger(__name__)
+
+
+class Checkpoint:
+    """Manages checkpoint state for incremental collection"""
+    
+    def __init__(self, checkpoint_dir: str, input_name: str):
+        self.checkpoint_dir = checkpoint_dir
+        self.input_name = input_name
+        self.filepath = os.path.join(checkpoint_dir, f'{input_name}.json')
+        self._state: Dict[str, Any] = {}
+        self._load()
+    
+    def _load(self) -> None:
+        """Load checkpoint from file"""
+        try:
+            os.makedirs(self.checkpoint_dir, exist_ok=True)
+            if os.path.exists(self.filepath):
+                with open(self.filepath, 'r') as f:
+                    self._state = json.load(f)
+                logger.info(f"Loaded checkpoint: {self._state}")
+        except Exception as e:
+            logger.warning(f"Failed to load checkpoint: {e}")
+            self._state = {}
+    
+    def save(self) -> None:
+        """Save checkpoint to file"""
+        try:
+            self._state['_updated'] = datetime.utcnow().isoformat() + 'Z'
+            with open(self.filepath, 'w') as f:
+                json.dump(self._state, f, indent=2)
+            logger.info(f"Saved checkpoint: {self._state}")
+        except Exception as e:
+            logger.error(f"Failed to save checkpoint: {e}")
+            raise
+    
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get checkpoint value"""
+        return self._state.get(key, default)
+    
+    def set(self, key: str, value: Any) -> None:
+        """Set checkpoint value"""
+        self._state[key] = value
+    
+    def get_timestamp(self, key: str = 'last_timestamp', 
+                      default_hours_ago: int = 24) -> str:
+        """Get timestamp checkpoint with sensible default"""
+        timestamp = self.get(key)
+        if not timestamp:
+            timestamp = (datetime.utcnow() - timedelta(hours=default_hours_ago)).isoformat() + 'Z'
+        return timestamp
+    
+    def set_timestamp(self, key: str = 'last_timestamp', 
+                      value: Optional[str] = None) -> None:
+        """Set timestamp checkpoint"""
+        if value is None:
+            value = datetime.utcnow().isoformat() + 'Z'
+        self.set(key, value)
+    
+    def clear(self) -> None:
+        """Clear checkpoint state"""
+        self._state = {}
+        if os.path.exists(self.filepath):
+            os.remove(self.filepath)
+        logger.info("Cleared checkpoint")
+
+
+# Usage example
+if __name__ == '__main__':
+    cp = Checkpoint('/opt/splunk/var/lib/splunk/modinputs', 'test_input')
+    
+    # Get last timestamp (defaults to 24 hours ago)
+    since = cp.get_timestamp()
+    print(f"Collecting since: {since}")
+    
+    # After collection, update checkpoint
+    cp.set_timestamp(value='2024-01-15T12:00:00Z')
+    cp.set('last_id', 12345)
+    cp.save()</code></pre>
+            </div>
+        </section>
+
+        <!-- Common API Patterns -->
+        <section class="content-section">
+            <h2>Common API Integration Patterns</h2>
+
+            <h3>Pattern 1: Paginated API with Cursor</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Cursor-Based Pagination</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>def collect_with_cursor(session, checkpoint):
+    """Collect using cursor-based pagination"""
+    cursor = checkpoint.get('cursor')
+    
+    while True:
+        params = {'limit': 100}
+        if cursor:
+            params['cursor'] = cursor
+        
+        response = session.get('/api/events', params=params)
+        data = response.json()
+        
+        for event in data.get('items', []):
+            print(json.dumps(event))
+        
+        cursor = data.get('next_cursor')
+        if not cursor:
+            break
+        
+        checkpoint.set('cursor', cursor)
+        checkpoint.save()
+    
+    # Clear cursor on complete collection
+    checkpoint.set('cursor', None)
+    checkpoint.save()</code></pre>
+            </div>
+
+            <h3>Pattern 2: Offset Pagination</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Offset-Based Pagination</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>def collect_with_offset(session, checkpoint):
+    """Collect using offset-based pagination"""
+    page_size = 100
+    offset = 0
+    
+    while True:
+        params = {
+            'limit': page_size,
+            'offset': offset,
+            'sort': 'timestamp:asc'
+        }
+        
+        response = session.get('/api/events', params=params)
+        data = response.json()
+        
+        items = data.get('items', [])
+        if not items:
+            break
+        
+        for event in items:
+            print(json.dumps(event))
+        
+        offset += len(items)
+        
+        # Stop if we got less than a full page
+        if len(items) < page_size:
+            break</code></pre>
+            </div>
+
+            <h3>Pattern 3: Time-Range Windowing</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Time-Window Collection</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>from datetime import datetime, timedelta
+
+def collect_time_windows(session, checkpoint, window_minutes=60):
+    """Collect using time-based windows"""
+    start_time = datetime.fromisoformat(
+        checkpoint.get_timestamp().replace('Z', '+00:00')
+    )
+    end_time = datetime.utcnow()
+    
+    current_start = start_time
+    
+    while current_start < end_time:
+        current_end = min(
+            current_start + timedelta(minutes=window_minutes),
+            end_time
+        )
+        
+        params = {
+            'start_time': current_start.isoformat() + 'Z',
+            'end_time': current_end.isoformat() + 'Z'
+        }
+        
+        response = session.get('/api/events', params=params)
+        
+        for event in response.json().get('items', []):
+            print(json.dumps(event))
+        
+        # Update checkpoint after each window
+        checkpoint.set_timestamp(value=current_end.isoformat() + 'Z')
+        checkpoint.save()
+        
+        current_start = current_end</code></pre>
+            </div>
+        </section>
+
+        <!-- Props and Transforms -->
+        <section class="content-section">
+            <h2>Event Parsing Configuration</h2>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span>default/props.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Custom API Events
+[custom:api:events]
+SHOULD_LINEMERGE = false
+LINE_BREAKER = ([\r\n]+)
+TIME_PREFIX = \"timestamp\":\s*\"
+TIME_FORMAT = %Y-%m-%dT%H:%M:%S
+MAX_TIMESTAMP_LOOKAHEAD = 30
+TZ = UTC
+KV_MODE = json
+TRUNCATE = 100000
+
+# Field extractions
+FIELDALIAS-user = user AS src_user
+FIELDALIAS-src = src_ip AS src
+FIELDALIAS-dest = resource AS dest
+FIELDALIAS-action_type = action AS vendor_action
+
+# Calculated fields
+EVAL-vendor_product = "Custom API"
+EVAL-vendor = "Internal"
+
+# System Inventory
+[system:inventory]
+SHOULD_LINEMERGE = false
+TIME_PREFIX = \"timestamp\":\s*\"
+TIME_FORMAT = %Y-%m-%dT%H:%M:%SZ
+KV_MODE = json
+TZ = UTC
+
+# Windows Security Scripted
+[windows:security:scripted]
+SHOULD_LINEMERGE = false
+TIME_PREFIX = \"timestamp\":\s*\"
+TIME_FORMAT = %Y-%m-%dT%H:%M:%SZ
+KV_MODE = json
+TZ = UTC
+
+FIELDALIAS-user = TargetUserName AS user
+FIELDALIAS-src = IpAddress AS src
+FIELDALIAS-dest = computer AS dest</code></pre>
+            </div>
+
+            <h3>Tags Configuration</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>default/tags.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>[sourcetype=custom:api:events]
+authentication = enabled
+change = enabled
+
+[sourcetype=system:inventory]
+inventory = enabled
+
+[sourcetype=windows:security:scripted]
+authentication = enabled
+change = enabled</code></pre>
+            </div>
+        </section>
+
+        <!-- Validation Queries -->
+        <section class="content-section">
+            <h2>Validation Queries</h2>
+
+            <h3>Check Script Execution</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL - Script Execution Status</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>index=_internal sourcetype=splunkd component=ExecProcessor
+| rex field=_raw "script\s+(?&lt;script_path&gt;[^\s]+)"
+| stats latest(_time) as last_run,
+        count as executions,
+        values(log_level) as status
+BY script_path
+| eval time_since = now() - last_run
+| eval health = case(
+    time_since < 600, "healthy",
+    time_since < 1800, "warning",
+    1==1, "stale"
+)
+| table script_path, last_run, executions, status, health</code></pre>
+            </div>
+
+            <h3>Check Script Errors</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL - Script Error Detection</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>index=_internal sourcetype=splunkd (component=ExecProcessor OR component=ModularInputs)
+    (ERROR OR WARN OR "exit code")
+| rex field=_raw "script\s+(?&lt;script&gt;[^\s]+)"
+| rex field=_raw "exit code\s*=\s*(?&lt;exit_code&gt;\d+)"
+| where isnotnull(script)
+| stats count BY script, log_level, exit_code
+| sort - count</code></pre>
+            </div>
+
+            <h3>Data Arrival Validation</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL - Scripted Input Data Arrival</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>| tstats count WHERE index=api_events OR index=inventory 
+BY sourcetype, index, _time span=1h
+| timechart span=1h count BY sourcetype</code></pre>
+            </div>
+
+            <h3>Latency Check</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL - Collection Latency</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>index=api_events sourcetype=custom:api:events
+| eval indexing_latency = _indextime - _time
+| stats avg(indexing_latency) as avg_latency_sec,
+        max(indexing_latency) as max_latency_sec,
+        perc95(indexing_latency) as p95_latency_sec
+| eval avg_latency_min = round(avg_latency_sec/60, 2)
+| table avg_latency_min, max_latency_sec, p95_latency_sec</code></pre>
+            </div>
+        </section>
+
+        <!-- Troubleshooting -->
+        <section class="content-section">
+            <h2>Troubleshooting</h2>
+
+            <details class="collapsible">
+                <summary>Script Not Executing</summary>
+                <div class="collapsible-content">
+                    <p><strong>Symptoms:</strong> No data arriving, no script logs</p>
+                    <p><strong>Resolution:</strong></p>
+                    <ul>
+                        <li>Check input is enabled: <code>./splunk list exec</code></li>
+                        <li>Verify script permissions: <code>chmod +x script.py</code></li>
+                        <li>Check script path in inputs.conf (relative to bin/)</li>
+                        <li>Test script manually: <code>./bin/custom_api_input.py</code></li>
+                        <li>Check for Python errors: shebang line, syntax errors</li>
+                        <li>Review logs:
+                            <div class="code-block">
+                                <pre><code>index=_internal sourcetype=splunkd ExecProcessor "script"</code></pre>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="collapsible">
+                <summary>Script Exits with Error</summary>
+                <div class="collapsible-content">
+                    <p><strong>Symptoms:</strong> Exit code non-zero, partial or no data</p>
+                    <p><strong>Resolution:</strong></p>
+                    <ul>
+                        <li>Check stderr output in Splunk logs</li>
+                        <li>Run script manually with debug logging</li>
+                        <li>Verify API credentials and connectivity</li>
+                        <li>Check for rate limiting (HTTP 429)</li>
+                        <li>Validate checkpoint file permissions</li>
+                        <li>Debug query:
+                            <div class="code-block">
+                                <pre><code>index=_internal sourcetype=splunkd "exit code" script
+| table _time, message</code></pre>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="collapsible">
+                <summary>Duplicate Events</summary>
+                <div class="collapsible-content">
+                    <p><strong>Symptoms:</strong> Same events appearing multiple times</p>
+                    <p><strong>Resolution:</strong></p>
+                    <ul>
+                        <li>Verify checkpoint is being saved after each run</li>
+                        <li>Check checkpoint file contents and permissions</li>
+                        <li>Ensure timestamp/ID used for checkpointing is monotonic</li>
+                        <li>Add deduplication in script logic</li>
+                        <li>Clear checkpoint and re-collect if needed</li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="collapsible">
+                <summary>Script Hangs / Times Out</summary>
+                <div class="collapsible-content">
+                    <p><strong>Symptoms:</strong> Script doesn't complete within interval</p>
+                    <p><strong>Resolution:</strong></p>
+                    <ul>
+                        <li>Add connection/read timeouts to HTTP requests</li>
+                        <li>Reduce page size or max pages per run</li>
+                        <li>Increase interval if collection time is legitimately long</li>
+                        <li>Use time-windowing to limit data per execution</li>
+                        <li>Check for API endpoint health issues</li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="collapsible">
+                <summary>Missing Python Dependencies</summary>
+                <div class="collapsible-content">
+                    <p><strong>Symptoms:</strong> ImportError, ModuleNotFoundError</p>
+                    <p><strong>Resolution:</strong></p>
+                    <ul>
+                        <li>Install packages to script's lib directory:
+                            <div class="code-block">
+                                <pre><code>pip install -t ./bin/lib requests</code></pre>
+                            </div>
+                        </li>
+                        <li>Or use Splunk's Python: <code>/opt/splunk/bin/python3</code></li>
+                        <li>Bundle dependencies with script</li>
+                        <li>Use Splunk SDK for built-in functionality</li>
+                    </ul>
+                </div>
+            </details>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- SECTION: ROLLBACK & SAFETY -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <h2>Rollback & Safety</h2>
+
+            <h3>Emergency: Disable Scripted Input</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Emergency Procedure</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Script causing issues (volume spike, API errors, malformed data)
+
+OPTION 1: Disable Input via Splunk Web (Preferred)
+──────────────────────────────────────────────────
+1. Settings → Data Inputs → Scripts
+2. Find problematic script → Actions → Disable
+
+OPTION 2: Disable via Configuration File
+────────────────────────────────────────
+1. SSH to Heavy Forwarder / Universal Forwarder
+2. Edit: $SPLUNK_HOME/etc/apps/[app_name]/local/inputs.conf
+3. Add: disabled = 1 to the script stanza
+4. Reload: $SPLUNK_HOME/bin/splunk restart
+
+OPTION 3: Revoke API Credentials (If Script Compromised)
+────────────────────────────────────────────────────────
+If script credentials may be exposed:
+1. Revoke/rotate API credentials at source
+2. Script will fail with auth errors (safe failure)
+3. Update credentials in Splunk after investigation
+
+COMMUNICATION:
+- Notify data source owner if API credentials changed
+- Notify SOC (data gap occurring)
+- Document incident for post-mortem</code></pre>
+            </div>
+
+            <h3>Checkpoint Recovery Procedure</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Reset Script Checkpoint</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Need to reset checkpoint (missed data or duplicates)
+
+⚠️ WARNING: Resetting checkpoint may cause duplicate data or missed data depending on your script logic
+
+STEP 1: Locate Checkpoint File
+──────────────────────────────
+# Common locations:
+$SPLUNK_HOME/var/lib/splunk/modinputs/[script_name]/
+$SPLUNK_HOME/etc/apps/[app_name]/local/checkpoint/
+
+STEP 2: Disable Script Input
+────────────────────────────
+Disable the input via Splunk Web (see above)
+
+STEP 3: Backup Current Checkpoint
+─────────────────────────────────
+cp checkpoint_file checkpoint_file.backup.$(date +%Y%m%d)
+
+STEP 4: Modify Checkpoint
+─────────────────────────
+# Option A: Re-collect from beginning (will cause duplicates)
+rm checkpoint_file
+
+# Option B: Re-collect from specific timestamp
+# Edit checkpoint file to set desired start time
+echo "2024-01-15T00:00:00Z" > checkpoint_file
+
+# Option C: Skip to current time (will miss data)
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > checkpoint_file
+
+STEP 5: Re-enable Script Input
+──────────────────────────────
+Enable input via Splunk Web
+
+STEP 6: Monitor for Issues
+──────────────────────────
+index=[target_index] sourcetype=[script_sourcetype] earliest=-1h
+| stats count BY _time span=5m
+# Verify data flow pattern looks correct</code></pre>
+            </div>
+
+            <h3>API Credential Rotation Procedure</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Zero-Downtime Credential Rotation</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Scheduled rotation of API credentials used by script
+
+STEP 1: Generate New Credentials
+────────────────────────────────
+Create new API key/credentials at the source system
+(Keep old credentials active)
+
+STEP 2: Update Splunk Credential Store
+──────────────────────────────────────
+# If using Splunk credential store:
+1. Settings → Storage Passwords
+2. Edit existing credential OR create new
+3. Update username/password
+
+# If using app-specific credential storage:
+1. Edit credential file in app's local/ directory
+2. Follow app-specific documentation
+
+STEP 3: Restart Script or Reload Inputs
+───────────────────────────────────────
+$SPLUNK_HOME/bin/splunk restart
+
+STEP 4: Verify Script Using New Credentials
+───────────────────────────────────────────
+# Check for auth errors
+index=_internal sourcetype=splunkd component=ExecProcessor "script_name"
+| search ERROR OR auth OR "401" OR "403"
+| head 20
+
+# Should show no auth errors
+
+STEP 5: Revoke Old Credentials
+──────────────────────────────
+After 24 hours of successful operation:
+1. Revoke old credentials at source system
+2. Document rotation date
+
+SCHEDULE: Set calendar reminder 30 days before credential expiry</code></pre>
+            </div>
+
+            <h3>Scripted Input Health Monitoring Query</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL: Monitor Script Execution Health</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>`comment("Create scheduled alert to detect scripted input failures")`
+
+index=_internal sourcetype=splunkd component=ExecProcessor earliest=-1h
+| stats 
+    latest(_time) AS last_run,
+    sum(eval(if(like(message, "%exit code%0%"), 0, 1))) AS error_count,
+    count AS total_runs
+    BY data_input
+| eval hours_since = round((now() - last_run)/3600, 1)
+| eval status = case(
+    error_count > 0, "🔴 ERRORS - Check script logs",
+    hours_since > 2, "🟠 STALE - Script not running",
+    total_runs = 0, "🟡 NO RUNS - Check configuration",
+    true(), "✅ Healthy"
+)
+| table data_input, status, last_run, total_runs, error_count
+
+`comment("Also monitor the data output")`
+index=[target_index] sourcetype=[script_sourcetype] earliest=-1h
+| bucket _time span=5m
+| stats count BY _time
+| where count = 0
+| eval alert = "🔴 NO DATA from scripted input"
+
+`comment("Alert when either query returns results")`</code></pre>
+            </div>
+        </section>
+
+        <!-- Acceptance Criteria -->
+        <section class="content-section">
+            <h2>Acceptance Criteria</h2>
+            
+            <div class="checklist" data-id="scripted-inputs-acceptance">
+                <div class="checklist-item">
+                    <input type="checkbox" id="si-acc-1">
+                    <label for="si-acc-1">Script executes successfully with exit code 0</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="si-acc-2">
+                    <label for="si-acc-2">Credentials stored securely (not in script files)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="si-acc-3">
+                    <label for="si-acc-3">Checkpointing implemented and tested</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="si-acc-4">
+                    <label for="si-acc-4">No duplicate events after script restart</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="si-acc-5">
+                    <label for="si-acc-5">Error handling tested (API errors, timeouts)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="si-acc-6">
+                    <label for="si-acc-6">Data arriving in Splunk with expected latency</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="si-acc-7">
+                    <label for="si-acc-7">Props.conf configured for proper parsing</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="si-acc-8">
+                    <label for="si-acc-8">Script packaged as add-on for deployment</label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Next Steps -->
+        <section class="content-section">
+            <h2>Next Steps</h2>
+            <div class="next-steps">
+                <a href="../phase2-data-quality/index.html" class="next-step-link">
+                    <span class="step-label">After Onboarding</span>
+                    <span class="step-title">Phase 2: Data Quality →</span>
+                </a>
+                <a href="../appendix/spl-library.html" class="next-step-link">
+                    <span class="step-label">Reference</span>
+                    <span class="step-title">SPL Library →</span>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

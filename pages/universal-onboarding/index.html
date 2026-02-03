@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Onboarding Framework - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="index.html" class="nav-item active">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
+                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
+                    <a href="../onboarding-primary/syslog-devices.html" class="nav-item nav-item-sub">Syslog Devices</a>
+                    <a href="../onboarding-primary/endpoint-logs.html" class="nav-item nav-item-sub">Endpoint Logs</a>
+                    <a href="../onboarding-primary/custom-apps-hec.html" class="nav-item nav-item-sub">Custom Apps (HEC)</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Alternate Onboarding</div>
+                    <a href="../onboarding-alternate/index.html" class="nav-item">Overview</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/akamai-waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-authentication.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase1-log-coverage/index.html">Phase 1</a>
+                <span class="separator">/</span>
+                <span class="current">Universal Onboarding Framework</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-1">📊 Phase 1 — Log Coverage</span>
+                <h1>Universal Onboarding Framework</h1>
+
+                <!-- ============================================== -->
+                <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This framework includes explicit validation criteria, failure modes, and rollback procedures for all onboarding stages.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 HARD GATE — Every Stage Must Complete Before Proceeding</div>
+                    <p><strong>DO NOT skip stages or proceed with partial completion.</strong> Each stage has explicit exit criteria. The most common onboarding failures occur because teams rush to "data flowing" without completing validation and documentation.</p>
+                    <p><strong>Minimum Time for Full Onboarding:</strong></p>
+                    <ul>
+                        <li>Simple source (vendor TA exists, syslog): 1-2 weeks</li>
+                        <li>Complex source (custom parsing, API): 2-4 weeks</li>
+                        <li>Enterprise source (multiple instances, cross-team coordination): 4-8 weeks</li>
+                    </ul>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Retail Business Timing — Onboarding Windows</div>
+                    <p>Log source onboarding can impact Splunk performance and may require network changes. Follow these timing constraints:</p>
+                    <ul>
+                        <li><strong>Heavy Forwarder changes:</strong> During maintenance windows only (Tue-Thu 2-6 AM ET)</li>
+                        <li><strong>High-volume sources:</strong> Never during month-end close or quarter-end</li>
+                        <li><strong>Network/firewall changes:</strong> Follow change advisory board process</li>
+                    </ul>
+                </div>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Framework Purpose</div>
+                    <p>This framework applies to <strong>ALL</strong> log source onboarding regardless of source type. Every onboarding follows these six stages before logs are considered "production ready."</p>
+                </div>
+
+                <h2>Six-Stage Onboarding Process</h2>
+                
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart LR
+    S1[1. Discovery] --> S2[2. Design]
+    S2 --> S3[3. Configure]
+    S3 --> S4[4. Validate]
+    S4 --> S5[5. Document]
+    S5 --> S6[6. Sign-Off]
+    
+    style S1 fill:#1f6feb,stroke:#58a6ff,color:#fff
+    style S2 fill:#238636,stroke:#3fb950,color:#fff
+    style S3 fill:#8957e5,stroke:#a371f7,color:#fff
+    style S4 fill:#db6d28,stroke:#f0883e,color:#fff
+    style S5 fill:#6e7681,stroke:#8b949e,color:#fff
+    style S6 fill:#21262d,stroke:#30363d,color:#fff
+                    </div>
+                </div>
+
+                <h2>Stage 1: Discovery</h2>
+                <p>Identify all data sources and gather technical requirements.</p>
+                
+                <div class="checklist-group">
+                    <div class="checklist-title">Discovery Checklist</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-discovery">
+                        <span>Source system identified and documented</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-discovery">
+                        <span>Data owner/SME contact established</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-discovery">
+                        <span>Log format identified (syslog, JSON, CEF, etc.)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-discovery">
+                        <span>Expected volume estimated (GB/day or EPS)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-discovery">
+                        <span>Network path documented (source → Splunk)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-discovery">
+                        <span>Firewall rules identified</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-discovery">
+                        <span>Timezone of source system confirmed</span>
+                    </label>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Volume Estimation</div>
+                    <p>Always validate vendor estimates against reality. Request 24-48 hours of sample data where possible. Vendor documentation often underestimates real-world volumes by 2-5x.</p>
+                </div>
+
+                <h2>Stage 2: Design</h2>
+                <p>Define the technical architecture for data ingestion.</p>
+
+                <h3>Key Design Decisions</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Decision Point</th>
+                            <th>Options</th>
+                            <th>Guidance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Ingestion Method</strong></td>
+                            <td>Heavy Forwarder, Universal Forwarder, HEC, Syslog, API Polling</td>
+                            <td>See <a href="../decision-guides/index.html">Decision Guides</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Index Strategy</strong></td>
+                            <td>Dedicated vs. Shared Index</td>
+                            <td>Dedicated for high-volume (>50GB/day)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Sourcetype</strong></td>
+                            <td>Existing TA vs. Custom</td>
+                            <td>Always prefer official TAs</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Parsing Location</strong></td>
+                            <td>Source, Heavy Forwarder, Indexers</td>
+                            <td>Parse at HF for syslog; parse at indexers for HEC</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Index Naming Convention</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">Standard</span>
+                        <button class="copy-btn" aria-label="Copy code">Copy</button>
+                    </div>
+                    <pre><code>&lt;environment&gt;_&lt;category&gt;_&lt;source&gt;
+
+Examples:
+prod_security_akamai
+prod_security_entra
+prod_network_firewall
+prod_endpoint_defender</code></pre>
+                </div>
+
+                <h2>Stage 3: Configure</h2>
+                <p>Implement the technical configuration in Splunk.</p>
+
+                <h3>Inputs.conf Template</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">inputs.conf</span>
+                        <button class="copy-btn" aria-label="Copy code">Copy</button>
+                    </div>
+                    <pre><code># Syslog Input Example
+[udp://514]
+sourcetype = syslog
+index = prod_network_syslog
+connection_host = dns
+no_priority_stripping = true
+
+# Monitor Input Example
+[monitor:///var/log/application/*.log]
+sourcetype = custom_app
+index = prod_apps_custom
+disabled = false
+followTail = 0</code></pre>
+                </div>
+
+                <h3>Props.conf Template</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">props.conf</span>
+                        <button class="copy-btn" aria-label="Copy code">Copy</button>
+                    </div>
+                    <pre><code>[sourcetype_name]
+TIME_FORMAT = %Y-%m-%dT%H:%M:%S.%3N%z
+MAX_TIMESTAMP_LOOKAHEAD = 30
+SHOULD_LINEMERGE = false
+LINE_BREAKER = ([\r\n]+)
+TRUNCATE = 999999
+
+# Field Extractions
+REPORT-fields = extract_custom_fields
+
+# CIM Compliance
+FIELDALIAS-src = source_ip AS src
+FIELDALIAS-dest = destination_ip AS dest
+EVAL-action = case(status="200", "allowed", status="403", "blocked", true(), "unknown")</code></pre>
+                </div>
+
+                <h2>Stage 4: Validate</h2>
+                <p>Verify data is flowing correctly with acceptable quality.</p>
+
+                <h3>Validation SPL Queries</h3>
+                
+                <h4>1. Data Flow Verification</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">SPL</span>
+                        <button class="copy-btn" aria-label="Copy code">Copy</button>
+                    </div>
+                    <pre><code>| tstats count WHERE index=prod_security_* by index, sourcetype, host
+| sort -count</code></pre>
+                </div>
+
+                <h4>2. Latency Check</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">SPL</span>
+                        <button class="copy-btn" aria-label="Copy code">Copy</button>
+                    </div>
+                    <pre><code>index=prod_security_akamai
+| eval latency_sec = _indextime - _time
+| stats avg(latency_sec) as avg_latency, max(latency_sec) as max_latency, 
+        perc95(latency_sec) as p95_latency by sourcetype
+| eval acceptable = if(p95_latency &lt; 300, "✓ Pass", "✗ Fail")</code></pre>
+                </div>
+
+                <h4>3. Timestamp Accuracy</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">SPL</span>
+                        <button class="copy-btn" aria-label="Copy code">Copy</button>
+                    </div>
+                    <pre><code>index=prod_security_akamai earliest=-1h
+| eval time_diff = abs(_time - now())
+| where time_diff > 86400
+| stats count as future_events by sourcetype
+| eval issue = if(count > 0, "⚠️ Timestamp Issues Detected", "✓ OK")</code></pre>
+                </div>
+
+                <h4>4. Field Population Check</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">SPL</span>
+                        <button class="copy-btn" aria-label="Copy code">Copy</button>
+                    </div>
+                    <pre><code>index=prod_security_akamai earliest=-24h
+| fieldsummary
+| where count > 0
+| eval coverage_pct = round((count / max_count) * 100, 1)
+| table field, count, distinct_count, coverage_pct
+| sort -coverage_pct</code></pre>
+                </div>
+
+                <div class="checklist-group">
+                    <div class="checklist-title">Validation Checklist</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-validate">
+                        <span>Events are arriving (non-zero count)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-validate">
+                        <span>Latency is acceptable (&lt; 5 min for real-time use cases)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-validate">
+                        <span>Timestamps are correct (no future events)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-validate">
+                        <span>Required CIM fields are populated</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-validate">
+                        <span>Volume matches expectations (±20%)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="universal-validate">
+                        <span>No parsing errors or truncation</span>
+                    </label>
+                </div>
+
+                <h2>Stage 5: Document</h2>
+                <p>Record all configuration and operational details.</p>
+
+                <div class="collapsible">
+                    <button class="collapsible-trigger">
+                        <span>📄 Onboarding Documentation Template</span>
+                        <span class="chevron">▼</span>
+                    </button>
+                    <div class="collapsible-content">
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-lang">Markdown</span>
+                                <button class="copy-btn" aria-label="Copy code">Copy</button>
+                            </div>
+                            <pre><code># Log Source: [Name]
+
+## Overview
+- **Source System**: 
+- **Data Owner**: 
+- **Onboarding Date**: 
+- **Splunk Index**: 
+- **Sourcetype**: 
+
+## Technical Details
+- **Ingestion Method**: 
+- **Heavy Forwarder**: 
+- **Port/Protocol**: 
+- **TA Version**: 
+
+## Data Characteristics
+- **Daily Volume**: 
+- **Avg Event Size**: 
+- **Peak EPS**: 
+
+## Field Mapping
+| Source Field | CIM Field | Notes |
+|--------------|-----------|-------|
+| | | |
+
+## Troubleshooting
+- **Common Issues**: 
+- **Escalation Contact**: 
+- **Runbook Link**: 
+
+## Change History
+| Date | Change | Author |
+|------|--------|--------|
+| | | |</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <h2>Stage 6: Sign-Off</h2>
+                <p>Formal acceptance that the data source is production-ready.</p>
+
+                <div class="callout callout-success">
+                    <div class="callout-title">✓ Sign-Off Criteria</div>
+                    <p>All of the following must be true before signing off:</p>
+                </div>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Criterion</th>
+                            <th>Validation Method</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Data is flowing continuously</td>
+                            <td>48-hour continuous monitoring</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td>Latency is acceptable</td>
+                            <td>P95 &lt; 5 minutes</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td>Required fields are populated</td>
+                            <td>CIM compliance check</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td>Documentation complete</td>
+                            <td>Runbook review</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td>Stakeholder accepts</td>
+                            <td>Email/ticket confirmation</td>
+                            <td>☐</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Common Pitfalls</h2>
+                
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚫 Avoid These Mistakes</div>
+                </div>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Pitfall</th>
+                            <th>Impact</th>
+                            <th>Prevention</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Skipping validation</td>
+                            <td>Silent data gaps</td>
+                            <td>Always run full validation suite</td>
+                        </tr>
+                        <tr>
+                            <td>Wrong timezone</td>
+                            <td>Correlation failures</td>
+                            <td>Verify TZ in sample data</td>
+                        </tr>
+                        <tr>
+                            <td>Missing line breaks</td>
+                            <td>Event merging</td>
+                            <td>Test LINE_BREAKER with real data</td>
+                        </tr>
+                        <tr>
+                            <td>No monitoring</td>
+                            <td>Undetected outages</td>
+                            <td>Create data availability alerts</td>
+                        </tr>
+                        <tr>
+                            <td>Vendor TA blind trust</td>
+                            <td>Missing fields</td>
+                            <td>Validate TA against your data</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK & SAFETY -->
+                <!-- ============================================== -->
+                <h2>Rollback & Safety</h2>
+
+                <h3>Emergency: Disable Data Ingestion</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Procedure: Emergency Stop for Any Data Source</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>SCENARIO: New data source is causing issues (volume spike, parsing errors, performance impact)
+
+STEP 1: IDENTIFY INGESTION METHOD
+─────────────────────────────────
+- Syslog → Stop at Heavy Forwarder
+- HEC → Disable HEC token
+- API Polling → Disable inputs.conf
+- Universal Forwarder → Stop forwarder service
+- SIEM Integration → Disable in vendor portal
+
+STEP 2: DISABLE AT SOURCE
+─────────────────────────
+
+FOR SYSLOG (Heavy Forwarder):
+1. SSH to Heavy Forwarder
+2. Edit inputs.conf: [udp://514] → disabled = 1
+3. Restart: $SPLUNK_HOME/bin/splunk restart
+
+FOR HEC:
+1. Splunk Web → Settings → Data Inputs → HTTP Event Collector
+2. Find token → Disable
+3. Effect: Immediate (returns 403 to sender)
+
+FOR API POLLING (TA):
+1. Edit $SPLUNK_HOME/etc/apps/[TA]/local/inputs.conf
+2. Set disabled = 1 for relevant stanza
+3. Restart Splunk or: splunk _internal call /services/data/inputs/[input]/disable
+
+FOR UNIVERSAL FORWARDER:
+1. On source system: $SPLUNK_HOME/bin/splunk stop
+2. Or disable specific input in local/inputs.conf
+
+STEP 3: VERIFY INGESTION STOPPED
+────────────────────────────────
+| tstats count WHERE index=[problem_index] earliest=-5m BY sourcetype
+`comment("Should show zero or rapidly declining count")`
+
+STEP 4: COMMUNICATE
+───────────────────
+1. Notify Splunk admin team
+2. Notify data owner/source team
+3. Document reason for disable
+4. Plan remediation before re-enabling</code></pre>
+                </div>
+
+                <h3>Rollback: Undo Onboarding Changes</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Procedure: Remove a Data Source Completely</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>SCENARIO: Onboarding failed and you need to clean up all configuration
+
+STEP 1: DISABLE INGESTION (See Above)
+─────────────────────────────────────
+
+STEP 2: REMOVE CONFIGURATION FILES
+──────────────────────────────────
+# List all config files for the source
+find $SPLUNK_HOME/etc/apps -name "*[sourcetype]*" -o -name "*[source_name]*"
+
+# Backup before removing
+cp -r $SPLUNK_HOME/etc/apps/[TA_name] /backup/
+
+# Remove TA if dedicated to this source
+rm -rf $SPLUNK_HOME/etc/apps/[TA_name]
+
+# Or remove specific stanzas from:
+# - inputs.conf (ingestion)
+# - props.conf (parsing)
+# - transforms.conf (field extraction)
+# - tags.conf (CIM mapping)
+
+STEP 3: REMOVE INDEX (Optional)
+───────────────────────────────
+# Only if index is dedicated to this source AND you want to delete all data
+# WARNING: This permanently deletes all data in the index
+$SPLUNK_HOME/bin/splunk remove index [index_name]
+
+# Or just disable the index (preserves data):
+# Edit indexes.conf: [index_name] disabled = true
+
+STEP 4: CLEAN UP NETWORK/FIREWALL
+─────────────────────────────────
+1. Remove any firewall rules added for this source
+2. Remove DNS entries if created
+3. Document changes for network team
+
+STEP 5: UPDATE DOCUMENTATION
+───────────────────────────
+1. Mark source as "Onboarding Failed" in tracking spreadsheet
+2. Document what went wrong
+3. Archive onboarding documentation for future reference</code></pre>
+                </div>
+
+                <h3>Onboarding Failure Escalation Matrix</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Failure Type</th>
+                                <th>Symptoms</th>
+                                <th>First Response</th>
+                                <th>Escalate To</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>No data arriving</strong></td>
+                                <td>Zero events in index</td>
+                                <td>Check network connectivity, firewall logs</td>
+                                <td>Network team, Source system owner</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Parsing failures</strong></td>
+                                <td>Events in wrong format, timestamps incorrect</td>
+                                <td>Review props.conf, check LINE_BREAKER</td>
+                                <td>Splunk admin, TA vendor</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Volume explosion</strong></td>
+                                <td>10x+ expected volume</td>
+                                <td>Disable ingestion immediately</td>
+                                <td>Splunk admin, License owner</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Performance impact</strong></td>
+                                <td>Slow searches, indexer lag</td>
+                                <td>Reduce volume or disable source</td>
+                                <td>Splunk admin</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Missing fields</strong></td>
+                                <td>CIM fields not populated</td>
+                                <td>Check TA version, verify field extraction</td>
+                                <td>Detection engineering, TA vendor</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Data Availability Monitoring</h3>
+                <p>After successful onboarding, create a data availability alert to detect future gaps:</p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Data Availability Alert Template</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Alert if no data received in last 30 minutes")`
+`comment("Customize index and sourcetype for your source")`
+
+| tstats latest(_time) AS last_event WHERE index=[your_index] sourcetype=[your_sourcetype]
+| eval minutes_since_last = round((now() - last_event) / 60, 0)
+| where minutes_since_last > 30
+| eval alert_message = "⚠️ No data received from [source_name] for ".minutes_since_last." minutes"
+| table alert_message, last_event, minutes_since_last
+
+`comment("
+ALERT SETTINGS:
+- Schedule: Every 15 minutes
+- Trigger: If results > 0
+- Action: Email SOC + Splunk admin
+")`</code></pre>
+                </div>
+
+                <h2>Next Steps</h2>
+                <div class="next-steps">
+                    <a href="../decision-guides/index.html" class="next-step-card">
+                        <span class="next-step-label">Decision Guide</span>
+                        <span class="next-step-title">Choosing the Right Onboarding Method →</span>
+                    </a>
+                    <a href="../onboarding-primary/index.html" class="next-step-card">
+                        <span class="next-step-label">Primary Onboarding</span>
+                        <span class="next-step-title">Source-Specific Guides →</span>
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syslog via Heavy Forwarder | Splunk ES Detection Engineering</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+    </button>
+
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1><a href="../../index.html">Splunk ES</a></h1>
+            <span class="version">Detection Engineering</span>
+        </div>
+        <ul class="nav-tree">
+            <li><a href="../delivery-model/index.html">Delivery Model</a></li>
+            <li><a href="../planning/index.html">Planning & Scoping</a></li>
+            <li>
+                <span class="nav-section">Phase 1: Log Coverage</span>
+                <ul>
+                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
+                    <li><a href="../universal-onboarding/index.html">Universal Framework</a></li>
+                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
+                    <li>
+                        <span class="nav-section">Primary Paths</span>
+                        <ul>
+                            <li><a href="index.html">Overview</a></li>
+                            <li><a href="akamai-waf.html">Akamai WAF</a></li>
+                            <li><a href="authentication-mfa.html">Authentication & MFA</a></li>
+                            <li><a href="syslog-hf.html" class="active">Syslog via HF</a></li>
+                            <li><a href="endpoint-telemetry.html">Endpoint Telemetry</a></li>
+                            <li><a href="hec-ingestion.html">HEC Ingestion</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="../onboarding-alternate/index.html">Alternate Paths</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase2-data-quality/index.html">Phase 2: Data Quality</a></li>
+            <li><a href="../phase3-detection/index.html">Phase 3: Detection</a></li>
+            <li>
+                <span class="nav-section">Use Case Library</span>
+                <ul>
+                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS</a></li>
+                    <li><a href="../use-cases/mfa-auth.html">MFA & Authentication</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase4-automation/index.html">Phase 4: Automation</a></li>
+            <li><a href="../phase5-rba/index.html">Phase 5: RBA</a> <span class="badge badge-future">Future</span></li>
+            <li>
+                <span class="nav-section">Appendix</span>
+                <ul>
+                    <li><a href="../appendix/spl-library.html">SPL Library</a></li>
+                    <li><a href="../appendix/troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="../appendix/checklists.html">Checklists</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <nav class="breadcrumb">
+            <a href="../../index.html">Home</a>
+            <span class="separator">›</span>
+            <a href="../phase1-log-coverage/index.html">Phase 1</a>
+            <span class="separator">›</span>
+            <a href="index.html">Primary Paths</a>
+            <span class="separator">›</span>
+            <span class="current">Syslog via HF</span>
+        </nav>
+
+        <header class="page-header">
+            <div class="phase-indicator phase-1">Phase 1: Log Coverage</div>
+            <h1>Syslog via Heavy Forwarder</h1>
+            <p class="page-subtitle">TCP/UDP syslog collection through Splunk Heavy Forwarder for network devices, firewalls, and infrastructure systems</p>
+        </header>
+
+        <!-- ============================================== -->
+        <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <div class="callout callout-info">
+                <div class="callout-title">📋 Page Status: HARDENED</div>
+                <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                <p>This page includes explicit validation criteria, failure modes, rollback procedures, and enterprise-scale considerations.</p>
+            </div>
+
+            <div class="callout callout-danger">
+                <div class="callout-title">🚨 CRITICAL: Heavy Forwarder Changes Impact ALL Syslog Sources</div>
+                <p><strong>Heavy Forwarders are shared infrastructure.</strong> A misconfiguration can cause data loss for ALL sources routing through that HF. Follow these rules:</p>
+                <ul>
+                    <li><strong>NEVER make HF changes during business hours</strong> without change approval</li>
+                    <li><strong>ALWAYS test inputs.conf changes</strong> with btool before restart</li>
+                    <li><strong>ALWAYS have rollback plan</strong> documented before any HF change</li>
+                    <li><strong>NEVER restart both HF nodes simultaneously</strong> — stagger by 15+ minutes</li>
+                </ul>
+            </div>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">⚠️ Retail Business Timing — HF Changes</div>
+                <p>Heavy Forwarder maintenance windows must account for:</p>
+                <ul>
+                    <li><strong>Firewall log criticality:</strong> Never during active incident response</li>
+                    <li><strong>PCI compliance:</strong> Log gaps may trigger compliance violations</li>
+                    <li><strong>Change windows:</strong> Tue-Thu 2-6 AM ET only (avoid month-end close)</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Overview</h2>
+            <p>Syslog remains the most common method for collecting logs from network infrastructure devices, firewalls, load balancers, and legacy systems. This guide covers syslog collection via Splunk Heavy Forwarder (HF) for forwarding to Splunk Cloud.</p>
+
+            <div class="callout callout-info">
+                <div class="callout-title">Architecture Pattern</div>
+                <p>Syslog → Heavy Forwarder (on-prem) → Splunk Cloud. The HF acts as both syslog receiver and forwarder, handling parsing, timestamping, and secure transmission to cloud.</p>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Architecture Decision</h2>
+            <div class="mermaid-wrapper">
+                <pre class="mermaid">
+flowchart TD
+    subgraph Sources["Syslog Sources"]
+        FW[Firewalls]
+        RTR[Routers/Switches]
+        LB[Load Balancers]
+        PROXY[Proxies]
+        LEGACY[Legacy Systems]
+    end
+
+    subgraph Collection["Heavy Forwarder Cluster"]
+        HF1[HF Node 1<br/>Primary]
+        HF2[HF Node 2<br/>Secondary]
+        VIP[Virtual IP / LB]
+    end
+
+    subgraph Cloud["Splunk Cloud"]
+        IDM[IDM / Inputs]
+        IDX[Indexers]
+    end
+
+    Sources --> VIP
+    VIP --> HF1
+    VIP --> HF2
+    HF1 --> IDM
+    HF2 --> IDM
+    IDM --> IDX
+
+    style VIP fill:#238636,stroke:#2ea043
+    style HF1 fill:#1f6feb,stroke:#388bfd
+    style HF2 fill:#1f6feb,stroke:#388bfd
+                </pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Prerequisites</h2>
+            
+            <h3>Infrastructure Requirements</h3>
+            <div class="checklist">
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="syslog-hf-infra">
+                    <span>Heavy Forwarder infrastructure provisioned (minimum 2 nodes for HA)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="syslog-hf-vip">
+                    <span>Virtual IP or load balancer configured for syslog reception</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="syslog-hf-firewall">
+                    <span>Firewall rules: Sources → HF (UDP/TCP 514, 1514, or custom ports)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="syslog-hf-cloud">
+                    <span>Firewall rules: HF → Splunk Cloud (TCP 9997 or 443)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="syslog-hf-dns">
+                    <span>DNS resolution from HF to Splunk Cloud endpoints</span>
+                </label>
+            </div>
+
+            <h3>Splunk Cloud Requirements</h3>
+            <div class="checklist">
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="syslog-cloud-outputs">
+                    <span>Outputs.conf from Splunk Cloud admin (contains cloud certificate)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="syslog-cloud-indexes">
+                    <span>Target indexes created in Splunk Cloud</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="syslog-cloud-sourcetypes">
+                    <span>Sourcetypes defined (use vendor-provided TAs where available)</span>
+                </label>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Heavy Forwarder Configuration</h2>
+
+            <h3>Step 1: Install Splunk Heavy Forwarder</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">bash</span>
+                    <button class="copy-btn" data-copy="hf-install">Copy</button>
+                </div>
+                <pre><code id="hf-install"># Download and install (RHEL/CentOS)
+sudo rpm -ivh splunk-9.x.x-linux-2.6-x86_64.rpm
+
+# Or for Ubuntu/Debian
+sudo dpkg -i splunk-9.x.x-linux-2.6-amd64.deb
+
+# Enable boot start and accept license
+sudo /opt/splunk/bin/splunk enable boot-start --accept-license --answer-yes
+
+# Start Splunk
+sudo /opt/splunk/bin/splunk start</code></pre>
+            </div>
+
+            <h3>Step 2: Configure Syslog Inputs</h3>
+            <p>Create inputs.conf for syslog reception. Use TCP for reliable delivery where supported, UDP for high-volume/legacy sources.</p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">$SPLUNK_HOME/etc/system/local/inputs.conf</span>
+                    <button class="copy-btn" data-copy="syslog-inputs">Copy</button>
+                </div>
+                <pre><code id="syslog-inputs"># ========================================
+# Syslog Inputs Configuration
+# Heavy Forwarder - Syslog Collection
+# ========================================
+
+# TCP Syslog - Primary (Reliable)
+[tcp://1514]
+connection_host = dns
+sourcetype = syslog
+index = network
+
+# UDP Syslog - Fallback/Legacy
+[udp://514]
+connection_host = dns
+sourcetype = syslog
+index = network
+
+# Device-Specific Ports (Recommended)
+# Palo Alto Firewalls
+[tcp://5514]
+connection_host = dns
+sourcetype = pan:traffic
+index = pan_logs
+
+[tcp://5515]
+connection_host = dns
+sourcetype = pan:threat
+index = pan_logs
+
+# Cisco ASA
+[tcp://6514]
+connection_host = dns
+sourcetype = cisco:asa
+index = cisco_logs
+
+# F5 BIG-IP
+[tcp://7514]
+connection_host = dns
+sourcetype = f5:bigip:syslog
+index = f5_logs
+
+# Linux Servers (rsyslog)
+[tcp://8514]
+connection_host = dns
+sourcetype = syslog
+index = os_linux</code></pre>
+            </div>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">Port Separation Best Practice</div>
+                <p>Use dedicated ports per device type/vendor. This enables proper sourcetype assignment at ingestion time and prevents parsing errors from mixed log formats on shared ports.</p>
+            </div>
+
+            <h3>Step 3: Configure Outputs to Splunk Cloud</h3>
+            <p>Use the outputs.conf provided by Splunk Cloud admin. This contains the certificate required for secure communication.</p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">$SPLUNK_HOME/etc/system/local/outputs.conf</span>
+                    <button class="copy-btn" data-copy="syslog-outputs">Copy</button>
+                </div>
+                <pre><code id="syslog-outputs"># ========================================
+# Outputs Configuration - Splunk Cloud
+# NOTE: Replace with actual values from Splunk Cloud admin
+# ========================================
+
+[tcpout]
+defaultGroup = splunkcloud
+
+[tcpout:splunkcloud]
+server = inputs1.your-stack.splunkcloud.com:9997, inputs2.your-stack.splunkcloud.com:9997
+compressed = true
+sslCertPath = $SPLUNK_HOME/etc/auth/your-stack-cert.pem
+sslRootCAPath = $SPLUNK_HOME/etc/auth/your-stack-cacert.pem
+sslPassword = ********
+sslVerifyServerCert = true
+useClientSSLCompression = true
+
+# Indexer acknowledgment (recommended for reliability)
+useACK = true</code></pre>
+            </div>
+
+            <h3>Step 4: Configure Props and Transforms</h3>
+            <p>Define parsing rules for timestamp extraction and field parsing.</p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">$SPLUNK_HOME/etc/system/local/props.conf</span>
+                    <button class="copy-btn" data-copy="syslog-props">Copy</button>
+                </div>
+                <pre><code id="syslog-props"># ========================================
+# Props Configuration - Syslog Parsing
+# ========================================
+
+[syslog]
+TIME_FORMAT = %b %d %H:%M:%S
+MAX_TIMESTAMP_LOOKAHEAD = 32
+SHOULD_LINEMERGE = false
+LINE_BREAKER = ([\r\n]+)
+TRUNCATE = 10000
+
+# Palo Alto Traffic
+[pan:traffic]
+TIME_FORMAT = %Y/%m/%d %H:%M:%S
+SHOULD_LINEMERGE = false
+LINE_BREAKER = ([\r\n]+)
+TRUNCATE = 65535
+KV_MODE = none
+TRANSFORMS-pan_traffic = pan_traffic_fields
+
+# Cisco ASA
+[cisco:asa]
+TIME_FORMAT = %b %d %Y %H:%M:%S
+MAX_TIMESTAMP_LOOKAHEAD = 32
+SHOULD_LINEMERGE = false
+LINE_BREAKER = ([\r\n]+)</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Source Device Configuration</h2>
+
+            <h3>Palo Alto Networks</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">PAN-OS CLI</span>
+                    <button class="copy-btn" data-copy="pan-syslog">Copy</button>
+                </div>
+                <pre><code id="pan-syslog"># Configure Syslog Server Profile
+set shared log-settings syslog Splunk-HF server HF-Primary server 10.0.1.50
+set shared log-settings syslog Splunk-HF server HF-Primary transport TCP
+set shared log-settings syslog Splunk-HF server HF-Primary port 5514
+set shared log-settings syslog Splunk-HF server HF-Primary format BSD
+set shared log-settings syslog Splunk-HF server HF-Primary facility LOG_USER
+
+# Configure Log Forwarding Profile
+set shared log-settings profiles Splunk-Forward match-list traffic-logs
+set shared log-settings profiles Splunk-Forward match-list traffic-logs log-type traffic
+set shared log-settings profiles Splunk-Forward match-list traffic-logs send-to-panorama no
+set shared log-settings profiles Splunk-Forward match-list traffic-logs send-syslog Splunk-HF
+
+# Apply to security policy
+set rulebase security rules allow-all log-setting Splunk-Forward</code></pre>
+            </div>
+
+            <h3>Cisco ASA</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Cisco ASA CLI</span>
+                    <button class="copy-btn" data-copy="asa-syslog">Copy</button>
+                </div>
+                <pre><code id="asa-syslog"># Configure Logging
+logging enable
+logging timestamp
+logging host inside 10.0.1.50 TCP/6514
+logging trap informational
+logging facility 20
+
+# Enable specific message classes
+logging class auth trap informational
+logging class config trap informational
+logging class firewall trap informational
+logging class ids trap informational
+logging class ip trap informational</code></pre>
+            </div>
+
+            <h3>Linux (rsyslog)</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">/etc/rsyslog.d/splunk.conf</span>
+                    <button class="copy-btn" data-copy="rsyslog-config">Copy</button>
+                </div>
+                <pre><code id="rsyslog-config"># Forward all logs to Splunk HF via TCP
+*.* @@10.0.1.50:8514
+
+# Or forward specific facilities
+auth,authpriv.* @@10.0.1.50:8514
+kern.* @@10.0.1.50:8514
+daemon.* @@10.0.1.50:8514
+
+# Use RELP for reliable delivery (if supported)
+# module(load="omrelp")
+# *.* action(type="omrelp" target="10.0.1.50" port="2514")</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Validation</h2>
+
+            <h3>HF-Level Validation</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">bash</span>
+                    <button class="copy-btn" data-copy="hf-validate">Copy</button>
+                </div>
+                <pre><code id="hf-validate"># Check listening ports
+sudo netstat -tulpn | grep splunkd
+
+# Check internal logs for input activity
+tail -f /opt/splunk/var/log/splunk/splunkd.log | grep -i "tcp\|udp"
+
+# Verify data flow to cloud
+/opt/splunk/bin/splunk list forward-server
+
+# Check queue health
+/opt/splunk/bin/splunk show queue-usage</code></pre>
+            </div>
+
+            <h3>Splunk Cloud Validation SPL</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">SPL</span>
+                    <button class="copy-btn" data-copy="syslog-validate-spl">Copy</button>
+                </div>
+                <pre><code id="syslog-validate-spl">| Syslog Data Arrival Check
+index IN (network, pan_logs, cisco_logs, f5_logs, os_linux) sourcetype=syslog OR sourcetype=pan:* OR sourcetype=cisco:* OR sourcetype=f5:*
+| stats count by index, sourcetype, host
+| sort - count
+
+| Event Latency Check
+index=network sourcetype=syslog
+| eval latency = _indextime - _time
+| stats avg(latency) as avg_latency, max(latency) as max_latency, p95(latency) as p95_latency by host
+| where avg_latency > 60
+| sort - avg_latency
+
+| Timestamp Quality Check
+index=network sourcetype=syslog
+| eval hour_diff = abs(round((_time - now())/3600))
+| where hour_diff > 24
+| stats count by host, sourcetype
+| sort - count</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Troubleshooting</h2>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">No data arriving at HF</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Verify network connectivity: <code>telnet &lt;source_ip&gt; &lt;port&gt;</code> from source</li>
+                        <li>Check firewall rules between source and HF</li>
+                        <li>Verify Splunk is listening: <code>netstat -tulpn | grep &lt;port&gt;</code></li>
+                        <li>Check inputs.conf syntax: <code>/opt/splunk/bin/splunk btool inputs list --debug</code></li>
+                        <li>Review splunkd.log for errors</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">Data at HF but not in Splunk Cloud</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Check HF → Cloud connectivity: <code>telnet inputs1.your-stack.splunkcloud.com 9997</code></li>
+                        <li>Verify certificate validity and placement</li>
+                        <li>Check outputs.conf configuration</li>
+                        <li>Review metrics.log for forwarding errors</li>
+                        <li>Check queue blockage: <code>splunk show queue-usage</code></li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">Timestamp parsing issues</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Verify TIME_FORMAT in props.conf matches actual log format</li>
+                        <li>Check timezone settings on source devices</li>
+                        <li>Use <code>| eval _raw_time = strftime(_time, "%Y-%m-%d %H:%M:%S")</code> to debug</li>
+                        <li>Consider TZ= setting in props.conf if source timezone differs</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">High latency / Queue buildup</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Check HF resource utilization (CPU, memory, disk I/O)</li>
+                        <li>Review queue sizes in metrics.log</li>
+                        <li>Consider adding HF capacity or load balancing</li>
+                        <li>Check network bandwidth between HF and Splunk Cloud</li>
+                        <li>Enable compression if not already: <code>compressed = true</code></li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Acceptance Criteria</h2>
+            
+            <div class="acceptance-criteria">
+                <h3>Phase 1 Gate Requirements</h3>
+                <div class="checklist">
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="syslog-accept-flow">
+                        <span>Data flowing from all configured sources to Splunk Cloud</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="syslog-accept-sourcetype">
+                        <span>Correct sourcetype assignment for each device type</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="syslog-accept-timestamp">
+                        <span>Timestamps parsed correctly (no future dates, no >24h latency)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="syslog-accept-host">
+                        <span>Host field populated correctly (DNS or IP)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="syslog-accept-latency">
+                        <span>Ingestion latency &lt;5 minutes under normal conditions</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="syslog-accept-ha">
+                        <span>HA validated: Data continues during single HF failure</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- SECTION: ROLLBACK & SAFETY -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <h2>Rollback & Safety</h2>
+
+            <h3>Emergency: Disable Syslog Input on HF</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Emergency Procedure</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Syslog input causing issues (volume spike, parsing errors, HF overload)
+
+OPTION 1: Disable Specific Input (Preferred)
+─────────────────────────────────────────────
+1. SSH to Heavy Forwarder
+2. Identify problematic input in inputs.conf
+3. Edit: $SPLUNK_HOME/etc/apps/[app]/local/inputs.conf
+4. Add: disabled = 1 to the stanza
+5. Reload: $SPLUNK_HOME/bin/splunk reload inputs
+
+OPTION 2: Block at Firewall (Immediate)
+───────────────────────────────────────
+If HF is overwhelmed and unresponsive:
+1. Block source IP at network firewall
+2. This stops data immediately but may alert source team
+3. Coordinate with network team
+
+OPTION 3: Stop Splunk Process (Last Resort)
+───────────────────────────────────────────
+⚠️ WARNING: This stops ALL data collection on this HF
+1. SSH to HF: $SPLUNK_HOME/bin/splunk stop
+2. Data will queue at sources (if TCP) or be lost (if UDP)
+3. Fix issue, then restart: $SPLUNK_HOME/bin/splunk start
+
+COMMUNICATION:
+- Notify SOC immediately (log gap occurring)
+- Notify network/security teams
+- Document start/end time of gap for compliance</code></pre>
+            </div>
+
+            <h3>Safe HF Configuration Change Procedure</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Safe Change Procedure</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>BEFORE ANY HF CHANGE:
+
+STEP 1: Backup Current Configuration
+─────────────────────────────────────
+tar -czvf /backup/splunk_etc_$(date +%Y%m%d_%H%M).tar.gz $SPLUNK_HOME/etc/
+
+STEP 2: Validate New Configuration (BEFORE Applying)
+─────────────────────────────────────────────────────
+# Check inputs.conf syntax
+$SPLUNK_HOME/bin/splunk btool inputs list --debug | grep -i "error\|warning"
+
+# Check props.conf syntax  
+$SPLUNK_HOME/bin/splunk btool props list --debug | grep -i "error\|warning"
+
+# Check outputs.conf syntax
+$SPLUNK_HOME/bin/splunk btool outputs list --debug | grep -i "error\|warning"
+
+STEP 3: Apply Change During Window
+──────────────────────────────────
+1. Make configuration change
+2. Reload (if supported): $SPLUNK_HOME/bin/splunk reload inputs
+3. Or restart: $SPLUNK_HOME/bin/splunk restart
+
+STEP 4: Validate Immediately After
+──────────────────────────────────
+# Check listening ports
+netstat -tulpn | grep splunkd
+
+# Check for errors
+tail -100 $SPLUNK_HOME/var/log/splunk/splunkd.log | grep -i "error\|warning"
+
+# Check queue health
+$SPLUNK_HOME/bin/splunk show queue-usage
+
+# Verify data in Splunk Cloud (wait 2-5 minutes)
+index=[target_index] earliest=-10m | stats count by sourcetype</code></pre>
+            </div>
+
+            <h3>HF Failover Testing Procedure</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">HA Validation</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>TEST HF HIGH AVAILABILITY (Before Go-Live)
+
+PREREQUISITE: Schedule during maintenance window with SOC awareness
+
+STEP 1: Baseline Data Flow
+──────────────────────────
+# Record current event rate per HF
+index=[target_index] earliest=-1h | stats count by splunk_server
+
+STEP 2: Fail Primary HF
+───────────────────────
+1. Stop Splunk on HF1: $SPLUNK_HOME/bin/splunk stop
+2. Wait 2 minutes for failover
+
+STEP 3: Verify Failover Success
+───────────────────────────────
+# Data should now flow through HF2
+index=[target_index] earliest=-5m | stats count by splunk_server
+# Expect: HF2 count should match pre-failover total rate
+
+STEP 4: Restore Primary
+───────────────────────
+1. Start Splunk on HF1: $SPLUNK_HOME/bin/splunk start
+2. Verify both HFs receiving data again
+
+STEP 5: Document Results
+────────────────────────
+- Failover time: _____ seconds
+- Data loss during failover: _____ events (should be 0 for TCP)
+- Any issues observed: _____
+
+ACCEPTANCE: Failover completes in <60 seconds with zero data loss for TCP sources</code></pre>
+            </div>
+
+            <h3>Volume Explosion Response</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Emergency: Volume Spike</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Syslog source suddenly sending 10x+ normal volume
+
+DIAGNOSIS:
+1. Identify source: index=[target_index] earliest=-1h | stats count by host | sort - count | head 10
+2. Check if legitimate (config change, attack, audit enabled)
+
+IF LEGITIMATE BUT UNEXPECTED:
+1. Contact source owner to understand change
+2. May need to add HF capacity
+3. May need to filter at source
+
+IF ILLEGITIMATE (Misconfiguration/Loop):
+1. Disable input immediately (see Emergency Disable above)
+2. Contact source owner
+3. Do not re-enable until root cause fixed
+
+IF LICENSE IMPACT:
+1. Disable input if approaching license limit
+2. Escalate to Splunk admin and license owner
+3. May need emergency license increase</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section next-steps">
+            <h2>Next Steps</h2>
+            <div class="next-steps-grid">
+                <a href="endpoint-telemetry.html" class="next-step-card">
+                    <span class="next-step-label">Next Guide</span>
+                    <span class="next-step-title">Endpoint Telemetry →</span>
+                </a>
+                <a href="../phase2-data-quality/index.html" class="next-step-card">
+                    <span class="next-step-label">After Log Coverage</span>
+                    <span class="next-step-title">Phase 2: Data Quality →</span>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

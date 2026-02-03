@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>From Data Model → Correlation Search (Safe Path) - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Data Layer & CIM ⚠️</div>
+                    <a href="how-es-uses-data.html" class="nav-item nav-item-sub">How ES Uses Data</a>
+                    <a href="cim-fundamentals.html" class="nav-item nav-item-sub">CIM Fundamentals for ES</a>
+                    <a href="data-models-deep-dive.html" class="nav-item nav-item-sub">Data Models Deep Dive</a>
+                    <a href="validating-es-data.html" class="nav-item nav-item-sub">Validating ES Data ⛔</a>
+                    <a href="missing-fields.html" class="nav-item nav-item-sub">Missing Fields After Add-ons</a>
+                    <a href="safe-addon-tuning.html" class="nav-item nav-item-sub">Safe Add-on Tuning</a>
+                    <a href="safe-correlation-path.html" class="nav-item nav-item-sub active">Data Model → Correlation</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="../es-content-management/tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="../es-operations/notable-suppression.html" class="nav-item nav-item-sub">Notable Suppression</a>
+                    <a href="../es-operations/investigations-evidence.html" class="nav-item nav-item-sub">Investigations & Evidence</a>
+                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="how-es-uses-data.html">ES Data Layer</a>
+                <span class="separator">/</span>
+                <span class="current">Data Model → Correlation Search (Safe Path)</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-2">⚠️ ES DATA LAYER — CRITICAL</span>
+                <h1>From Data Model → Correlation Search (Safe Path)</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES DATA LAYER</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> The complete safe path from a validated data model to a working correlation search. How to choose between data model–based and raw-event–based detections. How to prototype, backtest, transition to monitoring-only, and finally enable notables — all without breaking anything. Includes a worked example built clause-by-clause.</p>
+                    <p><strong>Ownership:</strong> Detection Engineering</p>
+                    <p><strong>Preconditions:</strong> You've passed all 5 gates in <a href="validating-es-data.html">Validating ES Data</a>. The data model is populated. Fields are confirmed. You are ready to build or enable a detection.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> You have completed the 5-gate validation for the target data model and sourcetypes. <strong>If not:</strong> Go back to <a href="validating-es-data.html">Validating ES Data</a>. This page assumes the data layer is ready.</li>
+                        <li><strong>Assumption:</strong> You will NOT go directly from "idea" to "enabled in production." Every detection follows the lifecycle: prototype → backtest → monitoring-only → production. There are no shortcuts.</li>
+                        <li><strong>Assumption:</strong> The client has zero tolerance for breaking production. Every step in this page is designed for maximum safety and minimum blast radius.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: CHOOSING DM-BASED VS RAW -->
+                <!-- ============================================== -->
+                <h2>Choosing: Data Model–Based vs Raw Event–Based</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    START["You need to build<br/>a correlation search"] --> Q1{"Is the data available<br/>in an accelerated<br/>data model?<br/>(Passed Gate 1-3)"}
+    
+    Q1 -->|"YES — data model<br/>is validated"| Q2{"Does the detection<br/>only need fields<br/>INSIDE the data model?"}
+    
+    Q2 -->|"YES — all fields<br/>in the model"| DM["✅ USE DATA MODEL (tstats)<br/>Fastest, lowest resource cost.<br/>Standard approach for ES."]
+    
+    Q2 -->|"NO — needs fields<br/>NOT in the data model<br/>(custom fields, raw text)"|HYBRID["🟡 HYBRID APPROACH<br/>Use tstats for initial filter,<br/>then | search for enrichment.<br/>See hybrid example below."]
+    
+    Q1 -->|"NO — data model empty<br/>or acceleration off"| Q3{"Can the data model<br/>issue be fixed?"}
+    
+    Q3 -->|"YES — fixable<br/>with reasonable effort"| FIX["Fix the data model first.<br/>See Missing Fields and<br/>Safe Add-on Tuning.<br/>Then use tstats."]
+    
+    Q3 -->|"NO — unfixable or<br/>too complex or<br/>temporary workaround"| RAW["🟠 USE RAW SEARCH<br/>| search against index directly.<br/>Higher resource cost.<br/>All fields available."]
+    
+    style DM fill:#238636,stroke:#2ea043,color:#fff
+    style HYBRID fill:#d29922,stroke:#bb8009,color:#fff
+    style RAW fill:#d29922,stroke:#bb8009,color:#fff
+    style FIX fill:#58a6ff,stroke:#388bfd,color:#fff
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Approach</th>
+                                <th>SPL Pattern</th>
+                                <th>When to Use</th>
+                                <th>Advantages</th>
+                                <th>Disadvantages</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>Data Model (tstats)</strong></td>
+                                <td><code>| tstats count FROM datamodel=X WHERE ... BY ...</code></td>
+                                <td>All fields needed are in the data model. DM is validated. This is the default choice.</td>
+                                <td>Fast (seconds). Low CPU. Scales to millions of events. Consistent with OOTB/ESCU content.</td>
+                                <td>Limited to fields in the data model. Requires acceleration. Silent failure if DM chain breaks.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>Hybrid (tstats + search)</strong></td>
+                                <td><code>| tstats ... FROM datamodel=X ... | search ... | eval ...</code></td>
+                                <td>Need DM fields for filtering but also need fields outside the model for enrichment or final evaluation.</td>
+                                <td>Gets speed of tstats for initial filter. Access to additional fields for context.</td>
+                                <td>More complex SPL. The <code>| search</code> step is slower for large result sets.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>Raw Event (search)</strong></td>
+                                <td><code>index=X sourcetype=Y ... | stats ... | where ...</code></td>
+                                <td>Data model not available. Need fields not in any model. Temporary while DM is being fixed.</td>
+                                <td>Access to all fields. No DM dependency. Works even with zero CIM compliance.</td>
+                                <td>Slower (minutes). Higher CPU. Doesn't scale well for large time ranges. Must specify index/sourcetype explicitly.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: THE SAFE BUILD LIFECYCLE -->
+                <!-- ============================================== -->
+                <h2>The Safe Build Lifecycle</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart LR
+    P["1. PROTOTYPE<br/>Write SPL in search bar.<br/>Ad-hoc only.<br/>No saved search yet."]
+    
+    B["2. BACKTEST<br/>Run against 7-30 days.<br/>Assess volume, accuracy,<br/>false positive rate."]
+    
+    M["3. MONITORING-ONLY<br/>Save as scheduled search.<br/>NO notable action yet.<br/>Log results to lookup<br/>or summary index."]
+    
+    E["4. ENABLE NOTABLES<br/>Add notable action.<br/>Set severity, owner,<br/>security domain.<br/>SOC begins triage."]
+    
+    T["5. TUNE<br/>Adjust thresholds,<br/>add suppressions,<br/>refine filters<br/>based on SOC feedback."]
+    
+    P --> B --> M --> E --> T
+    
+    style P fill:#161b22,stroke:#58a6ff,color:#c9d1d9
+    style B fill:#161b22,stroke:#d29922,color:#c9d1d9
+    style M fill:#161b22,stroke:#a371f7,color:#c9d1d9
+    style E fill:#161b22,stroke:#238636,color:#c9d1d9
+    style T fill:#161b22,stroke:#f0883e,color:#c9d1d9
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- STEP 1: PROTOTYPE -->
+                <!-- ============================================== -->
+                <h3>Step 1: Prototype — Write the SPL in Search Bar</h3>
+
+                <p>Build your correlation search interactively in the Splunk search bar. Do NOT save it yet. This is your sandbox.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Prototyping Rule</th>
+                                <th>Why</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Start with a short time range (1-4 hours)</strong></td><td>Faster feedback. Less resource impact. You'll expand later in backtesting.</td></tr>
+                            <tr><td><strong>Build clause by clause</strong></td><td>Run after each addition. Verify the result makes sense. Don't write the whole search and then debug.</td></tr>
+                            <tr><td><strong>Check result counts at each stage</strong></td><td>If a WHERE clause drops results to zero, investigate immediately. Is the filter wrong, or is the data wrong?</td></tr>
+                            <tr><td><strong>Verify field values, not just counts</strong></td><td>Use <code>| table</code> and <code>| stats values(field)</code> to see actual values. Ensure they make sense.</td></tr>
+                            <tr><td><strong>Don't optimize yet</strong></td><td>Get the logic right first. Performance tuning comes later.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- STEP 2: BACKTEST -->
+                <!-- ============================================== -->
+                <h3>Step 2: Backtest — Run Against Historical Data</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Procedure: Backtesting a Correlation Search</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Step 1: Run the prototype SPL over 7 days")`
+`comment("Change earliest=-7d latest=now in the time picker")`
+`comment("Observe: How many results? Are they all true positives?")`
+
+`comment("Step 2: Assess volume")`
+YOUR_CORRELATION_SPL earliest=-7d latest=now
+| stats count
+`comment("If count > 100 per day → threshold too low or needs tuning")`
+`comment("If count = 0 → either no matching events (good?) or detection is broken (bad)")`
+
+`comment("Step 3: Assess accuracy — sample results")`
+YOUR_CORRELATION_SPL earliest=-7d latest=now
+| head 20
+| table _time, user, src, dest, action, count
+`comment("Manually review: Are these real security events or noise?")`
+
+`comment("Step 4: Check for known false positive patterns")`
+YOUR_CORRELATION_SPL earliest=-7d latest=now
+| stats count BY user
+| sort - count
+| head 10
+`comment("If one user dominates, it may be a service account or scanner")`
+
+`comment("Step 5: Estimate daily notable volume")`
+YOUR_CORRELATION_SPL earliest=-7d latest=now
+| bucket _time span=1d
+| stats count BY _time
+| stats avg(count) AS avg_daily, max(count) AS max_daily, min(count) AS min_daily</code></pre>
+                </div>
+
+                <h3>Backtest Acceptance Criteria</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>✅ Acceptable</th>
+                                <th>🟡 Needs Tuning</th>
+                                <th>❌ Do Not Enable</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Daily notable volume</strong></td>
+                                <td>0-10 per day (manageable for SOC)</td>
+                                <td>10-50 per day (needs tuning or more specific filters)</td>
+                                <td>&gt;50 per day (will flood SOC, noise > signal)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>True positive rate (sampled)</strong></td>
+                                <td>&gt;70% of sampled results are genuine security events</td>
+                                <td>30-70% true positive (needs filter refinement)</td>
+                                <td>&lt;30% (detection is mostly noise)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Consistent across days</strong></td>
+                                <td>Roughly similar volume each day (± 50%)</td>
+                                <td>Spiky — some days 0, some days 100</td>
+                                <td>Triggered by a single event or batch job causing mass alerts</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- STEP 3: MONITORING-ONLY -->
+                <!-- ============================================== -->
+                <h3>Step 3: Monitoring-Only — Schedule Without Notables</h3>
+
+                <p>Save the search as a scheduled search but do NOT add the notable event action. This lets you observe what the search produces in production without affecting the SOC.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Step</th>
+                                <th>Action</th>
+                                <th>Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1</strong></td>
+                                <td>Save the search</td>
+                                <td>Settings → Searches, Reports, Alerts → New Alert. Name with prefix: <code>MONITORING - [Detection Name]</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>2</strong></td>
+                                <td>Set schedule</td>
+                                <td>Match what the production schedule would be (e.g., every 5 minutes, every 15 minutes). Use the same cron as the eventual production search.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3</strong></td>
+                                <td>Set time range</td>
+                                <td>Match the production lookback window. If the production search will look at the last 15 minutes, set <code>earliest=-16m latest=-1m</code> (the 1-minute offset avoids edge-second timing issues).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4</strong></td>
+                                <td>Do NOT add notable action</td>
+                                <td>Leave alert actions empty. The search runs and discards results. You can check results via the job inspector or by examining the search scheduler logs.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>5</strong></td>
+                                <td>Monitor for 3-7 days</td>
+                                <td>Check: <code>index=_internal sourcetype=scheduler savedsearch_name="MONITORING*" | stats count BY savedsearch_name, status</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>6</strong></td>
+                                <td>Review results</td>
+                                <td>Verify the search runs without errors, returns expected volume, completes in reasonable time (&lt; 60 seconds for tstats, &lt; 300 seconds for raw).</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check Monitoring-Only Search Performance</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only")`
+`comment("Shows how your monitoring search is performing")`
+
+index=_internal sourcetype=scheduler savedsearch_name="MONITORING*"
+    earliest=-7d latest=now
+| stats count AS runs,
+    avg(run_time) AS avg_runtime_sec,
+    max(run_time) AS max_runtime_sec,
+    sum(result_count) AS total_results,
+    avg(result_count) AS avg_results_per_run
+    BY savedsearch_name, status
+| eval avg_runtime_sec = round(avg_runtime_sec, 1)
+| eval avg_results_per_run = round(avg_results_per_run, 1)
+| table savedsearch_name, status, runs, avg_runtime_sec, max_runtime_sec, total_results, avg_results_per_run</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- STEP 4: ENABLE NOTABLES -->
+                <!-- ============================================== -->
+                <h3>Step 4: Enable Notables — Production Activation</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Step</th>
+                                <th>Action</th>
+                                <th>Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1</strong></td>
+                                <td>Clone the monitoring search or create the production version</td>
+                                <td>Rename: <code>CUSTOM - [Detection Name] - [Org] Tuned</code>. Disable the MONITORING version.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2</strong></td>
+                                <td>Add the Notable Event action</td>
+                                <td>Configure: Title, Description, Severity, Security Domain, Default Owner, Default Status. See <a href="../es-operations/enablement-mechanics.html">Enablement Mechanics</a> for field-by-field guidance.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3</strong></td>
+                                <td>Set initial severity conservatively</td>
+                                <td>Start at <strong>Medium</strong> unless the detection is confirmed high-fidelity (very low false positive rate). You can increase later.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4</strong></td>
+                                <td>Notify the SOC</td>
+                                <td>Tell the SOC team: new detection enabled, what it detects, expected daily volume, recommended triage steps.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>5</strong></td>
+                                <td>Monitor first 48 hours closely</td>
+                                <td>Check Incident Review for the new notables. Verify volume matches backtest expectations. Address any unexpected noise immediately.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WORKED EXAMPLE -->
+                <!-- ============================================== -->
+                <h2>Worked Example: Building a Brute Force Detection (Clause by Clause)</h2>
+
+                <p>This example walks through building a real correlation search from scratch, using the Authentication data model. Each clause is explained.</p>
+
+                <h3>Detection Goal</h3>
+                <p>Detect when a single source IP generates more than 10 failed authentication attempts against any user within a 15-minute window.</p>
+
+                <h3>Prerequisites Verified</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Gate</th>
+                                <th>Status</th>
+                                <th>Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Gate 1: Acceleration</td><td>✅ PASS</td><td>Authentication model accelerated, 99% complete</td></tr>
+                            <tr><td>Gate 2: Population</td><td>✅ PASS</td><td>WinEventLog:Security and azure:aad:signin both contributing</td></tr>
+                            <tr><td>Gate 3: Fields</td><td>✅ PASS</td><td>action=98%, user=97%, src=95%</td></tr>
+                            <tr><td>Gate 4: Time</td><td>✅ PASS</td><td>24h continuous, no gaps</td></tr>
+                            <tr><td>Gate 5: Detection</td><td>✅ PASS</td><td>action, user, src all populated for "failure" events</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Building the SPL — Clause by Clause</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Clause 1: Query the data model</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Start with the tstats base query")`
+`comment("This queries the accelerated Authentication data model")`
+`comment("'summariesonly=true' means ONLY use acceleration (fastest, but returns nothing if accel is off)")`
+`comment("We use summariesonly=true because we've already validated acceleration in Gate 1")`
+
+| tstats summariesonly=true count</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Clause 2: Specify the data model and filter</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("FROM = which data model to query")`
+`comment("WHERE = filter conditions")`
+`comment("Authentication.action='failure' → only failed login attempts")`
+
+| tstats summariesonly=true count
+    FROM datamodel=Authentication
+    WHERE Authentication.action="failure"
+        earliest=-15m latest=now</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Clause 3: Group results by source and target</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("BY = group results. We want to count per source IP and per user.")`
+`comment("This gives us: for each (src, user) pair, how many failures in 15 min?")`
+
+| tstats summariesonly=true count
+    FROM datamodel=Authentication
+    WHERE Authentication.action="failure"
+        earliest=-15m latest=now
+    BY Authentication.src, Authentication.user, Authentication.dest</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Clause 4: Clean up field names</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Rename data model field paths to simple names")`
+`comment("This makes the output readable and the WHERE clause simpler")`
+
+| tstats summariesonly=true count
+    FROM datamodel=Authentication
+    WHERE Authentication.action="failure"
+        earliest=-15m latest=now
+    BY Authentication.src, Authentication.user, Authentication.dest
+| rename Authentication.src AS src, Authentication.user AS user, Authentication.dest AS dest</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Clause 5: Apply the threshold</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Filter to only show results above the threshold")`
+`comment("'where count > 10' → more than 10 failures from this src to this user")`
+`comment("This is the detection condition")`
+
+| tstats summariesonly=true count
+    FROM datamodel=Authentication
+    WHERE Authentication.action="failure"
+        earliest=-15m latest=now
+    BY Authentication.src, Authentication.user, Authentication.dest
+| rename Authentication.src AS src, Authentication.user AS user, Authentication.dest AS dest
+| where count > 10</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Clause 6 (Final): Count distinct users per source (advanced variant)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("ADVANCED: Instead of per-user threshold, detect a single source")`
+`comment("attacking MULTIPLE users (credential stuffing / password spraying)")`
+`comment("dc(user) = distinct count of users targeted by each source IP")`
+
+| tstats summariesonly=true count AS failure_count,
+    dc(Authentication.user) AS targeted_users
+    FROM datamodel=Authentication
+    WHERE Authentication.action="failure"
+        earliest=-15m latest=now
+    BY Authentication.src
+| rename Authentication.src AS src
+| where failure_count > 10 AND targeted_users > 3
+| eval description = src . " generated " . failure_count . " failed logins against " . targeted_users . " unique users in 15 minutes"</code></pre>
+                </div>
+
+                <h3>What Each Part Does — Summary</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>SPL Element</th>
+                                <th>Purpose</th>
+                                <th>What Happens If Wrong</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>| tstats summariesonly=true</code></td><td>Query acceleration only (fastest mode)</td><td>If acceleration is off, returns zero. Use <code>summariesonly=false</code> to fall back to raw (slower).</td></tr>
+                            <tr><td><code>count</code></td><td>Count matching events</td><td>—</td></tr>
+                            <tr><td><code>FROM datamodel=Authentication</code></td><td>Specify which data model</td><td>Wrong model name → error. Non-accelerated model → zero results.</td></tr>
+                            <tr><td><code>WHERE Authentication.action="failure"</code></td><td>Filter to failed logins only</td><td>If action values don't match (e.g., data has "failed" not "failure"), filter returns zero. Check actual values.</td></tr>
+                            <tr><td><code>earliest=-15m latest=now</code></td><td>15-minute lookback window</td><td>Must match the search schedule. If search runs every 5 min with -15m lookback, some events are counted multiple times (overlapping windows).</td></tr>
+                            <tr><td><code>BY Authentication.src</code></td><td>Group by source IP</td><td>If src is null for some events, those events are grouped into a single "null" bucket — creating false aggregation.</td></tr>
+                            <tr><td><code>| where count > 10</code></td><td>Threshold — minimum failures to trigger</td><td>Too low → noise. Too high → misses real attacks. Start conservative (higher), tune down based on backtest.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FAILURE SCENARIOS -->
+                <!-- ============================================== -->
+                <h2>Failure Scenarios — What Can Go Wrong</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Failure</th>
+                                <th>Symptom</th>
+                                <th>Root Cause</th>
+                                <th>Prevention</th>
+                                <th>Recovery</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Detection never fires</strong></td>
+                                <td>Zero notables. Scheduler shows "completed" with 0 results.</td>
+                                <td>Data model empty, acceleration off, wrong field values in WHERE, or threshold too high.</td>
+                                <td>Complete 5-gate validation. Backtest before enabling.</td>
+                                <td>Run the SPL ad-hoc over 7 days. If zero results, walk through the <a href="data-models-deep-dive.html">tstats diagnostic checklist</a>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detection floods SOC</strong></td>
+                                <td>Hundreds of notables per day. SOC overwhelmed.</td>
+                                <td>Threshold too low. Service accounts triggering. Scanner traffic. Batch jobs.</td>
+                                <td>Backtest with 7-day data. Check top contributors (<code>stats count BY user</code>).</td>
+                                <td>Raise threshold immediately. Add known-good exclusions (service accounts, scanner IPs). See <a href="../es-content-management/tuning-noise.html">Tuning & Noise Reduction</a>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detection fires on stale data</strong></td>
+                                <td>Notables appear for events that happened hours ago.</td>
+                                <td>Data ingestion delay. Events arrive in Splunk late. Acceleration backlog.</td>
+                                <td>Gate 4 time coverage check. Understand data latency for each source.</td>
+                                <td>Adjust lookback window to account for ingestion delay (<code>earliest=-20m latest=-5m</code> instead of <code>earliest=-15m latest=now</code>).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detection search skipped</strong></td>
+                                <td>Scheduler log shows "skipped" status.</td>
+                                <td>Search concurrency limit reached. Too many searches running simultaneously.</td>
+                                <td>Monitor scheduler health: <code>index=_internal sourcetype=scheduler status=skipped</code></td>
+                                <td>Stagger search schedules. Escalate to Splunk admin if persistent. May need more search slots.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detection logic correct but notable action missing</strong></td>
+                                <td>Search runs, returns results (visible in scheduler log), but nothing in Incident Review.</td>
+                                <td>Notable Event adaptive response action not configured on the saved search.</td>
+                                <td>Verify notable action is configured before declaring production.</td>
+                                <td>Edit search → Trigger Actions → Add Notable Event action. Configure fields. See <a href="../es-operations/enablement-mechanics.html">Enablement Mechanics</a>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detection works but can't be triaged</strong></td>
+                                <td>Notables appear but SOC analysts can't investigate (no drill-down, no context).</td>
+                                <td>Notable title/description don't include relevant fields. No drill-down search configured.</td>
+                                <td>Include key fields in notable description template: <code>$result.src$</code>, <code>$result.user$</code>, <code>$result.count$</code>.</td>
+                                <td>Edit notable action → update description and drill-down with field tokens.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: HYBRID EXAMPLE -->
+                <!-- ============================================== -->
+                <h2>Hybrid Example: tstats + Raw Enrichment</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Hybrid — tstats for Speed, Raw Search for Context</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Use case: Detect failed auth brute force AND check if the source IP")`
+`comment("has a specific user_agent (a field NOT in the Authentication data model)")`
+
+`comment("PHASE 1: Fast filter using tstats (data model)")`
+| tstats summariesonly=true count AS failure_count
+    FROM datamodel=Authentication
+    WHERE Authentication.action="failure"
+        earliest=-15m latest=now
+    BY Authentication.src
+| rename Authentication.src AS src
+| where failure_count > 10
+
+`comment("PHASE 2: Enrich with raw event data for additional fields")`
+| map search="search index=proxy sourcetype=bluecoat src=$src$ earliest=-15m latest=now
+    | stats values(http_user_agent) AS user_agents BY src"
+
+`comment("PHASE 3: Final evaluation with enriched data")`
+| where isnotnull(user_agents)
+| eval suspicious_ua = if(match(user_agents, "python|curl|wget|scanner"), "YES", "NO")</code></pre>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Hybrid Approach — Performance Consideration</div>
+                    <p>The <code>| map</code> command runs a subsearch for each result from Phase 1. If Phase 1 returns 100 source IPs, that's 100 subsearches. Keep Phase 1 results small (tight thresholds) to avoid performance impact. Alternative: use a lookup table for enrichment instead of live raw search.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: SUMMARIESONLY EXPLAINED -->
+                <!-- ============================================== -->
+                <h2><code>summariesonly</code> — When to Use True vs False</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Behavior</th>
+                                <th>When to Use</th>
+                                <th>Risk</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>summariesonly=true</code></td>
+                                <td>Queries ONLY the acceleration summary (TSIDX). If acceleration is off or behind, returns zero.</td>
+                                <td>Production correlation searches where you've validated acceleration (Gate 1 PASS).</td>
+                                <td>Silent zero results if acceleration breaks. You must monitor acceleration health.</td>
+                            </tr>
+                            <tr>
+                                <td><code>summariesonly=false</code></td>
+                                <td>Queries acceleration if available, falls back to raw events if not. Slower but more resilient.</td>
+                                <td>Prototyping. Non-critical detections. Environments where acceleration stability is uncertain.</td>
+                                <td>Slower. Higher resource consumption. May miss the data if CIM/tags aren't configured (falls back to raw but still filtered by DM constraints).</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>Backtest shows > 50 results per day.</strong> Do not enable. The SOC cannot absorb this volume. Tune the detection first (raise threshold, add exclusions, narrow scope).</li>
+                        <li><strong>Backtest shows 0 results over 7 days and you expected results.</strong> The data model chain is broken somewhere. Re-run the <a href="validating-es-data.html">5-gate validation</a> before investigating detection logic.</li>
+                        <li><strong>Monitoring-only phase reveals search run times > 300 seconds.</strong> The search is too expensive. Optimize the SPL, use a different approach (tstats vs raw), or reduce the time range.</li>
+                        <li><strong>Search scheduler shows frequent skips.</strong> The Splunk instance is overloaded. Adding more searches makes it worse. Escalate to Splunk admin for capacity planning.</li>
+                        <li><strong>Someone asks to skip monitoring-only and go directly to production notables.</strong> Push back. The monitoring phase catches problems BEFORE the SOC is affected. 3-7 days of monitoring is cheap insurance.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>"Copy the SPL from a blog post and enable it"</strong></td><td>Blog SPL is generic. Your environment has different field names, different values, different noise profile. It won't work as-is.</td><td>Use blog posts as starting points. Adapt to your data. Validate against YOUR data model. Backtest in YOUR environment.</td></tr>
+                            <tr><td><strong>"I'll set the threshold really low to catch everything"</strong></td><td>Low thresholds = high volume = SOC fatigue = real alerts ignored = detection is effectively useless.</td><td>Start with a HIGHER threshold. It's better to miss some edge cases and catch obvious attacks than to drown the SOC in noise.</td></tr>
+                            <tr><td><strong>"The search works, so I'll enable it on 20 data sources at once"</strong></td><td>Each data source has different noise profiles. What works for Windows auth may flood on Azure AD auth. Bulk enablement = mass noise.</td><td>Enable per data source. Backtest each. Tune each. Gradually expand coverage.</td></tr>
+                            <tr><td><strong>"summariesonly=false is safer — I'll use it in production"</strong></td><td>False gives you a fallback to raw search, but it's MUCH slower. In production, this can cause search skips due to long run times.</td><td>Use summariesonly=true in production after validating acceleration. Monitor acceleration health as part of ongoing operations.</td></tr>
+                            <tr><td><strong>"I built 10 detections — let me enable all of them this week"</strong></td><td>10 new detections simultaneously = unpredictable SOC impact. You can't tell which detection is causing noise. Can't tune individually.</td><td>Enable 2-3 per week maximum. Monitor each for a few days. Tune. Then add more. See <a href="../es-content-management/escu-operationalize.html">ESCU rate limiting</a>.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Typical Effort & Timeline</h2>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr><th>Task</th><th>Best Case</th><th>Common Case</th><th>Blocked Case</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Prototype a tstats correlation search</strong></td><td>30 minutes</td><td>1-2 hours</td><td>Half day (complex logic)</td></tr>
+                            <tr><td><strong>Backtest (7-day)</strong></td><td>30 minutes</td><td>1-2 hours</td><td>Half day (high volume, manual review needed)</td></tr>
+                            <tr><td><strong>Monitoring-only phase</strong></td><td>3 days</td><td>5-7 days</td><td>2 weeks (if issues found requiring iteration)</td></tr>
+                            <tr><td><strong>Enable notables + SOC notification</strong></td><td>30 minutes</td><td>1 hour</td><td>2 hours (if notable action config is complex)</td></tr>
+                            <tr><td><strong>Initial tuning after production enable</strong></td><td>1 hour</td><td>Half day</td><td>1-2 days (significant noise requiring filter work)</td></tr>
+                            <tr><td><strong>Full lifecycle: idea → production detection</strong></td><td>1 week</td><td>2-3 weeks</td><td>4+ weeks (data layer issues found mid-process)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Evidence to Capture</h2>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr><th>Evidence</th><th>Format</th><th>Where to Store</th><th>When</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>5-gate validation sign-off</strong></td><td>Completed validation template</td><td>Detection registry</td><td>Before starting prototype</td></tr>
+                            <tr><td><strong>Backtest results</strong></td><td>Daily volume estimate, sampled TP rate, top contributors</td><td>Detection registry</td><td>After backtest, before monitoring phase</td></tr>
+                            <tr><td><strong>Monitoring-only performance</strong></td><td>Scheduler stats: run time, result count, skip count over 5-7 days</td><td>Detection registry</td><td>End of monitoring phase</td></tr>
+                            <tr><td><strong>Production enablement record</strong></td><td>Search name, SPL, schedule, notable config, severity, owner, date enabled</td><td>Detection registry / change management</td><td>At time of enablement</td></tr>
+                            <tr><td><strong>Tuning record</strong></td><td>What was changed (threshold, filter, exclusion), why, before/after volume</td><td>Detection registry</td><td>Each time the detection is tuned</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="../es-content-management/correlation-lifecycle.html" class="next-steps-link">Correlation Search Lifecycle →</a>
+                        <a href="../es-content-management/tuning-noise.html" class="next-steps-link">Tuning & Noise Reduction →</a>
+                        <a href="../es-operations/enablement-mechanics.html" class="next-steps-link">Enablement Mechanics →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

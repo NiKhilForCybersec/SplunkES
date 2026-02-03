@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MFA & Authentication Detection Use Cases - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
+                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="mfa-auth.html" class="nav-item nav-item-sub active">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">MFA & Authentication Use Cases</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — Detection Engineering</span>
+                <h1>MFA & Authentication Detection Use Cases</h1>
+
+                <!-- ============================================== -->
+                <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>All use cases include: data reality checks, production SPL, monitoring mode config, false positive patterns, SOC runbooks, and rollback procedures.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 MANDATORY: Complete Data Reality Check Before Each Use Case</div>
+                    <p>MFA detections are uniquely sensitive to data completeness. Missing the <code>authenticationDetails</code> array means MFA Fatigue detection is IMPOSSIBLE. <strong>DO NOT build detections if the reality check fails.</strong></p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Multi-Provider Complexity Warning</div>
+                    <p>Most enterprises have multiple identity providers (Entra ID + CyberArk + possibly Okta/Duo). Each provider:</p>
+                    <ul>
+                        <li>Uses different field names for the same concept (user, username, userPrincipalName)</li>
+                        <li>Has different event types for MFA success/failure</li>
+                        <li>Logs at different verbosity levels</li>
+                    </ul>
+                    <p>Detections must be tested against EACH provider separately before cross-provider correlation.</p>
+                </div>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Use Case Library Overview</div>
+                    <p>This library contains production-ready detection use cases for authentication and MFA events. Each detection includes full attack context, multi-provider SPL logic, tuning guidance, and SOC runbooks. Designed for environments with Entra ID as primary IdP and CyberArk for privileged access.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- USE CASE SUMMARY TABLE -->
+                <!-- ============================================== -->
+                <h2>Use Case Summary</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Use Case</th>
+                                <th>Attack Type</th>
+                                <th>Severity</th>
+                                <th>MITRE ATT&CK</th>
+                                <th>Data Source</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><a href="#uc1-mfa-fatigue">MFA Fatigue Attack</a></td>
+                                <td>MFA Bypass</td>
+                                <td><span class="status-badge" style="background:#da3633;">Critical</span></td>
+                                <td>T1621</td>
+                                <td>Entra ID + CyberArk</td>
+                            </tr>
+                            <tr>
+                                <td><a href="#uc2-brute-force">Brute Force Authentication</a></td>
+                                <td>Credential Attack</td>
+                                <td><span class="status-badge" style="background:#da3633;">High</span></td>
+                                <td>T1110.001</td>
+                                <td>Entra ID</td>
+                            </tr>
+                            <tr>
+                                <td><a href="#uc3-password-spray">Password Spray Attack</a></td>
+                                <td>Credential Attack</td>
+                                <td><span class="status-badge" style="background:#da3633;">High</span></td>
+                                <td>T1110.003</td>
+                                <td>Entra ID</td>
+                            </tr>
+                            <tr>
+                                <td><a href="#uc4-impossible-travel">Impossible Travel</a></td>
+                                <td>Account Compromise</td>
+                                <td><span class="status-badge" style="background:#f59e0b;">Medium-High</span></td>
+                                <td>T1078</td>
+                                <td>Entra ID</td>
+                            </tr>
+                            <tr>
+                                <td><a href="#uc5-priv-mfa-fail">Privileged Account MFA Failure</a></td>
+                                <td>Privilege Abuse</td>
+                                <td><span class="status-badge" style="background:#da3633;">High</span></td>
+                                <td>T1078.004</td>
+                                <td>CyberArk</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- DATA REQUIREMENTS -->
+                <!-- ============================================== -->
+                <h2>Data Requirements (All Use Cases)</h2>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Critical: MFA Details Must Be Present</div>
+                    <p>MFA fatigue detection specifically requires the <code>authenticationDetails</code> array in Entra ID sign-in logs. Without this field, the most important use case in this library cannot be implemented. Verify this data exists BEFORE building detections.</p>
+                </div>
+
+                <h3>Required Log Sources</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Index</th>
+                                <th>Sourcetype</th>
+                                <th>Critical Fields</th>
+                                <th>Onboarding Guide</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Entra ID Sign-in Logs</td>
+                                <td>auth_azure</td>
+                                <td>azure:aad:signin</td>
+                                <td>userPrincipalName, ipAddress, status.errorCode, authenticationDetails</td>
+                                <td><a href="../onboarding-primary/authentication-mfa.html">Auth Onboarding</a></td>
+                            </tr>
+                            <tr>
+                                <td>CyberArk Identity Events</td>
+                                <td>auth_cyberark</td>
+                                <td>cyberark:identity</td>
+                                <td>user, event_type, result, timestamp</td>
+                                <td><a href="../onboarding-primary/authentication-mfa.html">Auth Onboarding</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Data Reality Check SPL</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Authentication Data Reality Check</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Run this BEFORE implementing any authentication detection")`
+
+index=auth_azure sourcetype="azure:aad:signin" earliest=-24h
+| head 10000
+
+`comment("Check critical field availability")`
+| eval has_user = if(isnotnull(userPrincipalName) AND userPrincipalName!="", 1, 0)
+| eval has_ip = if(isnotnull(ipAddress) AND ipAddress!="", 1, 0)
+| eval has_status = if(isnotnull('status.errorCode'), 1, 0)
+| eval has_mfa_detail = if(isnotnull('authenticationDetails{}.authenticationMethod'), 1, 0)
+| eval has_location = if(isnotnull('location.city') OR isnotnull('location.countryOrRegion'), 1, 0)
+| eval has_device = if(isnotnull('deviceDetail.operatingSystem'), 1, 0)
+| eval has_app = if(isnotnull(appDisplayName), 1, 0)
+| eval has_risk = if(isnotnull(riskLevelDuringSignIn), 1, 0)
+
+| stats 
+    count AS total_events,
+    sum(has_user) AS with_user,
+    sum(has_ip) AS with_ip,
+    sum(has_status) AS with_status,
+    sum(has_mfa_detail) AS with_mfa_detail,
+    sum(has_location) AS with_location,
+    sum(has_device) AS with_device,
+    sum(has_app) AS with_app,
+    sum(has_risk) AS with_risk
+
+| foreach with_* 
+    [eval &lt;&lt;FIELD&gt;&gt;_pct = round('&lt;&lt;FIELD&gt;&gt;'/total_events*100, 1)."%"]
+
+| table total_events, with_user_pct, with_ip_pct, with_status_pct, with_mfa_detail_pct, with_location_pct, with_device_pct, with_app_pct, with_risk_pct</code></pre>
+                </div>
+
+                <h4>Field Requirements by Use Case</h4>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Use Case</th>
+                                <th>Required Fields</th>
+                                <th>Minimum Population</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>MFA Fatigue</td>
+                                <td>userPrincipalName, authenticationDetails, status.errorCode</td>
+                                <td>&gt;90% for authenticationDetails (events where MFA triggered)</td>
+                            </tr>
+                            <tr>
+                                <td>Brute Force</td>
+                                <td>userPrincipalName, ipAddress, status.errorCode</td>
+                                <td>&gt;99%</td>
+                            </tr>
+                            <tr>
+                                <td>Password Spray</td>
+                                <td>userPrincipalName, ipAddress, status.errorCode</td>
+                                <td>&gt;99%</td>
+                            </tr>
+                            <tr>
+                                <td>Impossible Travel</td>
+                                <td>userPrincipalName, ipAddress, location.city/country</td>
+                                <td>&gt;80% for location</td>
+                            </tr>
+                            <tr>
+                                <td>Privileged MFA Failure</td>
+                                <td>user, event_type, result (CyberArk)</td>
+                                <td>&gt;99%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- USE CASE 1: MFA FATIGUE -->
+                <!-- ============================================== -->
+                <h2 id="uc1-mfa-fatigue">Use Case 1: MFA Fatigue Attack Detection</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">Critical Severity | MITRE T1621 | Breaches: Uber 2022, Cisco 2022, Microsoft 2022</div>
+                </div>
+
+                <h3>1.1 Real Attack Story: The Uber Breach (September 2022)</h3>
+
+                <p>This is exactly how MFA fatigue attacks work in the real world:</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    subgraph ACQUIRE["Phase 1: Initial Access"]
+        A1["Attacker purchases Uber<br/>contractor credentials<br/>from dark web"]
+        A2["Credentials valid but<br/>MFA blocks login"]
+    end
+    
+    subgraph FATIGUE["Phase 2: MFA Fatigue Attack"]
+        F1["Attacker initiates login<br/>→ MFA push sent to user"]
+        F2["User denies push<br/>(or ignores)"]
+        F3["Attacker tries again<br/>immediately"]
+        F4["Repeat: Push after push<br/>for over an hour"]
+        F5["User receives 100+<br/>MFA prompts"]
+    end
+    
+    subgraph SOCIAL["Phase 3: Social Engineering"]
+        S1["Attacker contacts user<br/>via WhatsApp"]
+        S2["Impersonates Uber IT:<br/>'Accept the MFA to stop<br/>the notifications'"]
+        S3["Exhausted user<br/>approves MFA push"]
+    end
+    
+    subgraph COMPROMISE["Phase 4: Full Compromise"]
+        C1["Attacker gains<br/>VPN access"]
+        C2["Discovers admin credentials<br/>in PowerShell script"]
+        C3["Accesses Uber's<br/>internal systems"]
+        C4["Exfiltrates data from<br/>Slack, HackerOne, etc."]
+    end
+    
+    A1 --> A2
+    A2 --> F1
+    F1 --> F2 --> F3 --> F4 --> F5
+    F5 --> S1 --> S2 --> S3
+    S3 --> C1 --> C2 --> C3 --> C4
+    
+    style S3 fill:#da3633,stroke:#f85149,color:#fff
+    style C4 fill:#da3633,stroke:#f85149,color:#fff
+                    </div>
+                </div>
+
+                <p><strong>Key Lessons from Uber Breach:</strong></p>
+                <ul>
+                    <li>The attack was technically simple—just spamming MFA prompts</li>
+                    <li>Human fatigue is a vulnerability that technology alone doesn't solve</li>
+                    <li>The critical detection point is: <em>many MFA prompts in short time</em></li>
+                    <li>Social engineering component (WhatsApp) wouldn't appear in authentication logs</li>
+                    <li>Detection window: Over an hour of continuous MFA prompts before success</li>
+                </ul>
+
+                <p><strong>Why This Detection is Critical for Retail:</strong></p>
+                <ul>
+                    <li>Retail employees often have MFA fatigue from legitimate high-volume prompts</li>
+                    <li>Seasonal workers may be less security-aware</li>
+                    <li>After-hours attacks target employees who just want the notifications to stop</li>
+                    <li>Privileged accounts (store managers, finance) are high-value targets</li>
+                </ul>
+
+                <h3>1.2 Data Reality Check: Verify MFA Details Exist</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify MFA Push Events Are Logged</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("This query verifies that MFA challenge events are being captured")`
+
+index=auth_azure sourcetype="azure:aad:signin" earliest=-7d
+| spath output=mfa_methods path=authenticationDetails{}.authenticationMethod
+| spath output=mfa_succeeded path=authenticationDetails{}.succeeded
+| spath output=error_code path=status.errorCode
+
+`comment("Filter to events where MFA was involved")`
+| search mfa_methods=* OR error_code IN (50074, 50076, 50079, 50072)
+
+| stats count BY mfa_methods, mfa_succeeded
+| sort - count
+
+`comment("
+Expected Results:
+- Should see 'Mobile app notification' or 'Microsoft Authenticator App' in mfa_methods
+- Should see both 'true' and 'false' for mfa_succeeded
+- If this returns empty, MFA details are NOT being logged
+")`</code></pre>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 STOP: If MFA Methods Are Empty</div>
+                    <p>If the above query returns no results or mfa_methods is always empty, you CANNOT detect MFA fatigue attacks. Common causes:</p>
+                    <ul>
+                        <li>Conditional Access policies don't require MFA (check Entra ID policies)</li>
+                        <li>Diagnostic settings don't include SignInLogs (only NonInteractive)</li>
+                        <li>Log retention is too short</li>
+                    </ul>
+                    <p>Return to <a href="../onboarding-primary/authentication-mfa.html">Authentication Onboarding</a> and fix data collection before proceeding.</p>
+                </div>
+
+                <h3>1.3 Detection Logic (Enterprise-Safe SPL)</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: MFA Fatigue Attack Detection — Correlation Search</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("
+===============================================================================
+DETECTION: MFA Fatigue (Push Bombing) Attack
+AUTHOR: Detection Engineering Team
+VERSION: 1.0
+MITRE: T1621 - Multi-Factor Authentication Request Generation
+===============================================================================
+ATTACK SIGNATURE:
+- Multiple MFA challenges to same user in short window
+- High ratio of denied/failed prompts
+- Eventually followed by successful authentication (compromise indicator)
+===============================================================================
+THRESHOLDS:
+- Default: 5+ MFA prompts in 15 minutes triggers alert
+- High-security: 3+ MFA prompts in 15 minutes
+- Automatic escalation: Any success after 5+ failures
+===============================================================================
+")`
+
+index=auth_azure sourcetype="azure:aad:signin" earliest=-20m latest=now()
+| spath output=user path=userPrincipalName
+| spath output=src_ip path=ipAddress
+| spath output=error_code path=status.errorCode
+| spath output=mfa_method path=authenticationDetails{}.authenticationMethod
+| spath output=mfa_result path=authenticationDetails{}.succeeded
+| spath output=app path=appDisplayName
+| spath output=location path=location.city
+
+`comment("Filter to MFA-related events")`
+| search error_code IN (0, 50074, 50076, 50079, 50072, 500121) 
+    OR mfa_method IN ("*push*", "*notification*", "*Authenticator*", "*Mobile*")
+
+`comment("Classify each event")`
+| eval mfa_event_type = case(
+    error_code==0 AND mfa_result=="true", "MFA_SUCCESS",
+    error_code==0 AND mfa_result=="false", "MFA_DENIED",
+    error_code IN (50076, 500121), "MFA_DENIED",
+    error_code==50074, "MFA_REQUIRED",
+    error_code==50079, "MFA_REGISTRATION_REQUIRED",
+    true(), "OTHER"
+)
+
+`comment("Aggregate by user")`
+| stats 
+    count AS total_mfa_events,
+    sum(eval(if(mfa_event_type=="MFA_DENIED", 1, 0))) AS mfa_denied,
+    sum(eval(if(mfa_event_type=="MFA_SUCCESS", 1, 0))) AS mfa_success,
+    sum(eval(if(mfa_event_type=="MFA_REQUIRED", 1, 0))) AS mfa_required,
+    dc(src_ip) AS unique_source_ips,
+    values(src_ip) AS source_ips,
+    values(app) AS targeted_apps,
+    values(location) AS locations,
+    earliest(_time) AS first_event,
+    latest(_time) AS last_event
+    BY user
+
+`comment("Detection threshold: 5+ MFA events indicates potential fatigue attack")`
+| where total_mfa_events >= 5
+
+`comment("Calculate attack metrics")`
+| eval attack_duration_min = round((last_event - first_event) / 60, 1)
+| eval prompts_per_minute = round(total_mfa_events / (attack_duration_min + 0.1), 2)
+| eval denial_rate = round(mfa_denied / total_mfa_events * 100, 1)
+
+`comment("Determine if attack succeeded (MFA approved after multiple failures)")`
+| eval attack_succeeded = if(mfa_success > 0 AND mfa_denied >= 3, "YES - POTENTIAL COMPROMISE", "No - Attack blocked")
+
+`comment("Severity assignment")`
+| eval severity = case(
+    attack_succeeded=="YES - POTENTIAL COMPROMISE", "critical",
+    total_mfa_events >= 20, "high",
+    total_mfa_events >= 10, "high",
+    total_mfa_events >= 5, "medium",
+    true(), "low"
+)
+
+`comment("Generate alert description")`
+| eval description = case(
+    attack_succeeded=="YES - POTENTIAL COMPROMISE", 
+        "🚨 MFA FATIGUE ATTACK SUCCEEDED: User ".user." approved MFA after ".mfa_denied." denied prompts. IMMEDIATE INVESTIGATION REQUIRED.",
+    true(),
+        "MFA Fatigue attempt detected: ".total_mfa_events." MFA prompts to ".user." in ".attack_duration_min." minutes. ".mfa_denied." denied."
+)
+
+| table _time, user, total_mfa_events, mfa_denied, mfa_success, attack_duration_min, prompts_per_minute, attack_succeeded, severity, source_ips, locations, targeted_apps, description</code></pre>
+                </div>
+
+                <h4>Understanding Entra ID Error Codes</h4>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Error Code</th>
+                                <th>Meaning</th>
+                                <th>Detection Relevance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>0</code></td>
+                                <td>Success</td>
+                                <td>Check mfa_result for actual MFA outcome</td>
+                            </tr>
+                            <tr>
+                                <td><code>50074</code></td>
+                                <td>Strong authentication required</td>
+                                <td>MFA was triggered</td>
+                            </tr>
+                            <tr>
+                                <td><code>50076</code></td>
+                                <td>MFA denied by user</td>
+                                <td>User actively denied the push</td>
+                            </tr>
+                            <tr>
+                                <td><code>50079</code></td>
+                                <td>User must enroll in MFA</td>
+                                <td>May indicate new device/attack</td>
+                            </tr>
+                            <tr>
+                                <td><code>500121</code></td>
+                                <td>Authentication failed during MFA challenge</td>
+                                <td>MFA prompt expired or denied</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>1.4 Historical Backtesting</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: MFA Fatigue Backtest (30 Days)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Backtest: What does MFA prompt distribution look like historically?")`
+
+index=auth_azure sourcetype="azure:aad:signin" earliest=-30d latest=now()
+| spath output=user path=userPrincipalName
+| spath output=error_code path=status.errorCode
+| search error_code IN (0, 50074, 50076, 50079, 500121)
+
+`comment("Bucket into 15-minute windows")`
+| bin _time span=15m
+
+`comment("Count MFA events per user per window")`
+| stats count AS mfa_events BY _time, user
+
+`comment("Find windows with 5+ events (potential alerts)")`
+| where mfa_events >= 5
+
+`comment("Summarize: How many alerts per day would this generate?")`
+| timechart span=1d dc(user) AS unique_users_alerted, count AS total_alert_windows
+
+`comment("
+INTERPRETATION:
+- 0-5 alerts/day: Well-tuned, proceed to monitoring mode
+- 5-20 alerts/day: Review top users for legitimate high-MFA activity
+- 20+ alerts/day: Threshold too low, or systematic issue (SSO problems?)
+")`</code></pre>
+                </div>
+
+                <h4>Identify Normal High-MFA Users</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Find Users with Legitimately High MFA Volume</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Identify users who regularly trigger high MFA volume — potential allowlist candidates")`
+
+index=auth_azure sourcetype="azure:aad:signin" earliest=-30d
+| spath output=user path=userPrincipalName
+| spath output=error_code path=status.errorCode
+| search error_code IN (0, 50074, 50076, 50079, 500121)
+| bin _time span=15m
+| stats count AS mfa_events BY _time, user
+| where mfa_events >= 5
+| stats count AS high_mfa_windows, avg(mfa_events) AS avg_mfa_per_window BY user
+| where high_mfa_windows >= 10
+| sort - high_mfa_windows
+
+`comment("
+Users appearing here might be:
+- IT admins with many system logins
+- Service desk staff
+- Users with broken SSO causing repeated prompts
+- Shared accounts (investigate!)
+
+Review each before allowlisting.
+")`</code></pre>
+                </div>
+
+                <h3>1.5 Monitoring-Only Mode Configuration</h3>
+
+                <h4>Step 1: Deploy as Report (Not Alert)</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Splunk Web Configuration</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>Report Name: MONITOR_MFA_Fatigue_Detection
+Search: [Detection SPL above]
+Schedule: Every 15 minutes
+Time Range: -20m to now
+Actions: 
+  - Collect to summary index
+  - No email/alert actions yet
+
+Summary Index Collection:
+| collect index=summary source="mfa_fatigue_monitor" marker="detection=mfa_fatigue"</code></pre>
+                </div>
+
+                <h4>Step 2: Monitoring Dashboard Query</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Monitoring Mode Dashboard</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=summary source="mfa_fatigue_monitor" earliest=-7d
+| timechart span=1d count AS potential_alerts BY severity
+| addtotals</code></pre>
+                </div>
+
+                <h4>What to Watch During Monitoring</h4>
+                <ul>
+                    <li><strong>Daily alert volume:</strong> Target &lt;10/day for manageable SOC workload</li>
+                    <li><strong>attack_succeeded = YES:</strong> ANY of these require immediate investigation even in monitoring mode</li>
+                    <li><strong>Repeated users:</strong> Same users triggering daily may need allowlisting (after investigation)</li>
+                    <li><strong>Time patterns:</strong> Alerts clustering at specific times (start of business, SSO issues?)</li>
+                    <li><strong>Source IP patterns:</strong> Many alerts from same IP might indicate misconfiguration, not attack</li>
+                </ul>
+
+                <h4>Promotion Criteria</h4>
+                <div class="checklist-group">
+                    <div class="checklist-title">Monitoring → Production Checklist</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="mfa-promote">
+                        <span>Monitoring period completed (minimum 2 weeks)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="mfa-promote">
+                        <span>Alert volume is &lt;15/day</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="mfa-promote">
+                        <span>False positives identified and mitigated</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="mfa-promote">
+                        <span>Legitimate high-MFA users reviewed and documented</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="mfa-promote">
+                        <span>SOC has reviewed and approved triage runbook</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="mfa-promote">
+                        <span>Any "attack_succeeded" events during monitoring were investigated</span>
+                    </label>
+                </div>
+
+                <h3>1.6 False Positive Management</h3>
+
+                <h4>Common False Positive Patterns</h4>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pattern</th>
+                                <th>Why It Happens</th>
+                                <th>How to Identify</th>
+                                <th>Mitigation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>IT admin with many logins</td>
+                                <td>Accessing multiple systems triggers MFA repeatedly</td>
+                                <td>Same user consistently, business hours, known IT member</td>
+                                <td>Allowlist specific users (with manager approval)</td>
+                            </tr>
+                            <tr>
+                                <td>Broken SSO causing retry loops</td>
+                                <td>Application misconfiguration causes repeated auth attempts</td>
+                                <td>Same app in targeted_apps, affects many users</td>
+                                <td>Fix SSO issue; add temporary app-based filter</td>
+                            </tr>
+                            <tr>
+                                <td>New device enrollment</td>
+                                <td>Setting up new phone/device requires multiple MFA prompts</td>
+                                <td>Followed by successful enrollment, business hours</td>
+                                <td>Acceptable FP; train SOC to recognize pattern</td>
+                            </tr>
+                            <tr>
+                                <td>Flaky mobile connectivity</td>
+                                <td>Push notifications fail, user retries repeatedly</td>
+                                <td>Short duration, same IP, eventually succeeds</td>
+                                <td>No action needed; not security relevant</td>
+                            </tr>
+                            <tr>
+                                <td>Service account with interactive login</td>
+                                <td>Misconfigured service account hitting MFA</td>
+                                <td>Non-human account name, same app, regular pattern</td>
+                                <td>Fix account configuration; exclude from detection</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4>Allowlist Configuration</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Lookup: mfa_fatigue_allowlist.csv</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>user,reason,approved_by,approved_date,review_date,max_threshold
+svc_backup@contoso.com,Service account - scheduled jobs,Security Manager,2024-01-15,2024-04-15,50
+admin.john@contoso.com,IT Admin - high legitimate MFA volume,Security Manager,2024-01-15,2024-04-15,20
+helpdesk@contoso.com,Shared service desk account,Security Manager,2024-01-15,2024-04-15,30</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Apply Allowlist to Detection</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Add after aggregation to apply allowlist with custom thresholds")`
+
+| lookup mfa_fatigue_allowlist.csv user OUTPUT reason AS allowlist_reason, max_threshold
+| eval effective_threshold = coalesce(max_threshold, 5)
+| where total_mfa_events >= effective_threshold AND isnull(allowlist_reason)
+
+`comment("Allowlisted users with custom thresholds still alert if exceeded")`</code></pre>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Never Fully Suppress Privileged Accounts</div>
+                    <p>Even if an admin has legitimate high MFA volume, NEVER fully suppress alerts for privileged accounts. Use higher thresholds instead. An attacker specifically targets admin accounts because they know defenders might ignore the alerts.</p>
+                </div>
+
+                <h3>1.7 SOC Triage Runbook</h3>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    ALERT["🚨 MFA Fatigue Alert"]
+    
+    subgraph INITIAL["Initial Assessment (2 min)"]
+        I1["Check: attack_succeeded field"]
+        I2{"Attack<br/>Succeeded?"}
+    end
+    
+    subgraph URGENT["URGENT PATH: Attack Succeeded"]
+        U1["🚨 IMMEDIATE ESCALATION"]
+        U2["Disable user account"]
+        U3["Invalidate all sessions"]
+        U4["Contact user via phone<br/>(not email/chat)"]
+        U5["Begin incident response"]
+    end
+    
+    subgraph BLOCKED["Standard Path: Attack Blocked"]
+        B1["User denied all prompts"]
+        B2["Check: Is user aware?"]
+        B3["Contact user to confirm<br/>they saw the prompts"]
+        B4{"User confirms<br/>they denied?"}
+        B5["Close as 'Blocked Attack'<br/>No compromise"]
+        B6["User didn't see prompts<br/>→ Investigate further"]
+    end
+    
+    subgraph INVESTIGATE["Investigation"]
+        INV1["Check source IP reputation"]
+        INV2["Check for other activity<br/>from same IP"]
+        INV3["Review user's recent logins"]
+        INV4["Check if password exposed<br/>in known breaches"]
+    end
+    
+    ALERT --> INITIAL
+    INITIAL --> I1 --> I2
+    I2 -->|"YES"| URGENT
+    I2 -->|"NO"| BLOCKED
+    
+    URGENT --> U1 --> U2 --> U3 --> U4 --> U5
+    
+    BLOCKED --> B1 --> B2 --> B3 --> B4
+    B4 -->|"Yes"| B5
+    B4 -->|"No/Unsure"| B6
+    B6 --> INVESTIGATE
+    
+    style ALERT fill:#da3633,stroke:#f85149,color:#fff
+    style U1 fill:#da3633,stroke:#f85149,color:#fff
+    style B5 fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SOC Runbook: MFA Fatigue Attack</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>═══════════════════════════════════════════════════════════════════
+MFA FATIGUE ATTACK TRIAGE RUNBOOK
+═══════════════════════════════════════════════════════════════════
+
+PRIORITY: CRITICAL if attack_succeeded = YES
+
+STEP 1: IMMEDIATE ASSESSMENT (1 minute)
+───────────────────────────────────────
+□ Check attack_succeeded field in alert
+  → "YES - POTENTIAL COMPROMISE": SKIP TO STEP 3 (URGENT)
+  → "No - Attack blocked": Continue to Step 2
+
+STEP 2: BLOCKED ATTACK WORKFLOW (10 minutes)
+───────────────────────────────────────────
+□ Review alert details:
+  - User: Who was targeted?
+  - total_mfa_events: How many prompts?
+  - attack_duration_min: Over what time period?
+  - source_ips: Where did attempts originate?
+
+□ Check source IP reputation:
+  | inputlookup threat_intel.csv | search ip="[source_ip]"
+  
+□ Contact user (phone preferred):
+  - "Did you receive multiple MFA prompts around [time]?"
+  - "Did you deny them?"
+  - "Did anyone contact you asking you to accept?"
+
+□ If user confirms they denied all prompts:
+  - Educate user on MFA fatigue attacks
+  - Recommend password change (credentials may be compromised)
+  - Close alert as "Blocked Attack - User Aware"
+
+□ If user didn't notice prompts or is uncertain:
+  - Escalate to Tier 2 for deeper investigation
+  - Consider temporary account protection
+
+STEP 3: ATTACK SUCCEEDED — URGENT (Immediate)
+─────────────────────────────────────────────
+🚨 USER APPROVED MFA AFTER MULTIPLE DENIALS — ASSUME COMPROMISED
+
+□ IMMEDIATELY disable user account:
+  - Entra ID Admin → Users → [User] → Block sign-in
+  - OR: Azure AD PowerShell: Set-AzureADUser -ObjectId [user] -AccountEnabled $false
+
+□ Revoke all active sessions:
+  - Entra ID Admin → Users → [User] → Revoke sessions
+  - OR: Revoke-AzureADUserAllRefreshToken -ObjectId [user]
+
+□ Contact user via PHONE (not email/Teams — attacker may have access):
+  - Verify if they approved the MFA intentionally
+  - Ask if anyone contacted them (social engineering component)
+
+□ If user was socially engineered or didn't approve:
+  - Declare security incident
+  - Begin IR procedures
+  - Notify security management
+  - Preserve logs and evidence
+
+□ Investigate what attacker accessed:
+  - Review sign-in logs after MFA success
+  - Check email access (forwarding rules, sent items)
+  - Check OneDrive/SharePoint access
+  - Check Teams conversations
+  - Check any systems user has access to
+
+STEP 4: POST-INCIDENT
+─────────────────────
+□ Password reset (force at next login)
+□ Review MFA methods (remove suspicious devices)
+□ Consider conditional access changes
+□ Document lessons learned
+
+CONTACTS:
+- Tier 2 SOC: [contact]
+- Identity Team (account actions): [contact]
+- Incident Response: [contact]
+- Security Manager (after hours): [contact]
+
+DO NOT:
+- Delay if attack_succeeded = YES
+- Contact user only via email/Teams (attacker may monitor)
+- Re-enable account without full investigation
+- Close without documenting disposition
+
+═══════════════════════════════════════════════════════════════════</code></pre>
+                </div>
+
+                <h3>1.8 Rollback & Safety</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Emergency Disable Procedure</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>SCENARIO: MFA Fatigue detection generating excessive false positives
+
+OPTION 1: Increase Threshold
+────────────────────────────
+Edit correlation search:
+| where total_mfa_events >= 5
+→ Change to:
+| where total_mfa_events >= 10
+
+Document change and set reminder to revert.
+
+OPTION 2: Disable Detection
+───────────────────────────
+ES → Configure → Content Management → MFA_Fatigue_Detection
+Set Enabled = No
+Document reason and notify SOC
+
+OPTION 3: Add Emergency Suppressions
+───────────────────────────────────
+If specific users/patterns causing noise:
+Add to mfa_fatigue_allowlist.csv with expiration date
+
+⚠️ WARNING: While detection is disabled/relaxed, real MFA fatigue 
+attacks may go undetected. Monitor for increase in successful 
+account compromises during suppression period.</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- USE CASE 2: BRUTE FORCE -->
+                <!-- ============================================== -->
+                <h2 id="uc2-brute-force">Use Case 2: Brute Force Authentication</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">High Severity | MITRE T1110.001 | Target: Individual Account</div>
+                </div>
+
+                <h3>2.1 Attack Context</h3>
+                <p>Brute force attacks target a single account with many password guesses. Unlike password spray (many accounts, few passwords), brute force is characterized by high failure volume against one user.</p>
+
+                <h3>2.2 Detection Logic</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Brute Force Authentication Detection</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("
+===============================================================================
+DETECTION: Brute Force Authentication
+MITRE: T1110.001 - Brute Force: Password Guessing
+===============================================================================
+")`
+
+index=auth_azure sourcetype="azure:aad:signin" earliest=-15m latest=now()
+| spath output=user path=userPrincipalName
+| spath output=src_ip path=ipAddress
+| spath output=error_code path=status.errorCode
+| spath output=failure_reason path=status.failureReason
+
+`comment("Filter to authentication failures")`
+| search error_code IN (50126, 50053, 50055, 50056, 50057, 50058, 50059, 50064)
+`comment("
+50126 = Invalid username or password
+50053 = Account locked
+50055 = Password expired
+50057 = User disabled
+")`
+
+| stats 
+    count AS failed_attempts,
+    dc(src_ip) AS unique_source_ips,
+    values(src_ip) AS source_ips,
+    values(failure_reason) AS failure_reasons,
+    earliest(_time) AS first_failure,
+    latest(_time) AS last_failure
+    BY user
+
+`comment("Threshold: 10+ failures against single user")`
+| where failed_attempts >= 10
+
+| eval attack_duration_min = round((last_failure - first_failure) / 60, 1)
+| eval failures_per_minute = round(failed_attempts / (attack_duration_min + 0.1), 2)
+
+| eval severity = case(
+    failed_attempts >= 100, "critical",
+    failed_attempts >= 50, "high",
+    failed_attempts >= 10, "medium",
+    true(), "low"
+)
+
+| eval description = "Brute force attack: ".failed_attempts." failed login attempts against ".user." from ".unique_source_ips." IP(s) in ".attack_duration_min." minutes"
+
+| table _time, user, failed_attempts, unique_source_ips, failures_per_minute, severity, source_ips, failure_reasons, description</code></pre>
+                </div>
+
+                <h3>2.3 Check for Subsequent Success</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Brute Force with Subsequent Success (Compromise Indicator)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Did the brute force attack succeed? Check for success after failures")`
+
+index=auth_azure sourcetype="azure:aad:signin" earliest=-1h
+| spath output=user path=userPrincipalName
+| spath output=src_ip path=ipAddress
+| spath output=error_code path=status.errorCode
+| eval outcome = if(error_code==0, "success", "failure")
+
+| stats 
+    sum(eval(if(outcome=="failure", 1, 0))) AS failures,
+    sum(eval(if(outcome=="success", 1, 0))) AS successes,
+    values(src_ip) AS ips
+    BY user
+
+| where failures >= 10 AND successes > 0
+| eval alert = "⚠️ POTENTIAL COMPROMISE: ".user." had ".failures." failures followed by ".successes." successful login(s)"
+| table user, failures, successes, ips, alert</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- USE CASE 3: PASSWORD SPRAY -->
+                <!-- ============================================== -->
+                <h2 id="uc3-password-spray">Use Case 3: Password Spray Attack</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">High Severity | MITRE T1110.003 | Targets: Many Accounts</div>
+                </div>
+
+                <h3>3.1 Attack Context</h3>
+                <p>Password spray attacks try a small number of common passwords against many accounts, avoiding account lockouts. This is the most common attack against enterprise authentication.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart LR
+    subgraph SPRAY["Password Spray Pattern"]
+        direction TB
+        A1["Try 'Summer2024!'<br/>against User1"]
+        A2["Try 'Summer2024!'<br/>against User2"]
+        A3["Try 'Summer2024!'<br/>against User3"]
+        A4["...against User N"]
+        A5["Wait 30 minutes<br/>(avoid lockout)"]
+        A6["Try 'Welcome123!'<br/>against all users"]
+    end
+    
+    subgraph BRUTE["Brute Force Pattern<br/>(For Comparison)"]
+        direction TB
+        B1["Try 'password1'<br/>against User1"]
+        B2["Try 'password2'<br/>against User1"]
+        B3["Try 'password3'<br/>against User1"]
+        B4["Account locked!"]
+    end
+    
+    A1 --> A2 --> A3 --> A4 --> A5 --> A6
+    B1 --> B2 --> B3 --> B4
+    
+    style A5 fill:#f59e0b,stroke:#d97706
+    style B4 fill:#da3633,stroke:#f85149,color:#fff
+                    </div>
+                </div>
+
+                <h3>3.2 Detection Logic</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Password Spray Detection</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("
+===============================================================================
+DETECTION: Password Spray Attack
+MITRE: T1110.003 - Brute Force: Password Spraying
+===============================================================================
+SIGNATURE: Single IP attempting to authenticate as many different users
+with low failure count per user (avoiding lockout)
+===============================================================================
+")`
+
+index=auth_azure sourcetype="azure:aad:signin" earliest=-30m latest=now()
+| spath output=user path=userPrincipalName
+| spath output=src_ip path=ipAddress
+| spath output=error_code path=status.errorCode
+
+`comment("Filter to authentication failures")`
+| search error_code IN (50126, 50053)
+
+`comment("Aggregate by source IP")`
+| stats 
+    count AS total_failures,
+    dc(user) AS unique_users_targeted,
+    values(user) AS targeted_users,
+    avg(eval(1)) AS avg_failures_per_user
+    BY src_ip
+
+`comment("Password spray signature: many users, few attempts each")`
+| where unique_users_targeted >= 10 AND total_failures >= 10
+
+`comment("Calculate spray ratio")`
+| eval spray_ratio = round(unique_users_targeted / total_failures * 100, 1)
+| eval failures_per_user = round(total_failures / unique_users_targeted, 1)
+
+`comment("High spray ratio = likely password spray (not brute force)")`
+| eval attack_type = if(spray_ratio >= 50, "Password Spray", "Mixed/Brute Force")
+
+| eval severity = case(
+    unique_users_targeted >= 100, "critical",
+    unique_users_targeted >= 50, "high",
+    unique_users_targeted >= 10, "medium",
+    true(), "low"
+)
+
+| eval description = attack_type.": ".src_ip." attempted login to ".unique_users_targeted." unique accounts (".failures_per_user." attempts/account avg)"
+
+| table _time, src_ip, unique_users_targeted, total_failures, failures_per_user, spray_ratio, attack_type, severity, description</code></pre>
+                </div>
+
+                <h3>3.3 Successful Password Spray Detection</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Password Spray with Success (Compromise)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Find accounts compromised by password spray")`
+
+index=auth_azure sourcetype="azure:aad:signin" earliest=-1h
+| spath output=user path=userPrincipalName
+| spath output=src_ip path=ipAddress
+| spath output=error_code path=status.errorCode
+| eval outcome = if(error_code==0, "success", "failure")
+
+| stats 
+    sum(eval(if(outcome=="failure", 1, 0))) AS failures,
+    sum(eval(if(outcome=="success", 1, 0))) AS successes,
+    dc(user) AS users_attempted,
+    values(eval(if(outcome=="success", user, null()))) AS compromised_users
+    BY src_ip
+
+| where users_attempted >= 10 AND successes > 0
+
+| eval alert = "🚨 PASSWORD SPRAY SUCCESS: ".src_ip." compromised ".successes." account(s) after ".failures." failures across ".users_attempted." users"
+
+| table src_ip, users_attempted, failures, successes, compromised_users, alert</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- USE CASE 4: IMPOSSIBLE TRAVEL -->
+                <!-- ============================================== -->
+                <h2 id="uc4-impossible-travel">Use Case 4: Impossible Travel Detection</h2>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">Medium-High Severity | MITRE T1078 | Indicator: Account Compromise</div>
+                </div>
+
+                <h3>4.1 Attack Context</h3>
+                <p>Impossible travel detects when a user authenticates from two geographically distant locations within a timeframe that makes physical travel impossible. This often indicates credential theft or account sharing.</p>
+
+                <h3>4.2 Detection Logic</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Impossible Travel Detection</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("
+===============================================================================
+DETECTION: Impossible Travel
+MITRE: T1078 - Valid Accounts
+===============================================================================
+LOGIC: User authenticates from two locations that would require travel
+faster than physically possible (e.g., London and Tokyo 30 min apart)
+===============================================================================
+")`
+
+index=auth_azure sourcetype="azure:aad:signin" earliest=-24h latest=now()
+| spath output=user path=userPrincipalName
+| spath output=src_ip path=ipAddress
+| spath output=city path=location.city
+| spath output=country path=location.countryOrRegion
+| spath output=latitude path=location.geoCoordinates.latitude
+| spath output=longitude path=location.geoCoordinates.longitude
+| spath output=error_code path=status.errorCode
+
+`comment("Only successful logins for impossible travel")`
+| search error_code==0
+
+`comment("Need location data")`
+| where isnotnull(city) AND isnotnull(country)
+
+| sort user, _time
+| streamstats current=f last(_time) AS prev_time, last(city) AS prev_city, last(country) AS prev_country, last(latitude) AS prev_lat, last(longitude) AS prev_lon BY user
+
+`comment("Calculate time difference and distance")`
+| eval time_diff_hours = round((_time - prev_time) / 3600, 2)
+| eval time_diff_min = round((_time - prev_time) / 60, 0)
+
+`comment("Haversine formula for distance calculation")`
+| eval lat1_rad = latitude * 3.14159 / 180
+| eval lat2_rad = prev_lat * 3.14159 / 180
+| eval lon_diff = (longitude - prev_lon) * 3.14159 / 180
+| eval lat_diff = (latitude - prev_lat) * 3.14159 / 180
+| eval a = pow(sin(lat_diff/2), 2) + cos(lat1_rad) * cos(lat2_rad) * pow(sin(lon_diff/2), 2)
+| eval distance_km = 2 * 6371 * asin(sqrt(a))
+
+`comment("Calculate required speed")`
+| eval required_speed_kmh = if(time_diff_hours > 0, round(distance_km / time_diff_hours, 0), 9999)
+
+`comment("Impossible travel: >800 km/h (faster than commercial flights)")`
+| where distance_km > 500 AND required_speed_kmh > 800
+
+| eval severity = case(
+    required_speed_kmh > 2000, "high",
+    required_speed_kmh > 1000, "medium",
+    true(), "low"
+)
+
+| eval description = "Impossible travel: ".user." logged in from ".city." (".country.") and ".prev_city." (".prev_country.") ".time_diff_min." minutes apart (".round(distance_km,0)." km, would require ".required_speed_kmh." km/h)"
+
+| table _time, user, city, country, prev_city, prev_country, time_diff_min, distance_km, required_speed_kmh, severity, description</code></pre>
+                </div>
+
+                <h3>4.3 False Positive Patterns</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pattern</th>
+                                <th>Why It Happens</th>
+                                <th>Mitigation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>VPN usage</td>
+                                <td>User connects to VPN, appears in VPN exit location</td>
+                                <td>Allowlist known VPN exit IPs; correlate with VPN logs</td>
+                            </tr>
+                            <tr>
+                                <td>Mobile carrier IP geolocation errors</td>
+                                <td>Mobile IPs often geolocate incorrectly</td>
+                                <td>Reduce severity for mobile device authentications</td>
+                            </tr>
+                            <tr>
+                                <td>Cloud proxy services</td>
+                                <td>Traffic routed through cloud proxy in different region</td>
+                                <td>Allowlist known proxy services</td>
+                            </tr>
+                            <tr>
+                                <td>Legitimate travel with airport WiFi</td>
+                                <td>User uses airport WiFi which geolocates differently</td>
+                                <td>Increase time threshold; correlate with travel systems</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- USE CASE 5: PRIVILEGED MFA FAILURE -->
+                <!-- ============================================== -->
+                <h2 id="uc5-priv-mfa-fail">Use Case 5: Privileged Account MFA Failure</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">High Severity | MITRE T1078.004 | Target: Admin Accounts</div>
+                </div>
+
+                <h3>5.1 Attack Context</h3>
+                <p>Privileged accounts (Domain Admins, Global Admins, DBA accounts) are high-value targets. Any MFA failure against these accounts warrants immediate investigation—attackers specifically target admin credentials.</p>
+
+                <h3>5.2 Detection Logic (CyberArk)</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Privileged Account MFA Failure (CyberArk)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("
+===============================================================================
+DETECTION: Privileged Account MFA Failure
+MITRE: T1078.004 - Valid Accounts: Cloud Accounts
+===============================================================================
+LOGIC: Any MFA failure against privileged/admin accounts should alert.
+Lower threshold than standard accounts due to high-value target.
+===============================================================================
+")`
+
+index=auth_cyberark sourcetype="cyberark:identity" earliest=-15m latest=now()
+| search event_type IN ("mfa_*", "authentication_*")
+| search result IN ("denied", "failed", "timeout", "rejected")
+
+| lookup privileged_accounts.csv user OUTPUT is_privileged, account_type
+
+`comment("Only privileged accounts")`
+| where is_privileged=="true"
+
+| stats 
+    count AS mfa_failures,
+    values(event_type) AS failure_types,
+    values(result) AS results,
+    dc(src_ip) AS unique_sources
+    BY user, account_type
+
+`comment("Lower threshold for privileged accounts: even 2 failures is concerning")`
+| where mfa_failures >= 2
+
+| eval severity = "high"
+| eval description = "🚨 PRIVILEGED ACCOUNT MFA FAILURE: ".user." (".account_type.") had ".mfa_failures." MFA failures"
+
+| table _time, user, account_type, mfa_failures, failure_types, unique_sources, severity, description</code></pre>
+                </div>
+
+                <h3>5.3 Privileged Account Lookup</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Lookup: privileged_accounts.csv</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>user,is_privileged,account_type
+admin.john@contoso.com,true,Global Admin
+admin.jane@contoso.com,true,Global Admin
+svc_backup@contoso.com,true,Service Account
+dba_prod@contoso.com,true,Database Admin
+cyberark_admin@contoso.com,true,PAM Admin</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- COMMON AUTH DETECTION FAILURE MODES -->
+                <!-- ============================================== -->
+                <h2>Common Authentication Detection Failure Modes</h2>
+
+                <p>These are the most common reasons authentication detections fail in production. Review before deployment.</p>
+
+                <h3>Failure Mode 1: Missing MFA Event Details</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>MFA Fatigue detection returns zero results despite known MFA prompts occurring.</p>
+                </div>
+                <p><strong>Cause:</strong> Entra ID sign-in logs don't include the <code>authenticationDetails</code> array by default in all configurations.</p>
+                <p><strong>Diagnosis:</strong></p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify MFA Details Exist</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=auth_azure sourcetype="azure:aad:signin" earliest=-24h
+| spath output=auth_details path=authenticationDetails{}
+| stats count AS total_events, 
+        count(eval(isnotnull(auth_details))) AS events_with_mfa_details
+| eval mfa_detail_rate = round(events_with_mfa_details/total_events*100, 1)."%"
+| eval status = if(events_with_mfa_details > 0, "✓ MFA details present", "✗ NO MFA DETAILS - Detection impossible")</code></pre>
+                </div>
+                <p><strong>Fix:</strong> Verify Azure diagnostic settings include "SignInLogs" category with full detail. Check if Entra ID P1/P2 license is present (required for some log details).</p>
+
+                <hr>
+
+                <h3>Failure Mode 2: Username Format Mismatch Across Providers</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Cross-provider correlation returns zero results for users that should match.</p>
+                </div>
+                <p><strong>Cause:</strong> Different providers use different username formats:</p>
+                <ul>
+                    <li>Entra ID: <code>john.smith@contoso.com</code> (UPN)</li>
+                    <li>CyberArk: <code>john.smith</code> (SAMAccountName)</li>
+                    <li>Windows AD: <code>CONTOSO\john.smith</code> (Domain\SAM)</li>
+                </ul>
+                <p><strong>Diagnosis:</strong></p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Compare Username Formats Across Sources</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| multisearch 
+    [search index=auth_azure sourcetype="azure:aad:signin" earliest=-1h | head 100 | eval source="Entra ID" | table source, userPrincipalName]
+    [search index=auth_cyberark sourcetype="cyberark:identity" earliest=-1h | head 100 | eval source="CyberArk" | table source, user]
+| stats values(*) AS * BY source
+| transpose</code></pre>
+                </div>
+                <p><strong>Fix:</strong> Create identity lookup table that maps all username formats. Use <code>| lookup identity_mapping.csv</code> to normalize before correlation.</p>
+
+                <hr>
+
+                <h3>Failure Mode 3: Time Window Too Narrow for Latency</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>MFA Fatigue detection misses attacks because MFA prompts appear spread across time.</p>
+                </div>
+                <p><strong>Cause:</strong> Detection window (e.g., 5 minutes) is narrower than the ingestion latency difference between providers.</p>
+                <p><strong>Diagnosis:</strong></p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Compare Latency Across Auth Sources</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| multisearch
+    [search index=auth_azure sourcetype="azure:aad:signin" earliest=-4h | eval source="Entra ID"]
+    [search index=auth_cyberark sourcetype="cyberark:identity" earliest=-4h | eval source="CyberArk"]
+| eval latency = _indextime - _time
+| stats avg(latency) AS avg_latency, perc95(latency) AS p95_latency BY source
+| eval avg_latency_min = round(avg_latency/60, 1)
+| eval p95_latency_min = round(p95_latency/60, 1)</code></pre>
+                </div>
+                <p><strong>Fix:</strong> If Provider A has 2-min latency and Provider B has 8-min latency, your correlation window must be at least 10 minutes to reliably correlate events.</p>
+
+                <hr>
+
+                <h3>Failure Mode 4: Privileged Account List Stale</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Privileged account detection misses admins or alerts on former admins.</p>
+                </div>
+                <p><strong>Cause:</strong> The <code>privileged_accounts.csv</code> lookup is not updated when admins are added/removed.</p>
+                <p><strong>Diagnosis:</strong></p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Compare Lookup to Current Entra ID Admins</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Get current Global Admins from Entra ID audit logs")`
+index=auth_azure sourcetype="azure:aad:audit" "Add member to role" "Global Administrator" earliest=-30d
+| spath output=added_user path=targetResources{}.userPrincipalName
+| dedup added_user
+| lookup privileged_accounts.csv user AS added_user OUTPUT is_privileged
+| where isnull(is_privileged)
+| eval warning = "⚠️ Admin in Entra ID but NOT in privileged_accounts.csv lookup"
+| table added_user, warning</code></pre>
+                </div>
+                <p><strong>Fix:</strong> Automate privileged account lookup refresh from Entra ID group membership. Schedule weekly sync at minimum.</p>
+
+                <hr>
+
+                <h3>Failure Mode 5: VPN/Proxy Causing False Impossible Travel</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Impossible travel alerts flood SOC for users on VPN or corporate proxy.</p>
+                </div>
+                <p><strong>Cause:</strong> User's real location is masked by VPN/proxy IP, making every login appear from datacenter location.</p>
+                <p><strong>Diagnosis:</strong></p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Find High-Volume Locations (Likely VPN/Proxy)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=auth_azure sourcetype="azure:aad:signin" earliest=-7d
+| iplocation ipAddress
+| stats dc(userPrincipalName) AS unique_users, count AS total_logins BY City, Country, ipAddress
+| where unique_users > 50
+| sort - unique_users
+| eval likely_vpn = "⚠️ High user count from single IP = likely VPN/Proxy"</code></pre>
+                </div>
+                <p><strong>Fix:</strong> Add VPN egress IPs and corporate proxy IPs to impossible travel allowlist. Consider using Entra ID's built-in "atypical travel" which accounts for known locations.</p>
+
+                <!-- ============================================== -->
+                <!-- GLOBAL ROLLBACK -->
+                <!-- ============================================== -->
+                <h2>Global Rollback Procedures</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Emergency Disable: All Authentication Detections</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>SCENARIO: Authentication detections overwhelming SOC or causing issues
+
+OPTION 1: Disable Individual Detections
+───────────────────────────────────────
+ES → Configure → Content Management
+Filter by "MFA" or "Auth" or "Brute" or "Spray"
+Select → Edit → Enabled = No → Save
+
+OPTION 2: Increase All Thresholds
+─────────────────────────────────
+Edit each correlation search and double the threshold values.
+Document all changes for reversion.
+
+OPTION 3: Suppress Specific Users
+─────────────────────────────────
+Add problematic users to allowlist CSVs with expiration dates.
+Review and remove after issue resolved.
+
+ALWAYS NOTIFY:
+- SOC team
+- Security management
+- Document reason and expected duration</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- NEXT STEPS -->
+                <!-- ============================================== -->
+                <h2>What You Do Next</h2>
+
+                <div class="checklist-group">
+                    <div class="checklist-title">Authentication Detection Deployment Checklist</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-deploy">
+                        <span>Data reality check passed — MFA details present</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-deploy">
+                        <span>Historical backtest completed for each detection</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-deploy">
+                        <span>Monitoring-only mode deployed for 2+ weeks</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-deploy">
+                        <span>False positive patterns identified and mitigated</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-deploy">
+                        <span>Privileged account list created and maintained</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-deploy">
+                        <span>SOC runbooks reviewed and approved</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-deploy">
+                        <span>Promoted to production alerting</span>
+                    </label>
+                </div>
+
+                <div class="next-steps">
+                    <a href="../phase4-automation/index.html" class="next-step-link">
+                        <span class="step-direction">After Detection →</span>
+                        <span class="step-title">Phase 4: Automation</span>
+                    </a>
+                    <a href="../appendix/spl-library.html" class="next-step-link">
+                        <span class="step-direction">Reference →</span>
+                        <span class="step-title">SPL Library</span>
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../assets/app.js"></script>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#0d1117',
+                primaryColor: '#238636',
+                primaryTextColor: '#c9d1d9',
+                primaryBorderColor: '#30363d',
+                lineColor: '#8b949e',
+                secondaryColor: '#161b22',
+                tertiaryColor: '#21262d'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 20
+            }
+        });
+    </script>
+</body>
+</html>

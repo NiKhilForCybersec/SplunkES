@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 4: Automation - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="index.html" class="nav-item active">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <span class="current">Phase 4: Automation</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-4">⚡ Phase 4 — Automation</span>
+                <h1>Automation & Response</h1>
+
+                <!-- ============================================== -->
+                <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This page includes safety guardrails, rollback procedures, and explicit validation requirements for all automation actions.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 CRITICAL SAFETY WARNING — Automation Can Cause Outages</div>
+                    <p><strong>Automated response actions can disable accounts, block IPs, and isolate systems.</strong> A misconfigured automation can cause widespread business disruption. Follow these mandatory rules:</p>
+                    <ul>
+                        <li><strong>NEVER deploy auto-response without extensive monitoring mode first</strong> (minimum 4 weeks)</li>
+                        <li><strong>ALWAYS have a manual override</strong> — SOC must be able to stop any automation</li>
+                        <li><strong>NEVER auto-disable executive accounts</strong> without human approval</li>
+                        <li><strong>ALWAYS have rollback procedures documented</strong> before enabling automation</li>
+                    </ul>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Retail Business Timing — Automation Deployment</div>
+                    <p>Do NOT enable new automated response actions during:</p>
+                    <ul>
+                        <li><strong>Black Friday / Holiday periods</strong> — Risk of blocking legitimate customer activity</li>
+                        <li><strong>Major system changes</strong> — False positives likely during migrations</li>
+                        <li><strong>SOC staffing gaps</strong> — Must have coverage to handle automation failures</li>
+                    </ul>
+                    <p><strong>Recommended:</strong> Enable new automation on Tuesday-Wednesday with full SOC coverage.</p>
+                </div>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Phase Overview</div>
+                    <p>Phase 4 transforms manual SOC workflows into automated responses. This includes enrichment automation (adding context to alerts), response automation (taking action on threats), and SOAR integration for orchestrated playbooks.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION A: WHY THIS PHASE EXISTS -->
+                <!-- ============================================== -->
+                <h2>Why This Phase Exists</h2>
+
+                <h3>Business Justification</h3>
+                <ul>
+                    <li><strong>Reduce Mean Time to Respond (MTTR):</strong> Automated enrichment and response happen in seconds, not minutes or hours</li>
+                    <li><strong>Scale SOC capacity:</strong> Automation handles repetitive tasks so analysts can focus on complex investigations</li>
+                    <li><strong>Consistent response:</strong> Playbooks ensure every alert gets the same quality investigation</li>
+                    <li><strong>24/7 coverage:</strong> Automation responds to threats even when analysts aren't available</li>
+                </ul>
+
+                <h3>The Automation Maturity Journey</h3>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart LR
+    subgraph L1["Level 1: Manual"]
+        M1["Alert fires"]
+        M2["Analyst sees alert"]
+        M3["Analyst researches<br/>context manually"]
+        M4["Analyst decides<br/>action"]
+        M5["Analyst takes<br/>action manually"]
+    end
+    
+    subgraph L2["Level 2: Enriched"]
+        E1["Alert fires"]
+        E2["Auto-enrich with<br/>threat intel, asset info"]
+        E3["Analyst reviews<br/>enriched alert"]
+        E4["Analyst decides<br/>action"]
+        E5["One-click response<br/>actions"]
+    end
+    
+    subgraph L3["Level 3: Orchestrated"]
+        O1["Alert fires"]
+        O2["Playbook auto-runs"]
+        O3["Automated triage<br/>and enrichment"]
+        O4["Auto-response for<br/>known patterns"]
+        O5["Analyst handles<br/>exceptions only"]
+    end
+    
+    M1 --> M2 --> M3 --> M4 --> M5
+    E1 --> E2 --> E3 --> E4 --> E5
+    O1 --> O2 --> O3 --> O4 --> O5
+    
+    L1 -.->|"Add enrichment"| L2
+    L2 -.->|"Add SOAR"| L3
+    
+    style M3 fill:#da3633,stroke:#f85149
+    style E2 fill:#238636,stroke:#2ea043
+    style O4 fill:#238636,stroke:#2ea043
+                    </div>
+                </div>
+
+                <h3>What Each Automation Level Provides</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Level</th>
+                                <th>MTTR</th>
+                                <th>Analyst Time per Alert</th>
+                                <th>Prerequisites</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Level 1: Manual</strong></td>
+                                <td>30-60 minutes</td>
+                                <td>15-30 minutes</td>
+                                <td>Detections working (Phase 3)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Level 2: Enriched</strong></td>
+                                <td>10-20 minutes</td>
+                                <td>5-10 minutes</td>
+                                <td>Threat intel, asset inventory, identity data</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Level 3: Orchestrated</strong></td>
+                                <td>1-5 minutes</td>
+                                <td>2-5 minutes (exceptions)</td>
+                                <td>SOAR platform, tested playbooks</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: AUTOMATION TYPES -->
+                <!-- ============================================== -->
+                <h2>Types of Automation</h2>
+
+                <h3>1. Enrichment Automation</h3>
+                <p>Automatically add context to alerts so analysts don't have to look it up manually.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Enrichment Type</th>
+                                <th>Data Source</th>
+                                <th>Value Added</th>
+                                <th>Implementation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Threat Intelligence</strong></td>
+                                <td>MISP, VirusTotal, AbuseIPDB</td>
+                                <td>Is source IP known malicious?</td>
+                                <td>ES Threat Intelligence framework or SOAR</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Asset Context</strong></td>
+                                <td>CMDB, ES Asset Inventory</td>
+                                <td>What system is affected? Priority?</td>
+                                <td>ES Asset/Identity framework</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Identity Context</strong></td>
+                                <td>HR system, AD, ES Identity</td>
+                                <td>Who is affected? VIP? Admin?</td>
+                                <td>ES Identity framework</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Geolocation</strong></td>
+                                <td>MaxMind, IP2Location</td>
+                                <td>Where is source IP? Expected?</td>
+                                <td>Splunk iplocation command or lookup</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Historical Context</strong></td>
+                                <td>Previous alerts, investigations</td>
+                                <td>Have we seen this before?</td>
+                                <td>Notable event correlation</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>2. Response Automation</h3>
+                <p>Take action on threats automatically or with one-click analyst approval.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Response Type</th>
+                                <th>Risk Level</th>
+                                <th>Automation Approach</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Block IP at Firewall</strong></td>
+                                <td>Medium</td>
+                                <td>Analyst-approved or auto for known-bad</td>
+                                <td>Block attacker IP after confirmed attack</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Disable User Account</strong></td>
+                                <td>High</td>
+                                <td>Analyst-approved (business impact)</td>
+                                <td>Disable compromised account</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Isolate Endpoint</strong></td>
+                                <td>High</td>
+                                <td>Analyst-approved</td>
+                                <td>Network isolate infected host</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Reset Password</strong></td>
+                                <td>Medium</td>
+                                <td>Analyst-approved or auto for MFA fatigue</td>
+                                <td>Force password reset after credential compromise</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Create Ticket</strong></td>
+                                <td>Low</td>
+                                <td>Full automation</td>
+                                <td>Auto-create ServiceNow incident</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Send Notification</strong></td>
+                                <td>Low</td>
+                                <td>Full automation</td>
+                                <td>Page on-call for critical alerts</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Automation Risk Warning</div>
+                    <p>Automated response actions that affect business operations (blocking users, isolating systems) should NEVER be fully automated without human approval until the detection has proven extremely reliable (&lt;1% false positive rate over 6+ months).</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: SPLUNK ES ADAPTIVE RESPONSE -->
+                <!-- ============================================== -->
+                <h2>Splunk ES Adaptive Response Actions</h2>
+
+                <p>Splunk ES includes built-in response actions that can be triggered from correlation searches or manually from notable events.</p>
+
+                <h3>Built-in Adaptive Response Actions</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>Description</th>
+                                <th>Use Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Create Notable Event</strong></td>
+                                <td>Generate ES notable event</td>
+                                <td>Standard alerting</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Send Email</strong></td>
+                                <td>Send alert via email</td>
+                                <td>Notify stakeholders</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Run Script</strong></td>
+                                <td>Execute custom script</td>
+                                <td>Custom integrations</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Send to UBA</strong></td>
+                                <td>Forward to User Behavior Analytics</td>
+                                <td>Anomaly investigation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Risk Modifier</strong></td>
+                                <td>Adjust risk score for object</td>
+                                <td>Risk-based alerting</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Add Threat Intelligence</strong></td>
+                                <td>Add indicator to threat intel</td>
+                                <td>Build internal threat intel</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Configuring Adaptive Response</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Correlation Search: Adaptive Response Configuration</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>LOCATION: ES → Configure → Content → Content Management → [Correlation Search]
+
+ADAPTIVE RESPONSE ACTIONS:
+
+1. Create Notable Event (Always enabled for alerting detections)
+   - Title: MFA Fatigue Attack Detected - $user$
+   - Description: $description$
+   - Severity: $severity$
+   - Security Domain: access
+   - Default Owner: unassigned
+   - Default Status: new
+   
+2. Send Email (For critical alerts)
+   - To: soc-critical@company.com
+   - Subject: [CRITICAL] MFA Fatigue Attack - $user$
+   - Include: Link to notable, key fields
+   
+3. Risk Modifier (For RBA environments)
+   - Risk Object: user
+   - Risk Object Type: user
+   - Risk Score: 40
+   - Risk Message: MFA fatigue attack targeting this user</code></pre>
+                </div>
+
+                <h3>Custom Adaptive Response Actions</h3>
+
+                <p>Create custom response actions for your environment:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Example: Custom Action to Block IP at Firewall</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># File: $SPLUNK_HOME/etc/apps/SA-CustomActions/default/alert_actions.conf
+
+[block_ip_firewall]
+is_custom = 1
+label = Block IP at Firewall
+description = Adds IP to firewall block list via API
+icon_path = block.png
+payload_format = json
+param.ip_field = src
+param._cam = {"task": ["block_ip"], "subject": ["ip"]}
+
+# File: $SPLUNK_HOME/etc/apps/SA-CustomActions/bin/block_ip_firewall.py
+
+import sys
+import json
+import requests
+
+def main():
+    payload = json.loads(sys.stdin.read())
+    ip_to_block = payload.get('result', {}).get('src')
+    
+    if ip_to_block:
+        # Call firewall API to block IP
+        response = requests.post(
+            'https://firewall.company.com/api/block',
+            json={'ip': ip_to_block, 'reason': 'Automated block from Splunk ES'},
+            headers={'Authorization': 'Bearer TOKEN'}
+        )
+        
+        if response.status_code == 200:
+            print(f"Successfully blocked {ip_to_block}")
+        else:
+            print(f"Failed to block {ip_to_block}: {response.text}")
+
+if __name__ == '__main__':
+    main()</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: SOAR INTEGRATION -->
+                <!-- ============================================== -->
+                <h2>SOAR Integration</h2>
+
+                <p>Security Orchestration, Automation, and Response (SOAR) platforms provide more sophisticated automation capabilities than ES alone.</p>
+
+                <h3>SOAR Platform Options</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Platform</th>
+                                <th>Integration with Splunk</th>
+                                <th>Best For</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Splunk SOAR</strong> (Phantom)</td>
+                                <td>Native integration</td>
+                                <td>Splunk-centric environments</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Palo Alto XSOAR</strong></td>
+                                <td>App available</td>
+                                <td>Palo Alto security stack</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Microsoft Sentinel</strong></td>
+                                <td>API integration</td>
+                                <td>Azure-centric environments</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Swimlane</strong></td>
+                                <td>API integration</td>
+                                <td>Low-code automation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tines</strong></td>
+                                <td>API integration</td>
+                                <td>No-code automation</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Splunk SOAR Integration Architecture</h3>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    subgraph Splunk["Splunk Platform"]
+        ES["Enterprise Security"]
+        CORR["Correlation<br/>Searches"]
+        NOTABLE["Notable<br/>Events"]
+    end
+    
+    subgraph SOAR["Splunk SOAR"]
+        INGEST["Event<br/>Ingestion"]
+        PLAYBOOK["Playbooks"]
+        ACTIONS["Actions &<br/>Integrations"]
+    end
+    
+    subgraph TARGETS["Response Targets"]
+        FW["Firewall<br/>(Palo Alto, etc.)"]
+        EDR["EDR<br/>(CrowdStrike, etc.)"]
+        IAM["Identity<br/>(Entra ID, etc.)"]
+        TICKET["Ticketing<br/>(ServiceNow)"]
+        COMMS["Communications<br/>(Slack, Email)"]
+    end
+    
+    CORR --> NOTABLE
+    NOTABLE -->|"Adaptive Response<br/>or Webhook"| INGEST
+    INGEST --> PLAYBOOK
+    PLAYBOOK --> ACTIONS
+    ACTIONS --> FW
+    ACTIONS --> EDR
+    ACTIONS --> IAM
+    ACTIONS --> TICKET
+    ACTIONS --> COMMS
+    
+    ACTIONS -->|"Results"| ES
+    
+    style ES fill:#58a6ff,stroke:#1f6feb
+    style PLAYBOOK fill:#238636,stroke:#2ea043
+                    </div>
+                </div>
+
+                <h3>Connecting Splunk ES to SOAR</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Option 1: Splunk SOAR App Adaptive Response</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>SETUP:
+1. Install "Splunk SOAR Export" app on ES search head
+2. Configure SOAR connection in app setup
+3. Add "Send to SOAR" adaptive response to correlation searches
+
+CORRELATION SEARCH CONFIGURATION:
+Adaptive Response Actions:
+- Send to SOAR
+  - Container Label: mfa_fatigue_attack
+  - Severity: $severity$
+  - Run Playbook: mfa_fatigue_response (optional auto-run)</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Option 2: Webhook to SOAR</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>SETUP:
+1. Create webhook endpoint in SOAR
+2. Use "Webhook" alert action in Splunk
+
+alert_actions.conf:
+[webhook]
+param.url = https://soar.company.com/api/v1/ingest
+param.headers = {"Authorization": "Bearer TOKEN", "Content-Type": "application/json"}</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: PLAYBOOK DESIGN -->
+                <!-- ============================================== -->
+                <h2>Playbook Design Principles</h2>
+
+                <h3>Playbook Structure</h3>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    START["Alert<br/>Received"] --> VALIDATE
+    
+    subgraph VALIDATE["1. Validation"]
+        V1["Check required<br/>fields present"]
+        V2["Deduplicate<br/>(same alert recently?)"]
+    end
+    
+    subgraph ENRICH["2. Enrichment"]
+        E1["Threat Intel<br/>lookup"]
+        E2["Asset/Identity<br/>lookup"]
+        E3["Historical<br/>context"]
+        E4["External<br/>reputation"]
+    end
+    
+    subgraph DECIDE["3. Decision"]
+        D1{"Auto-close<br/>criteria met?"}
+        D2{"Auto-respond<br/>criteria met?"}
+        D3["Route to<br/>analyst"]
+    end
+    
+    subgraph RESPOND["4. Response"]
+        R1["Automated<br/>response"]
+        R2["Analyst<br/>action"]
+    end
+    
+    subgraph CLOSE["5. Closure"]
+        C1["Update<br/>ticket"]
+        C2["Update<br/>metrics"]
+        C3["Close<br/>case"]
+    end
+    
+    VALIDATE --> V1 --> V2
+    V2 --> ENRICH
+    ENRICH --> E1 --> E2 --> E3 --> E4
+    E4 --> DECIDE
+    DECIDE --> D1
+    D1 -->|"Yes"| C1
+    D1 -->|"No"| D2
+    D2 -->|"Yes"| R1
+    D2 -->|"No"| D3
+    D3 --> R2
+    R1 --> C1
+    R2 --> C1
+    C1 --> C2 --> C3
+    
+    style R1 fill:#238636,stroke:#2ea043
+    style D1 fill:#f59e0b,stroke:#d97706
+    style D2 fill:#f59e0b,stroke:#d97706
+                    </div>
+                </div>
+
+                <h3>Example Playbook: MFA Fatigue Response</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>MFA Fatigue Playbook Pseudocode</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>═══════════════════════════════════════════════════════════════════
+PLAYBOOK: MFA Fatigue Attack Response
+TRIGGER: Notable event from MFA Fatigue detection
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: VALIDATION
+─────────────────────────────────────────
+□ Check user field is populated
+□ Check if duplicate alert in last 1 hour
+  → If duplicate: Link to existing case, exit
+
+STEP 2: ENRICHMENT
+─────────────────────────────────────────
+□ Lookup user in identity system:
+  - Department, manager, VIP status
+  - Is this a privileged account?
+  
+□ Lookup source IP:
+  - Geolocation
+  - Threat intel reputation
+  - Is this a known corporate IP?
+  
+□ Get historical context:
+  - Previous MFA fatigue alerts for this user?
+  - Other recent security alerts for this user?
+
+STEP 3: DECISION LOGIC
+─────────────────────────────────────────
+□ IF attack_succeeded == "YES":
+  → CRITICAL PATH: Go to Step 4a
+  
+□ IF source_ip is known corporate AND user is NOT privileged:
+  → Lower severity, route to Tier 1
+  
+□ IF user is privileged (admin, exec):
+  → Escalate to Tier 2 regardless of outcome
+
+STEP 4a: CRITICAL RESPONSE (Attack Succeeded)
+─────────────────────────────────────────
+□ AUTOMATED (no approval needed):
+  - Revoke all user sessions (Entra ID API)
+  - Send Slack alert to security channel
+  - Create P1 ServiceNow incident
+  - Page on-call security analyst
+  
+□ ANALYST APPROVAL REQUIRED:
+  - Disable user account
+  - Force password reset
+  
+□ Notify user's manager via email
+
+STEP 4b: STANDARD RESPONSE (Attack Blocked)
+─────────────────────────────────────────
+□ AUTOMATED:
+  - Create P3 ServiceNow incident
+  - Send user awareness email (template)
+  
+□ IF source_ip is external AND reputation is bad:
+  - Queue for firewall block (analyst approval)
+
+STEP 5: CLOSURE
+─────────────────────────────────────────
+□ Update ServiceNow ticket with:
+  - All enrichment data
+  - Actions taken
+  - Analyst notes
+  
+□ Update metrics:
+  - Log playbook execution time
+  - Log outcome (TP/FP/auto-closed)
+  
+□ Close notable event in ES
+
+═══════════════════════════════════════════════════════════════════</code></pre>
+                </div>
+
+                <h3>Playbook Best Practices</h3>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">💡 Playbook Design Guidelines</div>
+                </div>
+
+                <ul>
+                    <li><strong>Start simple:</strong> Begin with enrichment-only playbooks, add response actions after proving reliability</li>
+                    <li><strong>Always have an escape hatch:</strong> Every automated decision should have a path for analyst review</li>
+                    <li><strong>Log everything:</strong> Every playbook action should be logged for audit and debugging</li>
+                    <li><strong>Test in staging:</strong> Never deploy new playbooks directly to production</li>
+                    <li><strong>Version control:</strong> Keep playbook code in Git for change tracking</li>
+                    <li><strong>Error handling:</strong> What happens if an API call fails? Always handle failures gracefully</li>
+                    <li><strong>Rate limiting:</strong> Ensure playbooks can't overwhelm external APIs during alert storms</li>
+                </ul>
+
+                <!-- ============================================== -->
+                <!-- SECTION: AUTOMATION PRIORITIES -->
+                <!-- ============================================== -->
+                <h2>Automation Priority Matrix</h2>
+
+                <p>Not everything should be automated immediately. Prioritize based on volume and complexity:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Priority</th>
+                                <th>Alert Type</th>
+                                <th>Automation Level</th>
+                                <th>ROI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1 (High)</strong></td>
+                                <td>High volume, simple triage</td>
+                                <td>Full enrichment + auto-close if benign</td>
+                                <td>High — saves most analyst time</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2</strong></td>
+                                <td>High volume, moderate complexity</td>
+                                <td>Enrichment + decision support</td>
+                                <td>Medium-High</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3</strong></td>
+                                <td>Low volume, critical response needed</td>
+                                <td>Enrichment + one-click response</td>
+                                <td>Medium — speed matters more than time saved</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4 (Low)</strong></td>
+                                <td>Low volume, complex investigation</td>
+                                <td>Enrichment only</td>
+                                <td>Low — manual investigation still needed</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Quick Wins: Start Here</h3>
+                <ol>
+                    <li><strong>Threat intel enrichment on all alerts:</strong> Auto-lookup source IPs against threat feeds</li>
+                    <li><strong>Asset/identity enrichment:</strong> Auto-populate asset criticality and user info</li>
+                    <li><strong>Duplicate detection:</strong> Auto-link related alerts to reduce volume</li>
+                    <li><strong>Auto-ticket creation:</strong> Create ServiceNow tickets for all medium+ alerts</li>
+                    <li><strong>Notification routing:</strong> Page on-call for critical, email for medium</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: MEASURING AUTOMATION SUCCESS -->
+                <!-- ============================================== -->
+                <h2>Measuring Automation Success</h2>
+
+                <h3>Key Metrics</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>What It Measures</th>
+                                <th>Target</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Mean Time to Respond (MTTR)</strong></td>
+                                <td>Time from alert to response action</td>
+                                <td>&lt;5 min for critical, &lt;30 min for medium</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Automation Rate</strong></td>
+                                <td>% of alerts with automated enrichment</td>
+                                <td>&gt;90%</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Auto-Close Rate</strong></td>
+                                <td>% of alerts closed without analyst</td>
+                                <td>20-40% (higher risks missing things)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Analyst Time per Alert</strong></td>
+                                <td>Average time analyst spends on each alert</td>
+                                <td>&lt;10 min for enriched alerts</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Playbook Success Rate</strong></td>
+                                <td>% of playbook runs that complete without error</td>
+                                <td>&gt;95%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Automation Dashboard Query</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Automation Metrics Dashboard</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Track automation effectiveness")`
+
+index=notable earliest=-30d
+| eval time_to_first_action = if(isnotnull(first_action_time), first_action_time - _time, null())
+| eval auto_enriched = if(isnotnull(threat_intel_enriched) OR isnotnull(asset_enriched), 1, 0)
+| eval auto_closed = if(status_label="Closed - Auto", 1, 0)
+
+| stats 
+    count AS total_alerts,
+    avg(time_to_first_action) AS avg_mttr,
+    sum(auto_enriched) AS enriched_alerts,
+    sum(auto_closed) AS auto_closed_alerts
+    
+| eval enrichment_rate = round(enriched_alerts/total_alerts*100, 1)."%"
+| eval auto_close_rate = round(auto_closed_alerts/total_alerts*100, 1)."%"
+| eval avg_mttr_min = round(avg_mttr/60, 1)
+
+| table total_alerts, enrichment_rate, auto_close_rate, avg_mttr_min</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK & SAFETY -->
+                <!-- ============================================== -->
+                <h2>Rollback & Safety</h2>
+
+                <h3>Emergency: Disable All Automation</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Procedure: Emergency Automation Shutdown</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>SCENARIO: Automation is causing widespread issues (false disables, incorrect blocks, etc.)
+
+STEP 1: DISABLE ADAPTIVE RESPONSE ACTIONS (Immediate)
+──────────────────────────────────────────────────────
+ES → Configure → Incident Management → Adaptive Response Actions
+Bulk disable all active response actions
+
+STEP 2: DISABLE SOAR PLAYBOOKS (If Applicable)
+──────────────────────────────────────────────
+In SOAR platform (Phantom/XSOAR/etc.):
+1. Navigate to playbook management
+2. Disable all active playbooks
+3. Set all playbook triggers to "Manual Only"
+
+STEP 3: VERIFY AUTOMATION STOPPED
+─────────────────────────────────
+index=_audit action=adaptive_response_action earliest=-15m
+| stats count BY action_name
+| where count > 0
+`comment("Should return zero results after disable")`
+
+STEP 4: ASSESS DAMAGE
+─────────────────────
+1. List all automated actions taken in last hour:
+   index=_audit action=adaptive_response_action earliest=-1h | table _time, action_name, search_name, user
+2. Identify affected users/systems
+3. Begin manual remediation if needed
+
+STEP 5: COMMUNICATE
+───────────────────
+- Notify SOC: "All automation disabled due to [reason]. Manual response required."
+- Notify Security Management
+- Open incident ticket for tracking
+
+STEP 6: ROOT CAUSE BEFORE RE-ENABLING
+─────────────────────────────────────
+DO NOT re-enable automation until:
+- Root cause identified
+- Fix tested in monitoring mode
+- Approval from Security Manager</code></pre>
+                </div>
+
+                <h3>Rollback: Undo Automated Account Disable</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Procedure: Restore Disabled Account</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>SCENARIO: Automation incorrectly disabled a user account
+
+FOR ENTRA ID:
+─────────────
+1. Azure Portal → Microsoft Entra ID → Users → [username]
+2. Properties → Account enabled = Yes
+3. Save
+4. Verify user can authenticate
+
+FOR ON-PREMISES AD:
+───────────────────
+1. Active Directory Users and Computers
+2. Find user → Properties → Account tab
+3. Uncheck "Account is disabled"
+4. Apply
+
+FOR CYBERARK:
+─────────────
+1. CyberArk Admin Portal → Users
+2. Find user → Edit
+3. Status = Active
+4. Save
+
+DOCUMENTATION REQUIRED:
+───────────────────────
+Always document in ticket:
+- Why account was disabled (what triggered automation)
+- Why it was a false positive
+- What tuning is needed to prevent recurrence</code></pre>
+                </div>
+
+                <h3>Rollback: Undo Automated IP Block</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Procedure: Unblock IP Address</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>SCENARIO: Automation incorrectly blocked an IP (customer, partner, VPN egress)
+
+FOR FIREWALL BLOCK:
+───────────────────
+1. Identify where block was applied (perimeter FW, WAF, host FW)
+2. Remove block rule:
+   - Palo Alto: Objects → Address Groups → Remove from block list
+   - Akamai: Security → IP Allow/Block Lists → Remove IP
+   - Windows FW: netsh advfirewall firewall delete rule name="Block_[IP]"
+3. Verify IP can connect
+
+FOR SPLUNK ES THREAT LIST:
+──────────────────────────
+1. ES → Configure → Data Enrichment → Threat Intelligence
+2. Find local threat list used for blocking
+3. Remove IP from list
+4. If KVStore: | inputlookup threat_list.csv | search NOT ip="[IP]" | outputlookup threat_list.csv
+
+VERIFICATION:
+─────────────
+1. Test connectivity from the IP
+2. Check logs for successful connections
+3. Notify affected party that block is removed
+
+PREVENT RECURRENCE:
+───────────────────
+1. Add IP to allowlist if legitimate
+2. Review detection that triggered block
+3. Adjust threshold or add exclusion</code></pre>
+                </div>
+
+                <h3>Safe Automation Deployment Checklist</h3>
+                <div class="checklist-group">
+                    <div class="checklist-title">Before Enabling ANY Automated Response Action</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-safety">
+                        <span><strong>Detection validated:</strong> Underlying detection has been in production >30 days with known false positive rate</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-safety">
+                        <span><strong>Monitoring mode complete:</strong> Automation ran in "log only" mode for minimum 4 weeks</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-safety">
+                        <span><strong>Allowlist configured:</strong> Executive accounts, service accounts, and known-good IPs excluded</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-safety">
+                        <span><strong>Rollback documented:</strong> Procedure to undo automated action is written and tested</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-safety">
+                        <span><strong>Rate limiting configured:</strong> Maximum actions per hour to prevent runaway automation</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-safety">
+                        <span><strong>SOC notified:</strong> SOC team knows new automation is being enabled</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-safety">
+                        <span><strong>Business timing approved:</strong> Not during freeze periods or high-traffic events</span>
+                    </label>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT YOU DO NEXT -->
+                <!-- ============================================== -->
+                <h2>What You Do Next</h2>
+
+                <div class="checklist-group">
+                    <div class="checklist-title">Phase 4 Implementation Checklist</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-complete">
+                        <span>Identify high-volume alerts for automation priority</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-complete">
+                        <span>Configure threat intel enrichment for all alerts</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-complete">
+                        <span>Set up asset/identity enrichment</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-complete">
+                        <span>Implement auto-ticketing for medium+ alerts</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-complete">
+                        <span>Configure notification routing (page for critical)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-complete">
+                        <span>(If SOAR) Design and test first playbook</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p4-complete">
+                        <span>Establish automation metrics tracking</span>
+                    </label>
+                </div>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Phase 4 Deliverables</div>
+                    <ul>
+                        <li>✓ Enrichment automation configured</li>
+                        <li>✓ Adaptive response actions enabled on key detections</li>
+                        <li>✓ Notification/ticketing routing configured</li>
+                        <li>✓ (If SOAR) At least one playbook in production</li>
+                        <li>✓ Automation metrics dashboard</li>
+                    </ul>
+                </div>
+
+                <div class="next-steps">
+                    <a href="../phase5-rba/index.html" class="next-step-link">
+                        <span class="step-direction">Next Phase →</span>
+                        <span class="step-title">Phase 5: Risk-Based Alerting (Future)</span>
+                    </a>
+                    <a href="../appendix/index.html" class="next-step-link">
+                        <span class="step-direction">Reference →</span>
+                        <span class="step-title">Appendix & Resources</span>
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../assets/app.js"></script>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#0d1117',
+                primaryColor: '#238636',
+                primaryTextColor: '#c9d1d9',
+                primaryBorderColor: '#30363d',
+                lineColor: '#8b949e',
+                secondaryColor: '#161b22',
+                tertiaryColor: '#21262d'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 20
+            }
+        });
+    </script>
+</body>
+</html>

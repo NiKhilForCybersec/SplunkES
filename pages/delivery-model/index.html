@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Operating Model - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="index.html" class="nav-item active">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
+                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
+                    <a href="../onboarding-primary/syslog-devices.html" class="nav-item nav-item-sub">Syslog Devices</a>
+                    <a href="../onboarding-primary/endpoint-logs.html" class="nav-item nav-item-sub">Endpoint Logs</a>
+                    <a href="../onboarding-primary/custom-apps-hec.html" class="nav-item nav-item-sub">Custom Apps (HEC)</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Alternate Onboarding</div>
+                    <a href="../onboarding-alternate/index.html" class="nav-item">Overview</a>
+                    <a href="../onboarding-alternate/akamai-external.html" class="nav-item nav-item-sub">Akamai via Collector</a>
+                    <a href="../onboarding-alternate/entra-api.html" class="nav-item nav-item-sub">Entra ID via API</a>
+                    <a href="../onboarding-alternate/cyberark-mobile.html" class="nav-item nav-item-sub">CyberArk Mobile</a>
+                    <a href="../onboarding-alternate/azure-event-hubs.html" class="nav-item nav-item-sub">Azure Event Hubs</a>
+                    <a href="../onboarding-alternate/kafka.html" class="nav-item nav-item-sub">Kafka</a>
+                    <a href="../onboarding-alternate/db-connect.html" class="nav-item nav-item-sub">DB Connect</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/akamai-waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-authentication.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <span class="current">Delivery Operating Model</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <h1>Delivery Operating Model</h1>
+
+                <!-- ============================================== -->
+                <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This page defines the core operating model for detection engineering in a single-environment reality. All other handbook pages reference this model.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 CRITICAL: Single Production Environment — No Safety Net</div>
+                    <p><strong>There is no DEV, UAT, or TEST environment.</strong> Every change you make is in production. This requires:</p>
+                    <ul>
+                        <li><strong>Rigorous backtesting</strong> before any detection deployment</li>
+                        <li><strong>Mandatory monitoring-only mode</strong> (minimum 7-14 days)</li>
+                        <li><strong>Documented rollback procedures</strong> for every change</li>
+                        <li><strong>Kill switch readiness</strong> — ability to disable in minutes</li>
+                    </ul>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Retail Business Timing — All Production Changes</div>
+                    <p>Production changes follow these timing constraints:</p>
+                    <ul>
+                        <li><strong>No go-live during:</strong> Black Friday through New Year, major promotions</li>
+                        <li><strong>Preferred window:</strong> Tuesday-Wednesday, 10 AM - 2 PM ET</li>
+                        <li><strong>SOC coverage required:</strong> Never deploy when SOC is understaffed</li>
+                    </ul>
+                </div>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Purpose</div>
+                    <p>This page defines how detection engineering projects are delivered in a <strong>single Splunk Cloud environment</strong> without DEV/UAT/TEST tenants. It establishes the phase gates, testing lifecycle, and kill-switch procedures.</p>
+                </div>
+
+                <h2>Single Environment Reality</h2>
+                
+                <p>Unlike enterprises with multiple Splunk environments, this delivery model operates with <strong>one production Splunk Cloud instance only</strong>. This constraint shapes everything:</p>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-title">❌ What We Don't Have</div>
+                        <ul>
+                            <li>No DEV environment for experimentation</li>
+                            <li>No UAT environment for stakeholder testing</li>
+                            <li>No isolated test tenant</li>
+                        </ul>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">✅ What We Must Do Instead</div>
+                        <ul>
+                            <li>Use historical data for backtesting</li>
+                            <li>Deploy in monitoring-only mode first</li>
+                            <li>Have documented rollback procedures</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2>Phase Gate Model</h2>
+                
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    subgraph P1["PHASE 1: Log Coverage"]
+        P1A[Identify Required Logs]
+        P1B[Map Data Sources]
+        P1C[Onboard & Validate]
+        P1D{Gate: All Logs\nIngesting?}
+        P1A --> P1B --> P1C --> P1D
+    end
+    
+    subgraph P2["PHASE 2: Data Quality"]
+        P2A[Validate Timestamps]
+        P2B[Check Field Completeness]
+        P2C[Verify Parsing]
+        P2D{Gate: Data\nReady?}
+        P2A --> P2B --> P2C --> P2D
+    end
+    
+    subgraph P3["PHASE 3: Detection Engineering"]
+        P3A[Build Correlation Search]
+        P3B[Backtest Historical]
+        P3C[Deploy Monitoring-Only]
+        P3D[Validate & Tune]
+        P3E{Gate: Ready for\nProduction?}
+        P3A --> P3B --> P3C --> P3D --> P3E
+    end
+    
+    subgraph P4["PHASE 4: Production"]
+        P4A[Enable Alerting]
+        P4B[Configure Notables]
+        P4C[Monitor & Tune]
+    end
+    
+    P1D -->|Yes| P2
+    P1D -->|No| P1A
+    P2D -->|Yes| P3
+    P2D -->|No| P2A
+    P3E -->|Yes| P4
+    P3E -->|No| P3A
+    
+    style P1 fill:#161b22,stroke:#58a6ff
+    style P2 fill:#161b22,stroke:#a371f7
+    style P3 fill:#161b22,stroke:#3fb950
+    style P4 fill:#161b22,stroke:#d29922
+                    </div>
+                </div>
+
+                <h2>Testing Lifecycle (Critical)</h2>
+                
+                <p>Since we have no test environment, <strong>every detection must follow this lifecycle</strong>:</p>
+                
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart LR
+    BT[1. BACKTEST\nHistorical Data]
+    MO[2. MONITORING-ONLY\nLive but Silent]
+    PE[3. PRODUCTION\nEnabled Alerting]
+    
+    BT -->|"Validate logic\nTune thresholds"| MO
+    MO -->|"7-14 days\nNo false positives"| PE
+    PE -->|"Issues found"| MO
+    
+    style BT fill:#58a6ff,stroke:#58a6ff,color:#0d1117
+    style MO fill:#d29922,stroke:#d29922,color:#0d1117
+    style PE fill:#3fb950,stroke:#3fb950,color:#0d1117
+                    </div>
+                </div>
+
+                <h3>Stage 1: Backtesting</h3>
+                
+                <div class="callout callout-phase">
+                    <div class="callout-title">🔍 Purpose</div>
+                    <p>Validate detection logic against historical data before any production deployment.</p>
+                </div>
+                
+                <p><strong>Process:</strong></p>
+                <ol>
+                    <li>Identify time range with known-good and known-bad events (if available)</li>
+                    <li>Run correlation search SPL as ad-hoc search</li>
+                    <li>Review results for false positives and missed detections</li>
+                    <li>Tune thresholds and logic based on findings</li>
+                    <li>Document baseline metrics</li>
+                </ol>
+                
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Backtest SPL Template</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| tstats summariesonly=false count from datamodel=Authentication 
+    where earliest=-30d@d latest=now() 
+    by Authentication.user, Authentication.src, Authentication.action
+| rename Authentication.* as *
+| where action="failure"
+| stats count as failure_count by user, src
+| where failure_count > 10
+| eval detection_fired=1
+| table _time, user, src, failure_count, detection_fired</code></pre>
+                </div>
+
+                <h3>Stage 2: Monitoring-Only Mode</h3>
+                
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Critical Concept</div>
+                    <p><strong>Monitoring-only mode is a PRACTICE, not a Splunk feature.</strong> It means deploying a correlation search that runs on live data but does NOT create notables or trigger alerts.</p>
+                </div>
+                
+                <p><strong>How to implement monitoring-only:</strong></p>
+                
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Production Value</th>
+                                <th>Monitoring-Only Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Create Notable</td>
+                                <td>Enabled</td>
+                                <td><strong>Disabled</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Alert Actions</td>
+                                <td>Email/Ticket/etc</td>
+                                <td><strong>None</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Search Status</td>
+                                <td>Enabled</td>
+                                <td>Enabled</td>
+                            </tr>
+                            <tr>
+                                <td>Output Results</td>
+                                <td>Index or lookup</td>
+                                <td>Summary index only</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <p><strong>Duration:</strong> Minimum 7 days, recommended 14 days for seasonal patterns.</p>
+                
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Review Monitoring-Only Results</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=summary source="correlation_search_name"
+| stats count by _time, user, src
+| timechart span=1h count
+| eval status="monitoring_only"</code></pre>
+                </div>
+
+                <h3>Stage 3: Production Enablement</h3>
+                
+                <p>Only enable production alerting when:</p>
+                
+                <ul class="checklist">
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Monitoring-only period complete</strong>
+                            Minimum 7-14 days of observation
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>False positive rate acceptable</strong>
+                            Less than 5% or as defined in acceptance criteria
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Triage runbook documented</strong>
+                            SOC knows how to handle alerts
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Rollback procedure tested</strong>
+                            Can disable within minutes if needed
+                        </div>
+                    </li>
+                </ul>
+
+                <h2>Kill Switch Procedure</h2>
+                
+                <div class="killswitch-box">
+                    <h4>🚨 Emergency Disable Procedure</h4>
+                    <p>If a detection causes operational issues (alert storms, performance impact, business disruption):</p>
+                    
+                    <ol>
+                        <li><strong>Navigate to:</strong> Settings → Content → Content Management</li>
+                        <li><strong>Filter by:</strong> Type = Correlation Search</li>
+                        <li><strong>Find:</strong> The problematic correlation search</li>
+                        <li><strong>Click:</strong> Disable button</li>
+                        <li><strong>Verify:</strong> Search status shows "Disabled"</li>
+                        <li><strong>Document:</strong> Time, reason, who disabled</li>
+                    </ol>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>SPL: Emergency Notable Suppression</span>
+                            <button class="copy-btn">Copy</button>
+                        </div>
+                        <pre><code>| makeresults 
+| eval search_name="DETECTION_NAME_HERE"
+| eval action="emergency_disable"
+| eval timestamp=now()
+| eval operator="YOUR_NAME"
+| collect index=security_audit</code></pre>
+                    </div>
+                </div>
+
+                <h2>ES Terminology Reference</h2>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title">📚 Use Correct Splunk ES Terms</div>
+                    <p>Credibility requires using terms correctly:</p>
+                </div>
+                
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Term</th>
+                                <th>Definition</th>
+                                <th>Common Mistake</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Correlation Search</strong></td>
+                                <td>Scheduled ES detection that runs SPL to identify security events</td>
+                                <td>Calling it "alert" or "rule"</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Notable Event</strong></td>
+                                <td>ES incident container created when correlation search fires</td>
+                                <td>Calling it "incident" or "ticket"</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Notable Index</strong></td>
+                                <td>Index where notable events are stored (notable index)</td>
+                                <td>Confusing with main or summary index</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Risk Event</strong></td>
+                                <td>RBA concept - OUT OF SCOPE for this project</td>
+                                <td>Using RBA concepts when not implemented</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Communication Protocols</h2>
+                
+                <h3>Before Any Production Change</h3>
+                
+                <ul class="checklist">
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Notify SOC Team</strong>
+                            Minimum 24 hours notice for new detections
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Document in Change Log</strong>
+                            Include: what, when, expected impact, rollback plan
+                        </div>
+                    </li>
+                    <li>
+                        <span class="checklist-checkbox"></span>
+                        <div class="checklist-content">
+                            <strong>Avoid Peak Hours</strong>
+                            No production changes during promotions, holidays, or weekends
+                        </div>
+                    </li>
+                </ul>
+
+                <h3>During Issues</h3>
+                
+                <ol>
+                    <li>Disable detection immediately (Kill Switch above)</li>
+                    <li>Notify stakeholders within 15 minutes</li>
+                    <li>Document timeline in incident log</li>
+                    <li>Post-mortem within 48 hours</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: PHASE GATE EVIDENCE REQUIREMENTS -->
+                <!-- ============================================== -->
+                <h2>Phase Gate Evidence Requirements</h2>
+
+                <p>Collect these artifacts at each phase gate for audit trail:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Phase Gate</th>
+                                <th>Required Evidence</th>
+                                <th>Approver</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Phase 1 → Phase 2</strong></td>
+                                <td>Data validation query results (screenshot), log coverage matrix signed off</td>
+                                <td>Splunk Admin</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Phase 2 → Phase 3</strong></td>
+                                <td>CIM compliance report, timestamp validation results, field population rates</td>
+                                <td>Detection Engineer</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Phase 3 → Production</strong></td>
+                                <td>Backtest results, monitoring-only dashboard export, SOC training acknowledgment</td>
+                                <td>SOC Manager + Security Lead</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Gate Verification Query</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify Phase 3 Gate Readiness</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Run this to verify a detection is ready for production")`
+`comment("Replace SEARCH_NAME with your correlation search name")`
+
+| rest /services/saved/searches splunk_server=local
+| search title="*SEARCH_NAME*" eai:acl.app=SA-*
+| eval is_enabled = if(disabled=0, "Yes", "No")
+| eval has_schedule = if(isnotnull(cron_schedule), "Yes", "No")
+| eval actions_configured = if(isnotnull(actions), "Yes", "No")
+| table title, is_enabled, has_schedule, cron_schedule, actions_configured
+
+`comment("GATE CRITERIA:
+- is_enabled = No (should be disabled until ready)
+- has_schedule = Yes (cron configured)
+- actions_configured = Yes (notable event actions set)
+")`</code></pre>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="../planning/index.html" class="next-steps-link">Begin Planning & Project Intake</a>
+                        <a href="../phase1-log-coverage/index.html" class="next-steps-link">Start Phase 1: Log Coverage Assessment</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

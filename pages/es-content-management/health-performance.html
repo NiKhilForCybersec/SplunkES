@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ES Health, Search Reliability & Performance - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="health-performance.html" class="nav-item nav-item-sub active">Health & Performance</a>
+                    <a href="governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">ES Health, Search Reliability & Performance</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Content Management</span>
+                <h1>ES Health, Search Reliability & Performance</h1>
+
+                <!-- ============================================== -->
+                <!-- HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES CONTENT MANAGEMENT</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This page covers how to monitor the health of the ES platform itself — not individual detections, but the infrastructure that runs them. A detection is only as reliable as the platform executing it.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 CRITICAL: Platform Issues Silently Kill Detections</div>
+                    <p><strong>If the platform is unhealthy, your detections aren't running — and nobody knows.</strong></p>
+                    <ul>
+                        <li>Skipped searches don't generate alerts — they generate nothing. Silence.</li>
+                        <li>Stale data models mean tstats queries return old data. Detections look healthy but are blind.</li>
+                        <li>Search concurrency limits mean your most important detection may be the one that gets skipped.</li>
+                        <li>Ingestion lag means events arrive after the detection window has closed.</li>
+                    </ul>
+                    <p>You MUST monitor ES health independently of detection output. A detection that fires zero notables might be working perfectly (no threats) or completely broken (can't run). Without health monitoring, you can't tell the difference.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> You have read access to <code>_internal</code> and <code>_audit</code> indexes. <strong>Verify:</strong> Run <code>index=_internal | head 1</code>. <strong>Risk if wrong:</strong> You cannot monitor ES health without internal indexes.</li>
+                        <li><strong>Assumption:</strong> Splunk Cloud admin has not restricted scheduler log access. <strong>Verify:</strong> Run <code>index=_internal sourcetype=scheduler | head 1</code>.</li>
+                        <li><strong>Assumption:</strong> Data model acceleration is configured. <strong>Verify:</strong> Settings → Data Models → check acceleration status.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: HEALTH CHECK FRAMEWORK -->
+                <!-- ============================================== -->
+                <h2>ES Health Check Framework</h2>
+
+                <p>Run these health checks on a regular cadence. The daily checks are non-negotiable. Weekly and monthly checks prevent slow-building problems.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    subgraph DAILY["📅 DAILY (Non-Negotiable)"]
+        D1["Skipped search check"]
+        D2["Notable volume sanity check"]
+        D3["Active search count"]
+    end
+
+    subgraph WEEKLY["📅 WEEKLY"]
+        W1["Search runtime analysis"]
+        W2["Data model acceleration status"]
+        W3["Concurrency utilization review"]
+        W4["Ingestion lag check"]
+    end
+
+    subgraph MONTHLY["📅 MONTHLY"]
+        M1["Full search inventory audit"]
+        M2["Lookup table freshness"]
+        M3["Context-gen search health"]
+        M4["Capacity planning review"]
+    end
+
+    D1 --> D1_FAIL{"Skips<br/>found?"}
+    D1_FAIL -->|"Yes"| ESCALATE1["🔴 Investigate immediately<br/>Detection gaps exist"]
+    D1_FAIL -->|"No"| OK1["✅ Healthy"]
+
+    D2 --> D2_FAIL{"Volume<br/>abnormal?"}
+    D2_FAIL -->|"Spike"| ESCALATE2["🟡 Check for alert storm<br/>or new data source"]
+    D2_FAIL -->|"Drop to zero"| ESCALATE3["🔴 Platform may be down<br/>or data source lost"]
+    D2_FAIL -->|"Normal"| OK2["✅ Healthy"]
+
+    style DAILY fill:#21262d,stroke:#f85149,color:#e6edf3
+    style WEEKLY fill:#21262d,stroke:#d29922,color:#e6edf3
+    style MONTHLY fill:#21262d,stroke:#58a6ff,color:#e6edf3
+    style ESCALATE1 fill:#f85149,stroke:#da3633,color:#fff
+    style ESCALATE3 fill:#f85149,stroke:#da3633,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: DAILY HEALTH CHECKS -->
+                <!-- ============================================== -->
+                <h2>Daily Health Checks</h2>
+
+                <h3>Check 1: Skipped Correlation Searches</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 This Is the Single Most Important Health Check</div>
+                    <p>A skipped search means a detection did not run. Events during that window were never evaluated. You have a gap in coverage and you don't know about it unless you check.</p>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Daily Skipped Search Report</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("RUN DAILY — First thing every morning")`
+`comment("Any result = detection gap. Investigate immediately.")`
+
+index=_internal sourcetype=scheduler status="skipped" earliest=-24h
+| eval search_name = savedsearch_name
+| stats count AS skip_count,
+    latest(_time) AS last_skip,
+    values(reason) AS skip_reasons
+    BY search_name, app
+| where skip_count > 0
+| eval severity = case(
+    skip_count > 10, "🔴 CRITICAL — Persistent gaps",
+    skip_count > 3, "🟡 WARNING — Multiple gaps",
+    true(), "⚪ Single skip — monitor"
+)
+| eval gap_hours = round(skip_count * 0.25, 1)
+| sort - skip_count
+| table search_name, app, skip_count, gap_hours, severity, 
+    skip_reasons, last_skip
+| rename gap_hours AS "Est. Gap (hours)"</code></pre>
+                </div>
+
+                <h3>Check 2: Notable Volume Sanity Check</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: 24-Hour Notable Volume vs 7-Day Average</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Compares today's notable volume against 7-day rolling average")`
+`comment("Major deviations indicate either a real event or a platform problem")`
+
+`notable`
+| eval period = if(_time > relative_time(now(), "-24h"), "today", "baseline")
+| stats count AS total BY search_name, period
+| xyseries search_name period total
+| fillnull value=0
+| eval change_pct = if(baseline > 0, round(((today - baseline/6) / (baseline/6)) * 100, 1), "NEW")
+| eval status = case(
+    today = 0 AND baseline > 0, "🔴 STOPPED FIRING — investigate",
+    change_pct > 200, "🔴 SPIKE — possible storm",
+    change_pct > 100, "🟡 ELEVATED — review",
+    change_pct < -80, "🟡 SIGNIFICANT DROP — review",
+    true(), "🟢 Normal"
+)
+| where status != "🟢 Normal"
+| sort - today
+| table search_name, today, baseline, change_pct, status</code></pre>
+                </div>
+
+                <h3>Check 3: Active Scheduled Search Count</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Currently Active Scheduled Searches</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("How many scheduled searches are active right now?")`
+`comment("Compare against known concurrency limit")`
+
+| rest /services/saved/searches splunk_server=local
+| search disabled=0 is_scheduled=1
+| stats count AS total_active,
+    dc(eai:acl.app) AS source_apps
+| eval concurrency_limit = 24
+| eval utilization_pct = round((total_active / concurrency_limit) * 100, 0)
+| eval risk = case(
+    utilization_pct > 90, "🔴 CRITICAL — near limit, skips likely",
+    utilization_pct > 70, "🟡 WARNING — getting crowded",
+    true(), "🟢 Healthy"
+)
+| table total_active, concurrency_limit, utilization_pct, risk, source_apps</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WEEKLY HEALTH CHECKS -->
+                <!-- ============================================== -->
+                <h2>Weekly Health Checks</h2>
+
+                <h3>Check 4: Search Runtime Analysis</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Correlation Search Runtime Trends (7 Days)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Identifies searches that are getting slower over time")`
+`comment("A search that takes longer than its cron interval WILL skip")`
+
+index=_internal sourcetype=scheduler status="success" earliest=-7d
+| eval runtime_sec = run_time
+| eval runtime_min = round(runtime_sec / 60, 2)
+| stats avg(runtime_min) AS avg_runtime,
+    max(runtime_min) AS max_runtime,
+    perc95(runtime_min) AS p95_runtime,
+    perc50(runtime_min) AS median_runtime,
+    count AS executions
+    BY savedsearch_name
+| eval health = case(
+    max_runtime > 30, "🔴 CRITICAL — 30+ min runs detected",
+    p95_runtime > 15, "🔴 WARNING — P95 exceeds 15 min",
+    p95_runtime > 10, "🟡 REVIEW — P95 exceeds 10 min",
+    avg_runtime > 5, "🟡 MONITOR — Avg above 5 min",
+    true(), "🟢 Healthy"
+)
+| where health != "🟢 Healthy"
+| sort - max_runtime
+| table savedsearch_name, executions, median_runtime, avg_runtime, 
+    p95_runtime, max_runtime, health</code></pre>
+                </div>
+
+                <h3>Check 5: Data Model Acceleration Status</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Data Model Acceleration Health</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Data model acceleration MUST be current for tstats to work")`
+`comment("If acceleration is behind, detections are using stale data")`
+
+| rest /services/datamodel/acceleration splunk_server=local
+| table title, acceleration.enabled, acceleration.earliest_time,
+    acceleration.backfill_time, eai:acl.app
+| rename acceleration.enabled AS enabled,
+    acceleration.earliest_time AS earliest,
+    acceleration.backfill_time AS backfill
+| eval status = case(
+    enabled = 0, "⚫ NOT ACCELERATED",
+    backfill = "None" OR isnull(backfill), "🟢 Current",
+    true(), "🟡 BACKFILLING — " . backfill
+)
+| sort status
+| table title, enabled, earliest, backfill, status, eai:acl.app</code></pre>
+                </div>
+
+                <h3>Check 6: Search Concurrency Over Time</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Search Concurrency Heatmap (7 Days)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Shows concurrency utilization patterns by hour of day")`
+`comment("Identifies peak times when skipping is most likely")`
+
+index=_internal sourcetype=scheduler earliest=-7d
+| eval hour = strftime(_time, "%H")
+| eval day = strftime(_time, "%A")
+| bin _time span=5m
+| stats dc(sid) AS concurrent BY _time, hour, day
+| stats avg(concurrent) AS avg_concurrent,
+    max(concurrent) AS peak_concurrent
+    BY hour
+| eval risk = case(
+    peak_concurrent > 24, "🔴 Over limit at peak",
+    peak_concurrent > 20, "🟡 Near limit at peak",
+    true(), "🟢 Healthy"
+)
+| sort hour
+| table hour, avg_concurrent, peak_concurrent, risk</code></pre>
+                </div>
+
+                <h3>Check 7: Ingestion Lag Detection</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Detect Ingestion Lag by Sourcetype (Critical Sources)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Compares event time (_time) with index time (_indextime)")`
+`comment("Lag > 5 minutes means detections may miss events")`
+
+index=* sourcetype IN ("akamai:waf", "azure:aad:signin", "WinEventLog:Security")
+    earliest=-1h
+| eval lag_seconds = _indextime - _time
+| eval lag_minutes = round(lag_seconds / 60, 1)
+| stats avg(lag_minutes) AS avg_lag,
+    max(lag_minutes) AS max_lag,
+    perc95(lag_minutes) AS p95_lag,
+    count AS events
+    BY sourcetype
+| eval health = case(
+    p95_lag > 15, "🔴 CRITICAL — detections likely missing events",
+    p95_lag > 5, "🟡 WARNING — increase lookback buffer",
+    p95_lag > 2, "🟢 Normal — minor lag",
+    true(), "🟢 Healthy"
+)
+| table sourcetype, events, avg_lag, p95_lag, max_lag, health</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: MONTHLY HEALTH CHECKS -->
+                <!-- ============================================== -->
+                <h2>Monthly Health Checks</h2>
+
+                <h3>Check 8: Lookup Table Freshness</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check Lookup Table Update Timestamps</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Stale lookups = stale enrichment = broken detections")`
+`comment("Identity and asset lookups should update daily")`
+
+| rest /services/data/lookup-table-files splunk_server=local
+| eval last_updated = strftime(updated, "%Y-%m-%d %H:%M")
+| eval age_days = round((now() - updated) / 86400, 1)
+| eval health = case(
+    age_days > 30, "🔴 STALE — 30+ days old",
+    age_days > 7, "🟡 AGING — 7+ days old",
+    true(), "🟢 Current"
+)
+| where age_days > 7
+| sort - age_days
+| table title, eai:acl.app, last_updated, age_days, health</code></pre>
+                </div>
+
+                <h3>Check 9: Context-Generating Search Health</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Context-Gen Search Status</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Context-gen searches feed identity, asset, and threat intel lookups")`
+`comment("If these break, ALL enrichment-dependent detections are affected")`
+
+| rest /services/saved/searches splunk_server=local
+| search title="*Identity*" OR title="*Asset*" OR title="*Threat*Gen*"
+| eval status = if(disabled=0, "ENABLED", "DISABLED")
+| table title, status, eai:acl.app, cron_schedule, next_scheduled_time
+| sort title</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHEN PLATFORM ISSUES INVALIDATE DETECTIONS -->
+                <!-- ============================================== -->
+                <h2>When Platform Issues Invalidate Detections</h2>
+
+                <p>There are situations where the ES platform itself is the problem, not individual detections. In these cases, detection engineering work must PAUSE until the platform is fixed.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    CHECK["Platform health check"] --> Q1{"Skipped searches<br/>in last 24h?"}
+    
+    Q1 -->|"> 10 skips"| PAUSE1["🔴 PAUSE detection work<br/>Escalate to Splunk admin<br/>Concurrency issue"]
+    
+    Q1 -->|"< 10 skips"| Q2{"Data model<br/>acceleration<br/>current?"}
+    
+    Q2 -->|"Behind > 2 hours"| PAUSE2["🔴 PAUSE tstats detections<br/>Escalate to Splunk admin<br/>Acceleration rebuild needed"]
+    
+    Q2 -->|"Current"| Q3{"Ingestion lag<br/>on critical sources?"}
+    
+    Q3 -->|"> 15 min lag"| PAUSE3["🟡 PAUSE new deployments<br/>Investigate data pipeline<br/>Existing detections may have gaps"]
+    
+    Q3 -->|"< 5 min lag"| Q4{"Search runtimes<br/>degrading?"}
+    
+    Q4 -->|"P95 > 15 min"| REVIEW["🟡 REVIEW search load<br/>Optimize or deschedule<br/>before adding new searches"]
+    
+    Q4 -->|"P95 < 10 min"| HEALTHY["✅ PLATFORM HEALTHY<br/>Proceed with detection work"]
+    
+    style PAUSE1 fill:#f85149,stroke:#da3633,color:#fff
+    style PAUSE2 fill:#f85149,stroke:#da3633,color:#fff
+    style PAUSE3 fill:#d29922,stroke:#bb8009,color:#fff
+    style REVIEW fill:#d29922,stroke:#bb8009,color:#fff
+    style HEALTHY fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <h3>Platform Issue Impact Matrix</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Platform Issue</th>
+                                <th>Impact on Detections</th>
+                                <th>Detections Affected</th>
+                                <th>Action Required</th>
+                                <th>Escalate To</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Search concurrency at limit</strong></td>
+                                <td>Searches skip randomly. Most critical detections may be among skipped.</td>
+                                <td>ALL scheduled searches</td>
+                                <td>Reduce scheduled search count. Reschedule non-critical to off-peak. Prioritize critical detections.</td>
+                                <td>Splunk admin / Cloud ops</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model acceleration behind</strong></td>
+                                <td>tstats returns stale data. Detections report on old events, miss new ones.</td>
+                                <td>ALL tstats-based searches</td>
+                                <td>Pause tstats-dependent deployments. Escalate acceleration rebuild.</td>
+                                <td>Splunk admin</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Index ingestion stopped</strong></td>
+                                <td>No new events indexed. All detections for that source return zero.</td>
+                                <td>ALL detections using affected source</td>
+                                <td>Investigate data pipeline. Check HF, HEC, forwarders. This is a P1 incident.</td>
+                                <td>Splunk admin + data source owner</td>
+                            </tr>
+                            <tr>
+                                <td><strong>License exceeded</strong></td>
+                                <td>Indexing blocked for non-critical indexes. Search still works but new data stops.</td>
+                                <td>Detections using affected indexes</td>
+                                <td>Identify volume spike source. Reduce ingestion or request license increase.</td>
+                                <td>Splunk admin + license owner</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Search head restart / maintenance</strong></td>
+                                <td>All searches interrupted. Scheduled searches during window are skipped.</td>
+                                <td>ALL scheduled searches</td>
+                                <td>Accept gap. Verify searches resume after maintenance. Check for persistent skips.</td>
+                                <td>Splunk Cloud ops (planned) / Support (unplanned)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Knowledge bundle replication lag</strong></td>
+                                <td>Search peers have outdated configs. Some searches run with old logic.</td>
+                                <td>Recently modified searches</td>
+                                <td>Wait for replication to complete. If persistent, escalate.</td>
+                                <td>Splunk admin</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHEN TO PAUSE AND ESCALATE -->
+                <!-- ============================================== -->
+                <h2>When to Pause Detection Work and Escalate</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP All Detection Engineering Work When:</div>
+                    <ul>
+                        <li><strong>More than 20% of correlation searches skipped in the last 24 hours.</strong> The platform cannot reliably run detections. Adding more will make it worse.</li>
+                        <li><strong>Any critical data source has stopped ingesting.</strong> Detections without data are useless. Fix the pipeline first.</li>
+                        <li><strong>An ES upgrade is in progress or scheduled within 48 hours.</strong> All changes may be overwritten or conflict. Wait until post-upgrade validation is complete.</li>
+                        <li><strong>Search head CPU consistently above 90%.</strong> The platform is overloaded. Adding searches will degrade everything.</li>
+                        <li><strong>License usage above 90% of daily limit.</strong> Risk of indexing block. Focus on reducing ingestion, not adding detection load.</li>
+                    </ul>
+                </div>
+
+                <h3>Escalation Path</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Issue Severity</th>
+                                <th>Escalate To</th>
+                                <th>Method</th>
+                                <th>Expected Response</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>Low</strong> — Single search skip, minor lag</td>
+                                <td>Note in change log. Monitor for recurrence.</td>
+                                <td>Self-managed</td>
+                                <td>N/A</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>Medium</strong> — Multiple skips, acceleration behind, runtime degradation</td>
+                                <td>Splunk admin (internal)</td>
+                                <td>Email or ticket with SPL output attached</td>
+                                <td>Investigation within 1 business day</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-red);"><strong>High</strong> — Persistent skipping, ingestion failure, platform outage</td>
+                                <td>Splunk admin + Splunk Cloud support</td>
+                                <td>Ticket + phone/Slack for urgency</td>
+                                <td>Investigation within 4 hours</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-red);"><strong>Critical</strong> — Complete detection failure, license block, search head down</td>
+                                <td>Splunk Cloud support (P1) + management notification</td>
+                                <td>Support case P1 + phone call</td>
+                                <td>Immediate response</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: PERFORMANCE OPTIMIZATION -->
+                <!-- ============================================== -->
+                <h2>Performance Optimization Quick Reference</h2>
+
+                <p>When searches are running slow, use this table to identify and fix the most common causes:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Symptom</th>
+                                <th>Likely Cause</th>
+                                <th>Fix</th>
+                                <th>Impact</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Search takes >10 min</td>
+                                <td>Using <code>search</code> instead of <code>tstats</code></td>
+                                <td>Rewrite to use <code>| tstats</code> with accelerated data model</td>
+                                <td>10-100x faster</td>
+                            </tr>
+                            <tr>
+                                <td>Search scans too much data</td>
+                                <td>Lookback window too large or missing index constraint</td>
+                                <td>Match lookback to cron interval. Always specify <code>index=</code></td>
+                                <td>2-10x faster</td>
+                            </tr>
+                            <tr>
+                                <td>Join/subsearch timeout</td>
+                                <td>Using <code>join</code> or <code>subsearch</code> with large datasets</td>
+                                <td>Rewrite using <code>stats</code>, <code>lookup</code>, or <code>append</code></td>
+                                <td>5-50x faster</td>
+                            </tr>
+                            <tr>
+                                <td>High memory usage</td>
+                                <td><code>stats</code> with very high cardinality <code>BY</code> fields</td>
+                                <td>Pre-filter data. Reduce cardinality with <code>bin</code> or <code>eval</code></td>
+                                <td>Prevents search failure</td>
+                            </tr>
+                            <tr>
+                                <td>Slow lookup enrichment</td>
+                                <td>Large CSV lookup with no optimization</td>
+                                <td>Use KV store instead of CSV for >100K rows. Add <code>outputnew</code>.</td>
+                                <td>2-5x faster</td>
+                            </tr>
+                            <tr>
+                                <td>Wildcard in early filter</td>
+                                <td><code>| search field="*pattern*"</code> on raw events</td>
+                                <td>Move wildcards later in pipeline. Use indexed field extraction.</td>
+                                <td>5-20x faster</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"I don't need to check _internal"</strong></td>
+                                <td>Without checking scheduler logs, you have zero visibility into skipped searches. You are flying blind.</td>
+                                <td>Daily skipped search check. Non-negotiable. Automate it if possible.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"The dashboards look fine, so ES is healthy"</strong></td>
+                                <td>ES dashboards show what detections found. They don't show what detections MISSED because they didn't run.</td>
+                                <td>Health monitoring is separate from detection monitoring. Check both.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Add more searches — we have capacity"</strong></td>
+                                <td>Capacity isn't just about current utilization. Peak-hour concurrency may already be near limits.</td>
+                                <td>Check concurrency heatmap before adding. Schedule new searches at off-peak times.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Data model is accelerated, so it's fine"</strong></td>
+                                <td>Acceleration can fall behind, fail to rebuild, or exclude recent data. "Accelerated" ≠ "current."</td>
+                                <td>Check acceleration freshness weekly. Verify tstats results match raw search counts.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Splunk Cloud handles performance — not my problem"</strong></td>
+                                <td>Splunk Cloud manages infrastructure, not your search efficiency. A bad search on Splunk Cloud still times out and skips.</td>
+                                <td>Optimize searches. Use tstats. Match lookback to cron. This is your responsibility.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Daily health check (all 3 queries)</strong></td>
+                                <td>10 minutes (all healthy)</td>
+                                <td>30 minutes (minor issues to investigate)</td>
+                                <td>2+ hours (skipped searches to investigate)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Weekly health check (all 4 queries)</strong></td>
+                                <td>30 minutes</td>
+                                <td>1-2 hours</td>
+                                <td>Half day (acceleration or lag issues)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Search optimization (per search)</strong></td>
+                                <td>30 minutes (simple tstats rewrite)</td>
+                                <td>2-4 hours (complex logic refactoring)</td>
+                                <td>1-2 days (requires data model changes)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Platform issue escalation</strong></td>
+                                <td>1 hour (ticket + handoff)</td>
+                                <td>Half day (investigation + escalation)</td>
+                                <td>Days (Splunk Cloud support engagement)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Set up automated health monitoring</strong></td>
+                                <td>2 hours (save as scheduled reports)</td>
+                                <td>4-8 hours (build dashboard + alerts)</td>
+                                <td>1-2 days (create full health app)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Daily skipped search report</strong></td>
+                                <td>SPL output (save as CSV or screenshot)</td>
+                                <td>Weekly status report or health dashboard</td>
+                                <td>Daily</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Weekly runtime analysis</strong></td>
+                                <td>SPL output</td>
+                                <td>Health dashboard</td>
+                                <td>Weekly</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model acceleration status</strong></td>
+                                <td>Screenshot of acceleration dashboard</td>
+                                <td>Monthly health report</td>
+                                <td>Weekly check, monthly report</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Platform escalation records</strong></td>
+                                <td>Ticket number + description + resolution</td>
+                                <td>Change log or incident tracker</td>
+                                <td>Per incident</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Capacity planning data</strong></td>
+                                <td>Concurrency utilization trends, license usage</td>
+                                <td>Monthly health report</td>
+                                <td>Monthly</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Next Steps -->
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="governance-audit.html" class="next-steps-link">Detection Governance & Audit Readiness →</a>
+                        <a href="correlation-lifecycle.html" class="next-steps-link">Correlation Search Lifecycle (Failure Modes) →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ES Data Models Deep Dive - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Data Layer & CIM ⚠️</div>
+                    <a href="how-es-uses-data.html" class="nav-item nav-item-sub">How ES Uses Data</a>
+                    <a href="cim-fundamentals.html" class="nav-item nav-item-sub">CIM Fundamentals for ES</a>
+                    <a href="data-models-deep-dive.html" class="nav-item nav-item-sub active">Data Models Deep Dive</a>
+                    <a href="validating-es-data.html" class="nav-item nav-item-sub">Validating ES Data ⛔</a>
+                    <a href="missing-fields.html" class="nav-item nav-item-sub">Missing Fields After Add-ons</a>
+                    <a href="safe-addon-tuning.html" class="nav-item nav-item-sub">Safe Add-on Tuning</a>
+                    <a href="safe-correlation-path.html" class="nav-item nav-item-sub">Data Model → Correlation</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="../es-content-management/escu-overview.html" class="nav-item nav-item-sub">ESCU Overview</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="../es-operations/notable-suppression.html" class="nav-item nav-item-sub">Notable Suppression</a>
+                    <a href="../es-operations/investigations-evidence.html" class="nav-item nav-item-sub">Investigations & Evidence</a>
+                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="how-es-uses-data.html">ES Data Layer</a>
+                <span class="separator">/</span>
+                <span class="current">Data Models Deep Dive</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-2">⚠️ ES DATA LAYER — CRITICAL</span>
+                <h1>ES Data Models Deep Dive</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES DATA LAYER</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> Deep reference for the four data models most used by ES detections: Authentication, Network Traffic, Web, and Endpoint. For each model: what it represents, how it's structured, which fields ES actually queries, common missing fields, how to validate population, and what healthy vs broken looks like. This is your per-model diagnostic reference.</p>
+                    <p><strong>Ownership:</strong> Detection Engineering</p>
+                    <p><strong>Preconditions:</strong> You've read <a href="how-es-uses-data.html">How ES Uses Data</a> and <a href="cim-fundamentals.html">CIM Fundamentals</a>.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> The Splunk CIM add-on (Splunk_SA_CIM) is installed and provides the data model definitions. <strong>Verify:</strong> <code>| datamodel | table datamodel_name</code> — you should see Authentication, Network_Traffic, Web, etc.</li>
+                        <li><strong>Assumption:</strong> Data model acceleration may or may not be enabled. We will check. Do NOT assume it's on.</li>
+                        <li><strong>Assumption:</strong> All SPL in this page is read-only. Nothing modifies configuration or data.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: UNDERSTANDING TSTATS -->
+                <!-- ============================================== -->
+                <h2>Understanding <code>| tstats</code> — Why It Matters</h2>
+
+                <p>Before diving into individual data models, you must understand how <code>| tstats</code> works, because it is the query mechanism for nearly every ES correlation search.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart LR
+    subgraph TSTATS_PATH["| tstats Path (Fast — ES Default)"]
+        direction LR
+        T1["Query hits<br/>TSIDX summaries<br/>(pre-computed)"] --> T2["Returns results<br/>in seconds"] --> T3["Only sees fields<br/>IN the data model"]
+    end
+    
+    subgraph SEARCH_PATH["| search Path (Slow — Fallback)"]
+        direction LR
+        S1["Query scans<br/>raw events<br/>(disk I/O)"] --> S2["Returns results<br/>in minutes"] --> S3["Sees ALL fields<br/>in the event"]
+    end
+    
+    subgraph PREREQS["Prerequisites for | tstats to Work"]
+        P1["✅ Data exists in index"]
+        P2["✅ CIM fields mapped (aliases)"]
+        P3["✅ Correct tags assigned (eventtype)"]
+        P4["✅ Data model acceleration ON"]
+        P5["✅ Acceleration is current (not backlogged)"]
+    end
+    
+    PREREQS -->|"ALL must be true"| TSTATS_PATH
+    
+    style TSTATS_PATH fill:#161b22,stroke:#238636,color:#c9d1d9
+    style SEARCH_PATH fill:#161b22,stroke:#d29922,color:#c9d1d9
+    style PREREQS fill:#161b22,stroke:#f85149,color:#c9d1d9
+                    </div>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 When <code>| tstats</code> Returns Nothing — Diagnostic Checklist</div>
+                    <p>If <code>| tstats count from datamodel=X</code> returns zero, work through this exact sequence:</p>
+                    <ol>
+                        <li><strong>Is acceleration on?</strong> — <code>| rest /services/datamodel/model | search title="X" | table title, acceleration</code></li>
+                        <li><strong>Is acceleration current?</strong> — Check <code>acceleration.earliest_time</code> and look for acceleration errors in <code>index=_internal sourcetype=scheduler "acceleration"</code></li>
+                        <li><strong>Does raw data exist?</strong> — <code>index=YOUR_INDEX sourcetype=YOUR_ST earliest=-1h | stats count</code></li>
+                        <li><strong>Are CIM fields populated?</strong> — <code>index=YOUR_INDEX sourcetype=YOUR_ST | head 10 | table src, dest, user, action</code></li>
+                        <li><strong>Are correct tags assigned?</strong> — <code>index=YOUR_INDEX sourcetype=YOUR_ST | head 10 | table tag, eventtype</code></li>
+                    </ol>
+                    <p>The first check that fails is where your problem is. Fix that layer.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- DATA MODEL: AUTHENTICATION -->
+                <!-- ============================================== -->
+                <h2>Authentication Data Model</h2>
+
+                <h3>What It Represents</h3>
+                <p>Every login attempt across the environment — successful or failed — from any source: Active Directory (Windows Security logs), VPN concentrators, cloud identity providers (Azure AD, Okta), SSH, web applications, database logins. This is typically the most populated and most critical data model for security detections.</p>
+
+                <h3>Data Model Structure</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Node</th>
+                                <th>Description</th>
+                                <th>Constraint (Tags)</th>
+                                <th>Common Sources</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>Authentication</code> (root)</td>
+                                <td>All authentication events</td>
+                                <td><code>tag=authentication</code></td>
+                                <td>All login sources</td>
+                            </tr>
+                            <tr>
+                                <td><code>Authentication.Successful_Authentication</code></td>
+                                <td>Logins where action=success</td>
+                                <td><code>tag=authentication</code> + <code>action=success</code></td>
+                                <td>EventCode 4624 (Windows), success sign-ins (Azure AD)</td>
+                            </tr>
+                            <tr>
+                                <td><code>Authentication.Failed_Authentication</code></td>
+                                <td>Logins where action=failure</td>
+                                <td><code>tag=authentication</code> + <code>action=failure</code></td>
+                                <td>EventCode 4625 (Windows), failed sign-ins (Azure AD)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Fields ES Actually Queries</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data Model Field</th>
+                                <th>CIM Field</th>
+                                <th>ES Detections Using It</th>
+                                <th>Common Missing From</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>Authentication.action</code></td><td><code>action</code></td><td>Brute force, account lockout, MFA failure</td><td>Custom apps (may use "result" or "outcome" instead)</td></tr>
+                            <tr><td><code>Authentication.user</code></td><td><code>user</code></td><td>Every identity-based detection</td><td>Network devices (may log IP only, not username)</td></tr>
+                            <tr><td><code>Authentication.src</code></td><td><code>src</code></td><td>Geo-impossible travel, credential stuffing</td><td>O365 (may be in different field like "ClientIP")</td></tr>
+                            <tr><td><code>Authentication.dest</code></td><td><code>dest</code></td><td>Lateral movement, targeted host detection</td><td>Cloud auth (may not have a "destination" concept)</td></tr>
+                            <tr><td><code>Authentication.app</code></td><td><code>app</code></td><td>Per-application auth analysis, legacy protocol detection</td><td>Windows Security (needs calculated field from LogonType)</td></tr>
+                            <tr><td><code>Authentication.authentication_method</code></td><td><code>authentication_method</code></td><td>MFA fatigue detection, method downgrade</td><td>Most sources (rarely mapped by default TAs)</td></tr>
+                            <tr><td><code>Authentication.signature</code></td><td><code>signature</code></td><td>Event classification, EventCode-based detections</td><td>Non-Windows sources (Windows maps via TA)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Validation SPL — Authentication</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Authentication Data Model — Full Population Check</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only query")`
+`comment("Checks field population in the Authentication data model")`
+`comment("Run this BEFORE enabling any auth-based detection")`
+
+| tstats count AS total,
+    dc(Authentication.user) AS unique_users,
+    dc(Authentication.src) AS unique_sources,
+    dc(Authentication.dest) AS unique_dests
+    FROM datamodel=Authentication
+    WHERE earliest=-4h latest=now
+    BY Authentication.action
+
+| rename Authentication.* AS *
+| eval health = case(
+    total > 0 AND unique_users > 0 AND unique_sources > 0, "✅ HEALTHY — Fields populated",
+    total > 0 AND (unique_users=0 OR unique_sources=0), "🟡 PARTIAL — Some fields null",
+    total=0, "❌ EMPTY — No data in model (check tags + acceleration)"
+)
+| table action, total, unique_users, unique_sources, unique_dests, health</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Authentication — Sourcetype Contribution</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Shows which sourcetypes feed the Authentication data model")`
+`comment("Useful to identify which sources are present vs missing")`
+
+| tstats count FROM datamodel=Authentication
+    WHERE earliest=-4h latest=now
+    BY sourcetype
+| sort - count</code></pre>
+                </div>
+
+                <h3>Healthy vs Broken — Authentication</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>State</th>
+                                <th>What You See</th>
+                                <th>What It Means</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>✅ <strong>Healthy</strong></td>
+                                <td>tstats returns events with action=success and action=failure. user, src, dest fields populated. Multiple sourcetypes contributing.</td>
+                                <td>Data model is working. Detections can be enabled.</td>
+                                <td>Proceed to detection enablement lifecycle.</td>
+                            </tr>
+                            <tr>
+                                <td>🟡 <strong>Partial — action null</strong></td>
+                                <td>Events appear in model but action field is null or a single value for all events.</td>
+                                <td>TA doesn't properly derive the CIM <code>action</code> field. Cannot distinguish success from failure.</td>
+                                <td>Check TA's props.conf for <code>EVAL-action</code> or <code>FIELDALIAS-action</code>. Fix in local/.</td>
+                            </tr>
+                            <tr>
+                                <td>🟡 <strong>Partial — user null</strong></td>
+                                <td>Events appear but user field is null or "N/A".</td>
+                                <td>TA doesn't extract the username or maps it to a non-CIM field name.</td>
+                                <td>Check raw event for the actual username field. Add alias in local/props.conf.</td>
+                            </tr>
+                            <tr>
+                                <td>❌ <strong>Empty model</strong></td>
+                                <td>tstats returns zero events. But <code>index=windows sourcetype=WinEventLog:Security EventCode=4624</code> shows data.</td>
+                                <td>Events are NOT tagged for the Authentication data model. Tags missing.</td>
+                                <td>Check eventtypes.conf and tags.conf in the Windows TA. The <code>authentication</code> tag must be present.</td>
+                            </tr>
+                            <tr>
+                                <td>❌ <strong>Acceleration off</strong></td>
+                                <td>tstats returns zero. Raw search shows data. Tags are present.</td>
+                                <td>Data model acceleration is disabled or stale.</td>
+                                <td>Check acceleration status. Escalate to Splunk admin.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- DATA MODEL: NETWORK TRAFFIC -->
+                <!-- ============================================== -->
+                <h2>Network Traffic Data Model</h2>
+
+                <h3>What It Represents</h3>
+                <p>Every network connection observed by firewalls, routers, load balancers, VPC flow logs, IDS/IPS, and proxy devices. This is typically the highest-volume data model and the most impacted by CIM field gaps (because network devices vary enormously in log formats).</p>
+
+                <h3>Data Model Structure</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Node</th>
+                                <th>Description</th>
+                                <th>Constraint (Tags)</th>
+                                <th>Common Sources</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>All_Traffic</code> (root)</td>
+                                <td>All network connection events</td>
+                                <td><code>tag=network</code> AND <code>tag=communicate</code></td>
+                                <td>All firewall, IDS, router, flow logs</td>
+                            </tr>
+                            <tr>
+                                <td><code>All_Traffic.Traffic_Allowed</code></td>
+                                <td>Connections that were permitted</td>
+                                <td>+ <code>action=allowed</code></td>
+                                <td>Firewall allow logs</td>
+                            </tr>
+                            <tr>
+                                <td><code>All_Traffic.Traffic_Blocked</code></td>
+                                <td>Connections that were denied/dropped</td>
+                                <td>+ <code>action=blocked</code></td>
+                                <td>Firewall deny/drop logs</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Network Traffic Requires TWO Tags</div>
+                    <p>The Network_Traffic data model constraint requires <strong>both</strong> <code>tag=network</code> AND <code>tag=communicate</code>. If a sourcetype only has one of these tags, its events will NOT appear in the data model. This is one of the most common reasons for Network_Traffic being empty — the TA assigned <code>network</code> but forgot <code>communicate</code>, or vice versa.</p>
+                </div>
+
+                <h3>Fields ES Actually Queries</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data Model Field</th>
+                                <th>CIM Field</th>
+                                <th>ES Detections Using It</th>
+                                <th>Common Missing From</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>All_Traffic.src</code></td><td><code>src</code></td><td>Every network detection</td><td>Rarely missing (most TAs map this)</td></tr>
+                            <tr><td><code>All_Traffic.dest</code></td><td><code>dest</code></td><td>Every network detection</td><td>Rarely missing</td></tr>
+                            <tr><td><code>All_Traffic.dest_port</code></td><td><code>dest_port</code></td><td>Port scan, unusual service, C2 beaconing</td><td>VPC flow logs (may use "dstport"), some custom parsers</td></tr>
+                            <tr><td><code>All_Traffic.action</code></td><td><code>action</code></td><td>Allowed vs blocked analysis, firewall effectiveness</td><td>Custom syslog sources (need EVAL to normalize vendor terms like "permit"/"deny" to "allowed"/"blocked")</td></tr>
+                            <tr><td><code>All_Traffic.transport</code></td><td><code>transport</code></td><td>Protocol anomaly detection</td><td>Cloud flow logs (may use "protocol" with numeric values)</td></tr>
+                            <tr><td><code>All_Traffic.bytes_in</code></td><td><code>bytes_in</code></td><td>Data exfiltration volume</td><td>Many firewalls (field name varies: rcvd_bytes, bytes_received, etc.)</td></tr>
+                            <tr><td><code>All_Traffic.bytes_out</code></td><td><code>bytes_out</code></td><td>Data exfiltration volume</td><td>Same — vendor field names vary significantly</td></tr>
+                            <tr><td><code>All_Traffic.app</code></td><td><code>app</code></td><td>Application-layer detection</td><td>Basic firewalls (only NGFW does app identification)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Validation SPL — Network Traffic</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Network Traffic Data Model — Full Population Check</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only query")`
+
+| tstats count AS total,
+    dc(All_Traffic.src) AS unique_sources,
+    dc(All_Traffic.dest) AS unique_dests,
+    dc(All_Traffic.dest_port) AS unique_dest_ports
+    FROM datamodel=Network_Traffic
+    WHERE earliest=-4h latest=now
+    BY All_Traffic.action
+
+| rename All_Traffic.* AS *
+| eval health = case(
+    total > 0 AND unique_sources > 0 AND unique_dests > 0 AND unique_dest_ports > 0, "✅ HEALTHY",
+    total > 0 AND (unique_sources=0 OR unique_dests=0), "🟡 PARTIAL — Core fields missing",
+    total > 0 AND unique_dest_ports=0, "🟡 PARTIAL — dest_port missing (port-based detections fail)",
+    total=0, "❌ EMPTY — Check tags: need BOTH 'network' AND 'communicate'"
+)
+| table action, total, unique_sources, unique_dests, unique_dest_ports, health</code></pre>
+                </div>
+
+                <h3>Healthy vs Broken — Network Traffic</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>State</th>
+                                <th>What You See</th>
+                                <th>Root Cause</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>✅ <strong>Healthy</strong></td><td>Events present with action=allowed + action=blocked. src/dest/dest_port populated.</td><td>—</td><td>Proceed to detections.</td></tr>
+                            <tr><td>🟡 <strong>action is null or single value</strong></td><td>All events show the same action or action is empty.</td><td>TA doesn't normalize vendor-specific allow/deny terms to CIM "allowed"/"blocked".</td><td>Add <code>EVAL-action</code> in local/props.conf to map vendor terms.</td></tr>
+                            <tr><td>🟡 <strong>bytes_in / bytes_out null</strong></td><td>Volume fields are empty despite firewall reporting bytes.</td><td>Vendor uses non-CIM field names (bytes_received, rcvd_bytes, etc.).</td><td>Add field aliases in local/props.conf.</td></tr>
+                            <tr><td>❌ <strong>Empty — missing one tag</strong></td><td>tstats returns 0. Raw search shows data. Events have <code>tag=network</code> but NOT <code>tag=communicate</code>.</td><td>Incomplete tag configuration in the TA.</td><td>Add missing tag in local/tags.conf. See <a href="safe-addon-tuning.html">Safe Add-on Tuning</a>.</td></tr>
+                            <tr><td>❌ <strong>Empty — acceleration off</strong></td><td>tstats returns 0. Tags present. Raw data present.</td><td>Data model acceleration disabled.</td><td>Escalate to Splunk admin to enable acceleration.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- DATA MODEL: WEB -->
+                <!-- ============================================== -->
+                <h2>Web Data Model</h2>
+
+                <h3>What It Represents</h3>
+                <p>HTTP/HTTPS request activity from web proxies, WAF devices, web server access logs, and load balancers. Critical for detecting web application attacks (SQLi, XSS, path traversal), DDoS, and malicious bot activity.</p>
+
+                <h3>Data Model Structure</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Node</th>
+                                <th>Description</th>
+                                <th>Constraint (Tags)</th>
+                                <th>Common Sources</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>Web</code> (root)</td><td>All web request events</td><td><code>tag=web</code></td><td>Proxy, WAF, IIS, Apache, Nginx, Cloudflare, Akamai</td></tr>
+                            <tr><td><code>Web.Proxy</code></td><td>Proxy-mediated requests</td><td><code>tag=web</code> + <code>tag=proxy</code></td><td>Squid, Zscaler, BlueCoat</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Fields ES Actually Queries</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data Model Field</th>
+                                <th>CIM Field</th>
+                                <th>ES Detections Using It</th>
+                                <th>Common Missing From</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>Web.src</code></td><td><code>src</code></td><td>Attack source identification</td><td>CDN/WAF logs (may use "client_ip" or "true_client_ip")</td></tr>
+                            <tr><td><code>Web.dest</code></td><td><code>dest</code></td><td>Target server identification</td><td>Proxy logs (may use "host" header value)</td></tr>
+                            <tr><td><code>Web.url</code></td><td><code>url</code></td><td>Attack payload detection (SQLi, XSS in URL)</td><td>WAF logs (field name varies: "uri", "request_uri", "cs-uri-stem")</td></tr>
+                            <tr><td><code>Web.uri_path</code></td><td><code>uri_path</code></td><td>Path traversal, restricted path access</td><td>Many sources (need extraction from full URL)</td></tr>
+                            <tr><td><code>Web.status</code></td><td><code>status</code></td><td>Error rate detection, successful exploit identification</td><td>WAF logs (may use "response_code", "sc-status")</td></tr>
+                            <tr><td><code>Web.http_method</code></td><td><code>http_method</code></td><td>Method anomaly, PUT/DELETE abuse</td><td>Older web server logs</td></tr>
+                            <tr><td><code>Web.http_user_agent</code></td><td><code>http_user_agent</code></td><td>Bot detection, scanner identification</td><td>CDN summary logs (may be truncated or omitted)</td></tr>
+                            <tr><td><code>Web.bytes_in</code> / <code>Web.bytes_out</code></td><td><code>bytes_in</code> / <code>bytes_out</code></td><td>Upload/download volume anomaly</td><td>Varies widely by source</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Validation SPL — Web</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Web Data Model — Full Population Check</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only query")`
+
+| tstats count AS total,
+    dc(Web.src) AS unique_sources,
+    dc(Web.dest) AS unique_dests,
+    dc(Web.url) AS unique_urls,
+    dc(Web.status) AS unique_statuses
+    FROM datamodel=Web
+    WHERE earliest=-4h latest=now
+    BY Web.http_method
+
+| rename Web.* AS *
+| eval health = case(
+    total > 0 AND unique_sources > 0 AND unique_urls > 0 AND unique_statuses > 0, "✅ HEALTHY",
+    total > 0 AND unique_urls=0, "🟡 PARTIAL — url field missing (WAF detections fail)",
+    total > 0 AND unique_statuses=0, "🟡 PARTIAL — status field missing (exploit success detection fails)",
+    total=0, "❌ EMPTY — Check for tag=web"
+)
+| table http_method, total, unique_sources, unique_dests, unique_urls, unique_statuses, health</code></pre>
+                </div>
+
+                <h3>Healthy vs Broken — Web</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>State</th>
+                                <th>What You See</th>
+                                <th>Root Cause</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>✅ <strong>Healthy</strong></td><td>Events with HTTP methods, src/dest/url/status populated, multiple sourcetypes.</td><td>—</td><td>Proceed to WAF detections.</td></tr>
+                            <tr><td>🟡 <strong>url / uri_path null</strong></td><td>Events present but URL fields empty.</td><td>WAF/proxy TA maps URL to a non-CIM field name.</td><td>Add field alias: <code>FIELDALIAS-url = request_uri AS url</code> in local/props.conf.</td></tr>
+                            <tr><td>🟡 <strong>src is the CDN IP, not client</strong></td><td>src field shows CDN edge IPs, not real client IPs.</td><td>WAF logs the CDN edge as source. Real client IP is in a different field (X-Forwarded-For, True-Client-IP).</td><td>Add calculated field or alias to map the real client IP to <code>src</code>.</td></tr>
+                            <tr><td>❌ <strong>Empty model</strong></td><td>tstats returns 0. WAF data exists in raw index.</td><td>Missing <code>tag=web</code> on the sourcetype.</td><td>Add eventtype + tag in the TA's local/ directory.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- DATA MODEL: ENDPOINT -->
+                <!-- ============================================== -->
+                <h2>Endpoint Data Model (High-Level)</h2>
+
+                <h3>What It Represents</h3>
+                <p>Process execution, file system activity, registry changes, and service events on endpoints. This is the primary data model for endpoint threat detection (ransomware, credential dumping, lateral movement, living-off-the-land). It is the most complex data model with many sub-nodes.</p>
+
+                <h3>Key Sub-Models</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Node</th>
+                                <th>What It Covers</th>
+                                <th>Tags Required</th>
+                                <th>Primary Sources</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>Endpoint.Processes</code></td><td>Process creation, command lines, parent-child relationships</td><td><code>tag=process</code>, <code>tag=report</code></td><td>Sysmon EventID 1, WinEventLog 4688, EDR process telemetry</td></tr>
+                            <tr><td><code>Endpoint.Filesystem</code></td><td>File creation, modification, deletion</td><td><code>tag=endpoint</code>, <code>tag=filesystem</code></td><td>Sysmon EventID 11/15/23, EDR file events</td></tr>
+                            <tr><td><code>Endpoint.Registry</code></td><td>Registry key/value creation, modification, deletion</td><td><code>tag=endpoint</code>, <code>tag=registry</code></td><td>Sysmon EventID 12/13/14</td></tr>
+                            <tr><td><code>Endpoint.Services</code></td><td>Service installation and changes</td><td><code>tag=endpoint</code>, <code>tag=service</code></td><td>Windows System EventID 7045</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Key Fields — Endpoint.Processes (Most Used)</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>CIM Field</th>
+                                <th>Priority</th>
+                                <th>What It Is</th>
+                                <th>If Missing</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>process_name</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>Name of the executable (e.g., cmd.exe, powershell.exe)</td><td>🔴 Cannot match on process names. All LOLBIN detections fail.</td></tr>
+                            <tr><td><code>process</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>Full command line</td><td>🔴 Cannot analyze command-line arguments. Most advanced detections fail.</td></tr>
+                            <tr><td><code>parent_process_name</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>Parent process executable name</td><td>🔴 Cannot detect suspicious parent-child relationships (Excel→cmd, Word→PowerShell).</td></tr>
+                            <tr><td><code>dest</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>Hostname of the endpoint</td><td>🔴 Cannot identify WHICH endpoint is compromised.</td></tr>
+                            <tr><td><code>user</code></td><td style="color: var(--accent-orange);"><strong>HIGH</strong></td><td>User account running the process</td><td>🟡 Cannot attribute process to user. Reduces investigation context.</td></tr>
+                            <tr><td><code>process_id</code></td><td style="color: var(--accent-green);"><strong>MEDIUM</strong></td><td>PID</td><td>⚪ Reduces correlation precision in process tree analysis.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Validation SPL — Endpoint.Processes</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Endpoint Processes — Population Check</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only query")`
+
+| tstats count AS total,
+    dc(Processes.process_name) AS unique_process_names,
+    dc(Processes.dest) AS unique_endpoints,
+    dc(Processes.user) AS unique_users
+    FROM datamodel=Endpoint.Processes
+    WHERE earliest=-4h latest=now
+
+| eval health = case(
+    total > 0 AND unique_process_names > 0 AND unique_endpoints > 0, "✅ HEALTHY",
+    total > 0 AND unique_process_names=0, "🟡 PARTIAL — process_name missing",
+    total=0, "❌ EMPTY — Check tags: process + report"
+)
+| table total, unique_process_names, unique_endpoints, unique_users, health</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: CROSS-MODEL REFERENCE -->
+                <!-- ============================================== -->
+                <h2>Cross-Model Quick Reference</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data Model</th>
+                                <th>Tags Required</th>
+                                <th>Minimum Viable Fields</th>
+                                <th>Quick tstats Check</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Authentication</strong></td>
+                                <td><code>authentication</code></td>
+                                <td><code>action</code>, <code>user</code>, <code>src</code></td>
+                                <td><code>| tstats count from datamodel=Authentication BY Authentication.action</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Network_Traffic</strong></td>
+                                <td><code>network</code> + <code>communicate</code></td>
+                                <td><code>src</code>, <code>dest</code>, <code>dest_port</code>, <code>action</code></td>
+                                <td><code>| tstats count from datamodel=Network_Traffic BY All_Traffic.action</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Web</strong></td>
+                                <td><code>web</code></td>
+                                <td><code>src</code>, <code>url</code>, <code>status</code></td>
+                                <td><code>| tstats count from datamodel=Web BY Web.http_method</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Endpoint (Processes)</strong></td>
+                                <td><code>process</code> + <code>report</code></td>
+                                <td><code>process_name</code>, <code>process</code>, <code>dest</code></td>
+                                <td><code>| tstats count from datamodel=Endpoint.Processes</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FAILURE MODES -->
+                <!-- ============================================== -->
+                <h2>Failure Modes</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Failure</th>
+                                <th>Symptom</th>
+                                <th>Root Cause</th>
+                                <th>Impact</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Data model returns zero events</strong></td>
+                                <td>tstats count=0 for a model that should have data</td>
+                                <td>Missing tags OR acceleration off OR acceleration stale</td>
+                                <td>All detections for this model silently fail</td>
+                                <td>Work through the tstats diagnostic checklist (top of page)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model has events but fields null</strong></td>
+                                <td>tstats count > 0 but dc(field)=0</td>
+                                <td>Tags present (events visible) but CIM field alias missing</td>
+                                <td>Detections that filter on the null field return zero</td>
+                                <td>Add field alias in TA local/props.conf</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Wrong data in data model</strong></td>
+                                <td>Data model contains events from an unrelated sourcetype</td>
+                                <td>Tags were too broadly applied (e.g., tag=authentication on non-auth events)</td>
+                                <td>Detections fire on irrelevant data. False positives.</td>
+                                <td>Narrow the eventtype definition to match only the correct events</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Acceleration backlog</strong></td>
+                                <td>tstats returns data but only for older time ranges; recent data missing</td>
+                                <td>Acceleration is running but hasn't caught up (common after re-enable or after volume spike)</td>
+                                <td>Detections with short lookback (15min, 1hr) miss recent events</td>
+                                <td>Wait for acceleration to catch up. Monitor <code>| rest /services/admin/summarization</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Field value mismatch</strong></td>
+                                <td>Detection expects action="allowed" but data has action="permit"</td>
+                                <td>CIM EVAL-action mapping uses wrong normalization values</td>
+                                <td>Detection filter doesn't match. Appears as "no events" even though data exists.</td>
+                                <td>Check CIM spec for expected values. Fix EVAL-action in local/props.conf.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>Any data model used by active detections returns zero events.</strong> This is a production detection failure. Investigate immediately — check acceleration, then tags, then data source.</li>
+                        <li><strong>Data model acceleration shows a backlog of more than 4 hours.</strong> Detections with short lookback windows are missing data. Escalate to Splunk admin for resource investigation.</li>
+                        <li><strong>A TA upgrade causes a data model to lose events.</strong> The upgrade may have changed field aliases or tags. Verify CIM status post-upgrade before accepting the change.</li>
+                        <li><strong>Wrong data appears in a data model.</strong> Over-tagged events pollute detection results. Narrow the eventtype/tag scope immediately.</li>
+                        <li><strong>Multiple data models are empty simultaneously.</strong> Likely a systemic issue: CIM add-on problem, search head cluster issue, or global acceleration failure.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTIONS: ANTI-PATTERNS, EFFORT, EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>"I'll just check one data model and assume the rest are fine"</strong></td><td>Each model has different tag requirements and different field mapping challenges. Authentication working doesn't mean Network_Traffic works.</td><td>Validate EACH data model you plan to use for detections. Independently.</td></tr>
+                            <tr><td><strong>"tstats returns some data so we're good"</strong></td><td>"Some data" may be from one sourcetype while another critical sourcetype is completely missing from the model.</td><td>Check sourcetype contribution per model. Verify all expected sources are present.</td></tr>
+                            <tr><td><strong>"We'll fix the Endpoint model later — auth and network are enough"</strong></td><td>Endpoint detections catch ransomware, credential dumping, and lateral movement. Deferring endpoint coverage creates a critical gap.</td><td>Prioritize by threat model. If ransomware is a top risk, Endpoint is not optional.</td></tr>
+                            <tr><td><strong>"The data model has events so field population is fine"</strong></td><td>Events can appear in a model with many fields null. Count > 0 doesn't mean fields are populated.</td><td>Always check dc(field) alongside count. A model with 10,000 events and 0 unique users is broken for identity-based detections.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Validate 1 data model (population + fields + acceleration)</strong></td><td>20 minutes</td><td>1 hour</td><td>Half day (issues found)</td></tr>
+                            <tr><td><strong>Validate all 4 core data models</strong></td><td>2 hours</td><td>Half day</td><td>1-2 days (many gaps)</td></tr>
+                            <tr><td><strong>Fix a missing tag for 1 sourcetype</strong></td><td>15 minutes</td><td>30 minutes</td><td>1 hour (complex eventtype needed)</td></tr>
+                            <tr><td><strong>Fix a missing CIM field for 1 sourcetype</strong></td><td>15 minutes</td><td>30 minutes</td><td>2 hours (complex derivation)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Per-model population check results</strong></td><td>SPL output tables from validation queries</td><td>Data quality tracker</td><td>Before enabling detections, quarterly, after upgrades</td></tr>
+                            <tr><td><strong>Sourcetype contribution per model</strong></td><td>SPL output: which sourcetypes feed which models</td><td>Data quality tracker</td><td>During initial assessment</td></tr>
+                            <tr><td><strong>Known null fields per model</strong></td><td>Table: model, field, null %, impact, fix plan</td><td>CIM gap register</td><td>Ongoing</td></tr>
+                            <tr><td><strong>Data model acceleration status</strong></td><td>SPL output: model, acceleration on/off, backlog</td><td>Platform health report</td><td>Weekly</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="validating-es-data.html" class="next-steps-link">Validating ES Data (Hard Gate) →</a>
+                        <a href="missing-fields.html" class="next-steps-link">Missing Fields After Add-ons →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

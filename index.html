@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Splunk ES Detection Engineering Handbook</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="index.html" class="nav-item active">Home</a>
+                    <a href="pages/delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="pages/planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="pages/phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="pages/universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="pages/decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="pages/onboarding-primary/index.html" class="nav-item">Overview</a>
+                    <a href="pages/onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="pages/onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
+                    <a href="pages/onboarding-primary/syslog-devices.html" class="nav-item nav-item-sub">Syslog Devices</a>
+                    <a href="pages/onboarding-primary/endpoint-logs.html" class="nav-item nav-item-sub">Endpoint Logs</a>
+                    <a href="pages/onboarding-primary/custom-apps-hec.html" class="nav-item nav-item-sub">Custom Apps (HEC)</a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Alternate Onboarding</div>
+                    <a href="pages/onboarding-alternate/index.html" class="nav-item">Overview</a>
+                    <a href="pages/onboarding-alternate/akamai-external.html" class="nav-item nav-item-sub">Akamai via Collector</a>
+                    <a href="pages/onboarding-alternate/entra-api.html" class="nav-item nav-item-sub">Entra ID via API</a>
+                    <a href="pages/onboarding-alternate/cyberark-mobile.html" class="nav-item nav-item-sub">CyberArk Mobile</a>
+                    <a href="pages/onboarding-alternate/azure-event-hubs.html" class="nav-item nav-item-sub">Azure Event Hubs</a>
+                    <a href="pages/onboarding-alternate/kafka.html" class="nav-item nav-item-sub">Kafka</a>
+                    <a href="pages/onboarding-alternate/db-connect.html" class="nav-item nav-item-sub">DB Connect</a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="pages/phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Data Layer & CIM ⚠️</div>
+                    <a href="pages/es-data-layer/how-es-uses-data.html" class="nav-item nav-item-sub">How ES Uses Data</a>
+                    <a href="pages/es-data-layer/cim-fundamentals.html" class="nav-item nav-item-sub">CIM Fundamentals for ES</a>
+                    <a href="pages/es-data-layer/data-models-deep-dive.html" class="nav-item nav-item-sub">Data Models Deep Dive</a>
+                    <a href="pages/es-data-layer/validating-es-data.html" class="nav-item nav-item-sub">Validating ES Data ⛔</a>
+                    <a href="pages/es-data-layer/missing-fields.html" class="nav-item nav-item-sub">Missing Fields After Add-ons</a>
+                    <a href="pages/es-data-layer/safe-addon-tuning.html" class="nav-item nav-item-sub">Safe Add-on Tuning</a>
+                    <a href="pages/es-data-layer/safe-correlation-path.html" class="nav-item nav-item-sub">Data Model → Correlation</a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="pages/phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="pages/use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="pages/use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="pages/phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="pages/phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="pages/appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="pages/appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="pages/appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="pages/appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-wrapper">
+                <div class="hero">
+                    <h1>Splunk ES Detection Engineering Handbook</h1>
+                    <p class="hero-subtitle">Enterprise Delivery Reference for Sobeys-Scale Retail Security Operations</p>
+                    <div class="hero-badges">
+                        <span class="hero-badge">📋 Solo Delivery Ready</span>
+                        <span class="hero-badge">🔒 No RBA Required</span>
+                        <span class="hero-badge">☁️ Single Splunk Cloud</span>
+                        <span class="hero-badge">🇨🇦 Canadian Enterprise</span>
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- HANDBOOK STATUS - HARDENED VERSION -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Handbook Status: HARDENED v1.0</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>All pages include: HARDENED indicators, Data Reality Checks, Failure Modes, Rollback Procedures, Business Timing Constraints, and Safety Warnings. This handbook is audit-ready for enterprise delivery.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 CRITICAL: Read Before You Start</div>
+                    <p><strong>This is a single production environment.</strong> There is no DEV, UAT, or TEST. Every change is in production.</p>
+                    <ul>
+                        <li><strong>Start with:</strong> <a href="pages/delivery-model/index.html">Delivery Operating Model</a> — understand the constraints</li>
+                        <li><strong>Then:</strong> <a href="pages/planning/index.html">Planning & Project Intake</a> — complete intake before ANY work</li>
+                        <li><strong>Always:</strong> Follow phase gates, document evidence, have rollback ready</li>
+                    </ul>
+                </div>
+
+                <h2>What This Handbook Is</h2>
+                <p>This is an <strong>operational delivery handbook</strong> — not a blog, not theory. Every page is designed to guide you through real enterprise detection engineering projects from start to finish without additional research, guessing, or hallucinations.</p>
+                
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Client Reality Check</div>
+                    <p>This handbook is tailored for a <strong>Sobeys-scale Canadian grocery & retail enterprise</strong> that:</p>
+                    <ul>
+                        <li>Is <strong>NOT</strong> currently using Risk-Based Alerting (RBA)</li>
+                        <li>Has an immature security team not ready for RBA adoption</li>
+                        <li>Needs to focus on <strong>log coverage and ingestion</strong> first</li>
+                        <li>Uses Entra ID enterprise-wide with potential multi-provider MFA</li>
+                        <li>Has Akamai WAF logs in scope</li>
+                    </ul>
+                </div>
+
+                <h2>Core Delivery Principles</h2>
+                
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-badge phase-1">Phase 1 First</div>
+                        <div class="card-title">Log Coverage is the Gate</div>
+                        <div class="card-desc">No detections until Phase 1 is complete. Missing logs = blind spots = failed detections.</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-badge status-required">Required</div>
+                        <div class="card-title">Single Environment Testing</div>
+                        <div class="card-desc">No DEV/UAT. All testing uses backtesting → monitoring-only → production enablement.</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-badge status-future">Future</div>
+                        <div class="card-title">RBA is Out of Scope</div>
+                        <div class="card-desc">Risk-Based Alerting is a future maturity step. All detections use classic ES notables.</div>
+                    </div>
+                </div>
+
+                <h2>Project Phase Sequence</h2>
+                <p>All projects <strong>must</strong> follow this sequence. Phase 1 is a hard gate.</p>
+                
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart LR
+    P1[Phase 1\nLog Coverage]
+    P2[Phase 2\nData Quality]
+    P3[Phase 3\nDetection]
+    P4[Phase 4\nAutomation]
+    P5[Phase 5\nRBA Future]
+    
+    P1 -->|Gate| P2
+    P2 --> P3
+    P3 --> P4
+    P4 -.->|Optional| P5
+    
+    style P1 fill:#58a6ff,stroke:#58a6ff,color:#0d1117
+    style P2 fill:#a371f7,stroke:#a371f7,color:#0d1117
+    style P3 fill:#3fb950,stroke:#3fb950,color:#0d1117
+    style P4 fill:#d29922,stroke:#d29922,color:#0d1117
+    style P5 fill:#f85149,stroke:#f85149,color:#0d1117
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Phase</th>
+                                <th>Focus</th>
+                                <th>Gate Criteria</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="status-badge phase-1">Phase 1</span></td>
+                                <td>Log Coverage & Ingestion Readiness</td>
+                                <td>All required logs identified, onboarded, validated</td>
+                            </tr>
+                            <tr>
+                                <td><span class="status-badge phase-2">Phase 2</span></td>
+                                <td>Data Quality & Normalization</td>
+                                <td>Field completeness verified, timestamps correct</td>
+                            </tr>
+                            <tr>
+                                <td><span class="status-badge phase-3">Phase 3</span></td>
+                                <td>Detection Engineering</td>
+                                <td>Detections backtested, monitoring-only validated</td>
+                            </tr>
+                            <tr>
+                                <td><span class="status-badge phase-4">Phase 4</span></td>
+                                <td>Automation (Optional)</td>
+                                <td>Ticketing, enrichment configured</td>
+                            </tr>
+                            <tr>
+                                <td><span class="status-badge phase-5">Phase 5</span></td>
+                                <td>RBA (Future Only)</td>
+                                <td>NOT in current scope</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>How to Use This Handbook</h2>
+                
+                <ol class="steps">
+                    <li class="step">
+                        <div class="step-title">Start with Planning</div>
+                        <p>Go to <a href="pages/planning/index.html">Planning & Project Intake</a> to define scope, stakeholders, and acceptance criteria.</p>
+                    </li>
+                    <li class="step">
+                        <div class="step-title">Complete Phase 1 (Mandatory)</div>
+                        <p>Use <a href="pages/phase1-log-coverage/index.html">Log Coverage & Readiness</a> to identify and onboard all required logs.</p>
+                    </li>
+                    <li class="step">
+                        <div class="step-title">Follow the Onboarding Guides</div>
+                        <p>Select the appropriate <a href="pages/onboarding-primary/index.html">Primary</a> or <a href="pages/onboarding-alternate/index.html">Alternate</a> onboarding path for each log source.</p>
+                    </li>
+                    <li class="step">
+                        <div class="step-title">Validate Data Quality</div>
+                        <p>Use <a href="pages/phase2-data-quality/index.html">Phase 2</a> checks before building detections.</p>
+                    </li>
+                    <li class="step">
+                        <div class="step-title">Build Detections</div>
+                        <p>Follow <a href="pages/phase3-detection/index.html">Phase 3</a> for classic ES correlation searches with the monitoring-only lifecycle.</p>
+                    </li>
+                </ol>
+
+                <h2>Supported Projects</h2>
+                
+                <div class="card-grid">
+                    <a href="pages/onboarding-primary/akamai-waf.html" class="card card-link">
+                        <div class="card-title">🛡️ Akamai WAF / DDoS</div>
+                        <div class="card-desc">Application-layer protection with WAF log analysis for bot abuse, credential stuffing, and DDoS detection.</div>
+                    </a>
+                    <a href="pages/onboarding-primary/authentication-mfa.html" class="card card-link">
+                        <div class="card-title">🔐 MFA & Authentication</div>
+                        <div class="card-desc">Multi-provider authentication monitoring with Entra ID and CyberArk Mobile support.</div>
+                    </a>
+                    <a href="pages/universal-onboarding/index.html" class="card card-link">
+                        <div class="card-title">📊 Generic Log Onboarding</div>
+                        <div class="card-desc">Universal framework for onboarding any enterprise log source to Splunk Cloud.</div>
+                    </a>
+                </div>
+
+                <h2>Primary Risks (Retail Context)</h2>
+                
+                <div class="callout callout-danger">
+                    <div class="callout-title">🎯 Key Threat Scenarios</div>
+                    <ul>
+                        <li><strong>Application-layer DDoS</strong> — Traffic spikes during promotions mask attacks</li>
+                        <li><strong>Bot abuse & credential stuffing</strong> — Automated attacks on loyalty accounts</li>
+                        <li><strong>MFA fatigue</strong> — Push notification bombing</li>
+                        <li><strong>Account takeover</strong> — Customer and employee account compromise</li>
+                        <li><strong>Availability impact</strong> — False positives during peak hours are high risk</li>
+                    </ul>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 Start Your Project</div>
+                    <div class="next-steps-links">
+                        <a href="pages/delivery-model/index.html" class="next-steps-link">Understand the Delivery Operating Model</a>
+                        <a href="pages/planning/index.html" class="next-steps-link">Begin Planning & Project Intake</a>
+                        <a href="pages/phase1-log-coverage/index.html" class="next-steps-link">Jump to Phase 1: Log Coverage</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="assets/app.js"></script>
+</body>
+</html>

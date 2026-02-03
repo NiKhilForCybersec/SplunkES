@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kafka Connect Integration | Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>Splunk ES</h1>
+            <span class="version">Detection Engineering</span>
+        </div>
+        <ul class="nav-tree">
+            <li><a href="../../index.html"><span class="nav-icon">◈</span> Home</a></li>
+            <li><a href="../delivery-model/index.html"><span class="nav-icon">◆</span> Delivery Model</a></li>
+            <li><a href="../planning/index.html"><span class="nav-icon">◇</span> Planning & Scoping</a></li>
+            <li class="nav-section">
+                <span class="section-title">Phase 1: Log Coverage</span>
+                <ul>
+                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
+                    <li><a href="../universal-onboarding/index.html">Universal Onboarding</a></li>
+                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
+                </ul>
+            </li>
+            <li class="nav-section">
+                <span class="section-title">Onboarding - Primary</span>
+                <ul>
+                    <li><a href="../onboarding-primary/index.html">Overview</a></li>
+                    <li><a href="../onboarding-primary/akamai-waf.html">Akamai WAF</a></li>
+                    <li><a href="../onboarding-primary/authentication-mfa.html">Authentication/MFA</a></li>
+                    <li><a href="../onboarding-primary/syslog-hf.html">Syslog via HF</a></li>
+                    <li><a href="../onboarding-primary/endpoint-telemetry.html">Endpoint Telemetry</a></li>
+                    <li><a href="../onboarding-primary/hec-ingestion.html">HEC Ingestion</a></li>
+                </ul>
+            </li>
+            <li class="nav-section">
+                <span class="section-title">Onboarding - Alternate</span>
+                <ul>
+                    <li><a href="index.html">Overview</a></li>
+                    <li><a href="azure-event-hubs.html">Azure Event Hubs</a></li>
+                    <li><a href="kafka-connect.html" class="active">Kafka Connect</a></li>
+                    <li><a href="db-connect.html">DB Connect</a></li>
+                    <li><a href="scripted-inputs.html">Scripted Inputs</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase2-data-quality/index.html"><span class="nav-icon">◆</span> Phase 2: Data Quality</a></li>
+            <li><a href="../phase3-detection/index.html"><span class="nav-icon">◇</span> Phase 3: Detection</a></li>
+            <li class="nav-section">
+                <span class="section-title">Use Cases</span>
+                <ul>
+                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS Detection</a></li>
+                    <li><a href="../use-cases/mfa-auth.html">MFA Authentication</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase4-automation/index.html"><span class="nav-icon">◈</span> Phase 4: Automation</a></li>
+            <li><a href="../phase5-rba/index.html"><span class="nav-icon">◇</span> Phase 5: RBA <span class="badge future">Future</span></a></li>
+            <li class="nav-section">
+                <span class="section-title">Appendix</span>
+                <ul>
+                    <li><a href="../appendix/index.html">Reference Index</a></li>
+                    <li><a href="../appendix/spl-library.html">SPL Library</a></li>
+                    <li><a href="../appendix/troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="../appendix/checklists.html">Checklists</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <nav class="breadcrumb">
+            <a href="../../index.html">Home</a>
+            <span class="separator">›</span>
+            <a href="index.html">Onboarding - Alternate</a>
+            <span class="separator">›</span>
+            <span class="current">Kafka Connect</span>
+        </nav>
+
+        <header class="page-header">
+            <div class="phase-indicator">Phase 1 · Alternate Path</div>
+            <h1>Kafka Connect Integration</h1>
+            <p class="subtitle">Stream data from Apache Kafka to Splunk using the Splunk Connect for Kafka sink connector</p>
+        </header>
+
+        <!-- ============================================== -->
+        <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <div class="callout callout-info">
+                <div class="callout-title">📋 Page Status: HARDENED</div>
+                <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                <p>This page includes Kafka-specific operational guidance, failure modes, and rollback procedures.</p>
+            </div>
+
+            <div class="callout callout-danger">
+                <div class="callout-title">🚨 CRITICAL: Kafka Connect Requires Kafka Expertise</div>
+                <p><strong>Kafka Connect is NOT a simple integration.</strong> Before implementing, ensure:</p>
+                <ul>
+                    <li><strong>Kafka team ownership:</strong> Kafka Connect is managed by Kafka ops team, not Splunk team</li>
+                    <li><strong>Consumer lag monitoring:</strong> Growing lag means data loss risk</li>
+                    <li><strong>Dead Letter Queue:</strong> MUST be configured or bad records cause connector failure</li>
+                    <li><strong>HEC acknowledgment:</strong> Enable indexer acknowledgment to prevent data loss</li>
+                </ul>
+            </div>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">⚠️ Connector Version Compatibility</div>
+                <p>Version mismatches cause silent failures:</p>
+                <ul>
+                    <li><strong>Splunk Connect for Kafka:</strong> Must match Kafka Connect framework version</li>
+                    <li><strong>Kafka cluster version:</strong> Connector has minimum Kafka version requirements</li>
+                    <li><strong>Java version:</strong> Kafka Connect requires compatible JDK version</li>
+                </ul>
+                <p>Always test upgrades in non-production first.</p>
+            </div>
+        </section>
+
+        <!-- Architecture Overview -->
+        <section class="content-section">
+            <h2>Architecture Overview</h2>
+            <p>Kafka Connect provides a scalable, reliable method for streaming high-volume data from Apache Kafka into Splunk. This approach is ideal when your organization already uses Kafka as a data pipeline or message broker, enabling real-time ingestion without additional forwarder infrastructure.</p>
+
+            <div class="mermaid-container">
+                <div class="mermaid">
+flowchart LR
+    subgraph Sources["Data Sources"]
+        App1["Application<br/>Logs"]
+        App2["Microservices"]
+        IoT["IoT Devices"]
+        CDC["Database<br/>CDC"]
+    end
+    
+    subgraph Kafka["Apache Kafka Cluster"]
+        T1["topic-app-logs"]
+        T2["topic-security"]
+        T3["topic-audit"]
+    end
+    
+    subgraph Connect["Kafka Connect Cluster"]
+        W1["Worker 1"]
+        W2["Worker 2"]
+        W3["Worker 3"]
+        SC["Splunk Sink<br/>Connector"]
+    end
+    
+    subgraph Splunk["Splunk Infrastructure"]
+        HEC["HEC Endpoint<br/>(Load Balanced)"]
+        IDX["Indexer Cluster"]
+        SH["Search Head<br/>+ ES"]
+    end
+    
+    App1 & App2 & IoT & CDC --> Kafka
+    T1 & T2 & T3 --> Connect
+    SC --> HEC --> IDX --> SH
+    
+    style Sources fill:#ff6b35,color:#fff
+    style Kafka fill:#231f20,color:#fff
+    style Connect fill:#1a73e8,color:#fff
+    style Splunk fill:#65a637,color:#fff
+                </div>
+            </div>
+        </section>
+
+        <!-- Prerequisites -->
+        <section class="content-section">
+            <h2>Prerequisites</h2>
+            
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Requirement</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Kafka Cluster</strong></td>
+                            <td>Apache Kafka 2.0+ or Confluent Platform 5.0+</td>
+                            <td>AWS MSK, Azure Event Hubs for Kafka also supported</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Kafka Connect</strong></td>
+                            <td>Distributed mode cluster with 3+ workers</td>
+                            <td>Standalone mode only for testing</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Splunk Connect for Kafka</strong></td>
+                            <td>Version 2.1+ (latest recommended)</td>
+                            <td>Download from Splunkbase or GitHub</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Splunk HEC</strong></td>
+                            <td>HEC endpoint enabled with valid token</td>
+                            <td>Load balancer recommended for HA</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Network</strong></td>
+                            <td>Connect workers → Splunk HEC (TCP 8088)</td>
+                            <td>TLS recommended</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Step 1: Install Connector -->
+        <section class="content-section">
+            <h2>Step 1: Install Splunk Connect for Kafka</h2>
+            
+            <h3>Download and Deploy</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Bash (on each Kafka Connect worker)</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Download latest release
+wget https://github.com/splunk/kafka-connect-splunk/releases/download/v2.1.0/splunk-kafka-connect-v2.1.0.jar
+
+# Copy to Kafka Connect plugins directory
+cp splunk-kafka-connect-v2.1.0.jar /opt/kafka/connect-plugins/
+
+# Alternatively, if using Confluent Hub
+confluent-hub install splunk/kafka-connect-splunk:2.1.0
+
+# Verify plugin is loaded (after restarting workers)
+curl -s localhost:8083/connector-plugins | jq '.[] | select(.class | contains("splunk"))'</code></pre>
+            </div>
+
+            <h3>Kafka Connect Worker Configuration</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>connect-distributed.properties</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Kafka Connect distributed mode configuration
+bootstrap.servers=kafka1:9092,kafka2:9092,kafka3:9092
+group.id=splunk-connect-cluster
+
+# Plugin path (include Splunk connector)
+plugin.path=/opt/kafka/connect-plugins
+
+# Converters
+key.converter=org.apache.kafka.connect.storage.StringConverter
+value.converter=org.apache.kafka.connect.json.JsonConverter
+value.converter.schemas.enable=false
+
+# Internal topic settings
+config.storage.topic=splunk-connect-configs
+offset.storage.topic=splunk-connect-offsets
+status.storage.topic=splunk-connect-status
+
+config.storage.replication.factor=3
+offset.storage.replication.factor=3
+status.storage.replication.factor=3
+
+# REST interface
+rest.advertised.host.name=kafkaconnect1.company.com
+rest.port=8083
+
+# Producer settings for HEC batching
+producer.batch.size=65536
+producer.linger.ms=100</code></pre>
+            </div>
+        </section>
+
+        <!-- Step 2: Configure HEC -->
+        <section class="content-section">
+            <h2>Step 2: Configure Splunk HEC</h2>
+            
+            <h3>Create HEC Token for Kafka</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>inputs.conf (on Indexers or HEC-enabled Heavy Forwarders)</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>[http://kafka_ingest]
+disabled = 0
+token = your-hec-token-here
+index = kafka_logs
+indexes = kafka_logs,kafka_security,kafka_app
+sourcetype = kafka:json
+useACK = 1
+allowQueryStringAuth = 0</code></pre>
+            </div>
+
+            <div class="callout warning">
+                <div class="callout-title">Enable Indexer Acknowledgment</div>
+                <p>Always enable <code>useACK = 1</code> for Kafka ingestion. This ensures at-least-once delivery semantics and prevents data loss during indexer restarts or network issues.</p>
+            </div>
+
+            <h3>Load Balancer Configuration</h3>
+            <p>For high availability, configure a load balancer in front of HEC endpoints:</p>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>HAProxy Example</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>frontend splunk_hec_frontend
+    bind *:8088 ssl crt /etc/haproxy/certs/hec.pem
+    default_backend splunk_hec_backend
+
+backend splunk_hec_backend
+    balance roundrobin
+    option httpchk GET /services/collector/health
+    http-check expect status 200
+    server idx1 indexer1:8088 check ssl verify none
+    server idx2 indexer2:8088 check ssl verify none
+    server idx3 indexer3:8088 check ssl verify none</code></pre>
+            </div>
+        </section>
+
+        <!-- Step 3: Create Connector -->
+        <section class="content-section">
+            <h2>Step 3: Create Splunk Sink Connector</h2>
+            
+            <h3>Basic Connector Configuration</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>splunk-sink-connector.json</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>{
+  "name": "splunk-sink-security",
+  "config": {
+    "connector.class": "com.splunk.kafka.connect.SplunkSinkConnector",
+    "tasks.max": "4",
+    
+    "topics": "security-logs,audit-logs,auth-logs",
+    
+    "splunk.hec.uri": "https://hec-lb.company.com:8088",
+    "splunk.hec.token": "your-hec-token-here",
+    "splunk.hec.ssl.validate.certs": "true",
+    
+    "splunk.hec.ack.enabled": "true",
+    "splunk.hec.ack.poll.interval": "10",
+    "splunk.hec.ack.poll.threads": "2",
+    
+    "splunk.hec.raw": "false",
+    "splunk.hec.json.event.enrichment": "kafka_topic=${topic}",
+    
+    "splunk.indexes": "{\"security-logs\": \"security\", \"audit-logs\": \"audit\", \"auth-logs\": \"auth\"}",
+    "splunk.sourcetypes": "{\"security-logs\": \"kafka:security\", \"audit-logs\": \"kafka:audit\", \"auth-logs\": \"kafka:auth\"}",
+    
+    "splunk.hec.track.data": "true",
+    
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+    
+    "errors.tolerance": "all",
+    "errors.deadletterqueue.topic.name": "splunk-dlq",
+    "errors.deadletterqueue.context.headers.enable": "true"
+  }
+}</code></pre>
+            </div>
+
+            <h3>Deploy Connector via REST API</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Bash</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Create connector
+curl -X POST http://kafkaconnect1:8083/connectors \
+  -H "Content-Type: application/json" \
+  -d @splunk-sink-connector.json
+
+# Check connector status
+curl -s http://kafkaconnect1:8083/connectors/splunk-sink-security/status | jq
+
+# List all connectors
+curl -s http://kafkaconnect1:8083/connectors | jq
+
+# Pause connector (for maintenance)
+curl -X PUT http://kafkaconnect1:8083/connectors/splunk-sink-security/pause
+
+# Resume connector
+curl -X PUT http://kafkaconnect1:8083/connectors/splunk-sink-security/resume
+
+# Delete connector
+curl -X DELETE http://kafkaconnect1:8083/connectors/splunk-sink-security</code></pre>
+            </div>
+        </section>
+
+        <!-- Advanced Configurations -->
+        <section class="content-section">
+            <h2>Advanced Configurations</h2>
+            
+            <h3>Multi-Index Routing</h3>
+            <p>Route different topics to different Splunk indexes:</p>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>JSON</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>{
+  "splunk.indexes": "{
+    \"app-logs-prod\": \"app_prod\",
+    \"app-logs-dev\": \"app_dev\",
+    \"security-*\": \"security\",
+    \"default\": \"main\"
+  }",
+  "splunk.sourcetypes": "{
+    \"app-logs-*\": \"kafka:app\",
+    \"security-*\": \"kafka:security\"
+  }"
+}</code></pre>
+            </div>
+
+            <h3>Field Extraction from Kafka Headers</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>JSON</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>{
+  "splunk.hec.json.event.enrichment": "kafka_topic=${topic},kafka_partition=${partition},kafka_offset=${offset}",
+  "splunk.header.support": "true",
+  "splunk.header.custom": "correlation_id,trace_id,service_name",
+  "splunk.header.index": "x-splunk-index",
+  "splunk.header.source": "x-splunk-source"
+}</code></pre>
+            </div>
+
+            <h3>Batching and Performance Tuning</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>JSON</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>{
+  "splunk.hec.max.batch.size": "500",
+  "splunk.hec.max.outstanding.events": "1000000",
+  "splunk.hec.max.retries": "10",
+  "splunk.hec.socket.timeout": "60000",
+  "splunk.hec.total.channels": "4",
+  
+  "consumer.override.max.poll.records": "500",
+  "consumer.override.fetch.min.bytes": "1048576",
+  "consumer.override.fetch.max.wait.ms": "500"
+}</code></pre>
+            </div>
+
+            <div class="callout info">
+                <div class="callout-title">Tuning Guidelines</div>
+                <ul>
+                    <li><strong>High throughput:</strong> Increase <code>max.batch.size</code> and <code>tasks.max</code></li>
+                    <li><strong>Low latency:</strong> Decrease <code>fetch.max.wait.ms</code> and batch sizes</li>
+                    <li><strong>Reliability:</strong> Enable ACKs, increase retries, configure DLQ</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Validation -->
+        <section class="content-section">
+            <h2>Validation Queries</h2>
+            
+            <h3>Verify Data Flow</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>index=security OR index=audit OR index=auth 
+    sourcetype="kafka:*" earliest=-1h
+| stats count BY index, sourcetype, kafka_topic
+| sort -count</code></pre>
+            </div>
+
+            <h3>Check Ingestion Latency</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>index=security sourcetype="kafka:*" earliest=-1h
+| eval ingestion_latency = _indextime - _time
+| stats avg(ingestion_latency) as avg_latency_sec,
+        max(ingestion_latency) as max_latency_sec,
+        p95(ingestion_latency) as p95_latency_sec
+    BY kafka_topic
+| eval avg_latency_sec = round(avg_latency_sec, 2)</code></pre>
+            </div>
+
+            <h3>Monitor HEC Health</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>index=_internal sourcetype=splunk_httpinput earliest=-1h
+| stats sum(total_bytes) as bytes,
+        sum(total_events) as events,
+        avg(response_time) as avg_response_ms
+    BY channel
+| eval MB = round(bytes/1024/1024, 2)
+| table channel, events, MB, avg_response_ms</code></pre>
+            </div>
+
+            <h3>Check Dead Letter Queue</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Kafka CLI</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Check DLQ topic for failed messages
+kafka-console-consumer \
+  --bootstrap-server kafka1:9092 \
+  --topic splunk-dlq \
+  --from-beginning \
+  --max-messages 10 \
+  --property print.headers=true</code></pre>
+            </div>
+        </section>
+
+        <!-- Monitoring -->
+        <section class="content-section">
+            <h2>Connector Monitoring</h2>
+            
+            <h3>JMX Metrics</h3>
+            <p>Key JMX metrics to monitor for the Splunk Sink Connector:</p>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Description</th>
+                            <th>Alert Threshold</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>sink-record-send-rate</code></td>
+                            <td>Records sent to Splunk per second</td>
+                            <td>Alert if drops >50% baseline</td>
+                        </tr>
+                        <tr>
+                            <td><code>sink-record-active-count</code></td>
+                            <td>Records in-flight to Splunk</td>
+                            <td>Alert if exceeds 100,000</td>
+                        </tr>
+                        <tr>
+                            <td><code>offset-commit-success-rate</code></td>
+                            <td>Successful offset commits per second</td>
+                            <td>Alert if drops to 0</td>
+                        </tr>
+                        <tr>
+                            <td><code>total-record-failures</code></td>
+                            <td>Total failed records count</td>
+                            <td>Alert on any increase</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Prometheus Metrics Export</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Kafka Connect JMX Exporter config.yaml</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>rules:
+  - pattern: "kafka.connect<type=connector-task-metrics,connector=(.*),task=(.*)><>(.+)"
+    name: kafka_connect_connector_task_metrics_$3
+    labels:
+      connector: "$1"
+      task: "$2"
+    type: GAUGE
+    
+  - pattern: "kafka.connect<type=sink-task-metrics,connector=(.*),task=(.*)><>(.+)"
+    name: kafka_connect_sink_task_metrics_$3
+    labels:
+      connector: "$1"
+      task: "$2"
+    type: GAUGE</code></pre>
+            </div>
+        </section>
+
+        <!-- Troubleshooting -->
+        <section class="content-section">
+            <h2>Troubleshooting</h2>
+            
+            <details class="collapsible">
+                <summary>Connector Task Failures</summary>
+                <div class="collapsible-content">
+                    <div class="code-block">
+                        <pre><code># Check task status and errors
+curl -s http://kafkaconnect1:8083/connectors/splunk-sink-security/tasks/0/status | jq
+
+# View connector logs
+grep -i "splunk-sink" /var/log/kafka/connect.log | tail -100
+
+# Restart failed task
+curl -X POST http://kafkaconnect1:8083/connectors/splunk-sink-security/tasks/0/restart</code></pre>
+                    </div>
+                </div>
+            </details>
+
+            <details class="collapsible">
+                <summary>HEC Connection Errors</summary>
+                <div class="collapsible-content">
+                    <ul>
+                        <li>Verify HEC endpoint is reachable: <code>curl -k https://hec-lb:8088/services/collector/health</code></li>
+                        <li>Check HEC token is valid and not disabled</li>
+                        <li>Verify SSL certificate if <code>ssl.validate.certs=true</code></li>
+                        <li>Check firewall rules between Connect workers and HEC</li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="collapsible">
+                <summary>Consumer Lag Growing</summary>
+                <div class="collapsible-content">
+                    <ul>
+                        <li>Increase <code>tasks.max</code> (up to partition count)</li>
+                        <li>Increase batch sizes for better throughput</li>
+                        <li>Add more Kafka Connect workers</li>
+                        <li>Check HEC endpoint capacity</li>
+                    </ul>
+                    <div class="code-block">
+                        <pre><code># Check consumer lag
+kafka-consumer-groups \
+  --bootstrap-server kafka1:9092 \
+  --group connect-splunk-sink-security \
+  --describe</code></pre>
+                    </div>
+                </div>
+            </details>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- SECTION: ROLLBACK & SAFETY -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <h2>Rollback & Safety</h2>
+
+            <h3>Emergency: Pause Kafka Connector</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Emergency Procedure</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Connector causing issues (volume spike, bad data, HEC overload)
+
+OPTION 1: Pause Connector (Preferred)
+─────────────────────────────────────
+# Pause connector - data stays in Kafka topics
+curl -X PUT http://kafkaconnect1:8083/connectors/splunk-sink-security/pause
+
+# Verify paused
+curl -s http://kafkaconnect1:8083/connectors/splunk-sink-security/status | jq '.connector.state'
+# Should return "PAUSED"
+
+# When ready to resume:
+curl -X PUT http://kafkaconnect1:8083/connectors/splunk-sink-security/resume
+
+⚠️ NOTE: While paused, consumer lag grows. Data is not lost (retained per Kafka topic retention).
+
+OPTION 2: Delete Connector (If Pause Not Working)
+─────────────────────────────────────────────────
+# Delete connector
+curl -X DELETE http://kafkaconnect1:8083/connectors/splunk-sink-security
+
+# Verify deleted
+curl -s http://kafkaconnect1:8083/connectors | jq
+# Should not contain splunk-sink-security
+
+⚠️ WARNING: Deleting loses offset tracking. Re-creating will require offset management.
+
+OPTION 3: Block at HEC (If Connector Unresponsive)
+──────────────────────────────────────────────────
+1. Disable HEC token used by connector
+2. Connector will receive 403 errors and pause sending
+3. This stops flow immediately
+
+COMMUNICATION:
+- Notify Kafka team immediately
+- Notify SOC (data gap occurring)
+- Monitor consumer lag to track backlog</code></pre>
+            </div>
+
+            <h3>Consumer Lag Recovery Procedure</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Recovery from High Consumer Lag</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Connector was paused and now has significant lag to catch up
+
+STEP 1: Assess Lag
+──────────────────
+kafka-consumer-groups \
+  --bootstrap-server kafka1:9092 \
+  --group connect-splunk-sink-security \
+  --describe
+
+# Note LAG column - total records to catch up
+
+STEP 2: Estimate Catchup Time
+─────────────────────────────
+# Current throughput (records/sec)
+# Estimated time = Total Lag / Throughput
+
+STEP 3: Scale Up for Faster Catchup (Optional)
+──────────────────────────────────────────────
+# Temporarily increase tasks (up to partition count)
+curl -X PUT http://kafkaconnect1:8083/connectors/splunk-sink-security/config \
+  -H "Content-Type: application/json" \
+  -d '{
+    ... existing config ...
+    "tasks.max": "10"
+  }'
+
+STEP 4: Monitor Catchup Progress
+────────────────────────────────
+watch -n 30 'kafka-consumer-groups --bootstrap-server kafka1:9092 \
+  --group connect-splunk-sink-security --describe | grep -E "LAG|TOPIC"'
+
+STEP 5: Restore Normal Configuration
+────────────────────────────────────
+# Once lag returns to normal, restore original tasks.max
+
+NOTE: During catchup, Splunk may receive high event volume.
+Coordinate with Splunk admin to ensure indexer capacity.</code></pre>
+            </div>
+
+            <h3>Kafka Connect Health Monitoring</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL: Monitor Kafka Connect Data Arrival</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>`comment("Create scheduled alert to detect Kafka Connect failures")`
+`comment("Assumes data arrives via HEC with identifiable sourcetype")`
+
+index=kafka_logs OR index=application sourcetype=kafka:* earliest=-1h
+| bucket _time span=5m
+| stats count BY _time, sourcetype
+| streamstats window=3 avg(count) AS avg_count BY sourcetype
+| eval pct_change = round(((count - avg_count) / avg_count) * 100, 1)
+| where pct_change < -50 OR count = 0
+| eval alert = case(
+    count = 0, "🔴 NO DATA from Kafka",
+    pct_change < -80, "🔴 CRITICAL: Volume drop >80%",
+    pct_change < -50, "🟠 WARNING: Volume drop >50%"
+)
+| table _time, sourcetype, count, avg_count, pct_change, alert
+
+`comment("Alert when any row has alert field populated")`</code></pre>
+            </div>
+        </section>
+
+        <!-- Acceptance Criteria -->
+        <section class="content-section">
+            <h2>Acceptance Criteria</h2>
+            
+            <div class="checklist" data-id="kafka-connect-acceptance">
+                <div class="checklist-item">
+                    <input type="checkbox" id="kc-acc-1">
+                    <label for="kc-acc-1">Splunk Connect for Kafka installed on all workers</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="kc-acc-2">
+                    <label for="kc-acc-2">HEC token created with indexer acknowledgment enabled</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="kc-acc-3">
+                    <label for="kc-acc-3">Connector deployed and running with all tasks healthy</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="kc-acc-4">
+                    <label for="kc-acc-4">Data flowing from all configured topics</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="kc-acc-5">
+                    <label for="kc-acc-5">Consumer lag stable (not continuously growing)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="kc-acc-6">
+                    <label for="kc-acc-6">Dead letter queue configured and monitored</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="kc-acc-7">
+                    <label for="kc-acc-7">Monitoring alerts configured for connector health</label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Next Steps -->
+        <section class="content-section">
+            <h2>Next Steps</h2>
+            <div class="next-steps">
+                <a href="db-connect.html" class="next-step-link">
+                    <span class="step-label">Next Page</span>
+                    <span class="step-title">DB Connect →</span>
+                </a>
+                <a href="../phase2-data-quality/index.html" class="next-step-link">
+                    <span class="step-label">After Onboarding</span>
+                    <span class="step-title">Phase 2: Data Quality →</span>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

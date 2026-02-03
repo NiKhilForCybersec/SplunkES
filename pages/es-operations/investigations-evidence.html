@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investigations & Evidence Handling - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="../es-content-management/tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="../es-content-management/health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="../es-content-management/governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                    <a href="../es-content-management/escu-overview.html" class="nav-item nav-item-sub">ESCU Overview</a>
+                    <a href="../es-content-management/escu-operationalize.html" class="nav-item nav-item-sub">Operationalizing ESCU</a>
+                    <a href="../es-content-management/escu-log-mapping.html" class="nav-item nav-item-sub">ESCU Log Mapping</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="notable-suppression.html" class="nav-item nav-item-sub">Notable Suppression</a>
+                    <a href="investigations-evidence.html" class="nav-item nav-item-sub active">Investigations & Evidence</a>
+                    <a href="enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">Investigations & Evidence Handling</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Operations</span>
+                <h1>Investigations & Evidence Handling</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES OPERATIONS</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> How to use Splunk ES's Investigation feature to group related notables, attach evidence (queries, notes, context), build repeatable investigation checklists, and maintain an audit-ready evidence chain from alert to resolution.</p>
+                    <p><strong>Ownership:</strong> SOC Analysts (investigation creation + evidence collection) + SOC Lead (quality review)</p>
+                    <p><strong>Preconditions:</strong> ES Incident Review is operational. Analyst has <code>ess_analyst</code> role. At least one true-positive notable exists that requires deeper investigation beyond single-notable triage.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> The Investigation feature is available in your ES version (ES 5.x+). <strong>Verify:</strong> Navigate to <code>Enterprise Security → Investigations</code>. If missing, your ES version may not support it or the feature is disabled.</li>
+                        <li><strong>Assumption:</strong> KV store is operational (investigations are stored in KV store). <strong>Verify:</strong> Check <code>| rest /services/server/info | table kvStoreStatus</code> — should return <code>ready</code>.</li>
+                        <li><strong>Assumption:</strong> Your organization requires evidence trails for security incidents (PCI, SOX, internal audit, or incident response policy). <strong>Even if not:</strong> Building evidence habits now prevents scrambling later.</li>
+                        <li><strong>Assumption:</strong> Analysts have time allocated for investigation beyond basic triage. <strong>Risk if wrong:</strong> Investigations will be empty shells — created but never populated. This is worse than not creating them.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHEN TO CREATE AN INVESTIGATION -->
+                <!-- ============================================== -->
+                <h2>When to Create an Investigation</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    NOTABLE["Notable triaged<br/>as True Positive or<br/>suspicious"] --> Q1{"Does this require<br/>investigation beyond<br/>a single notable?"}
+    
+    Q1 -->|"No — single event,<br/>clear disposition"| CLOSE["Close notable normally<br/>Document in comment<br/>No investigation needed"]
+    
+    Q1 -->|"Yes — needs deeper<br/>analysis"| Q2{"Is there already<br/>an open investigation<br/>for this entity/incident?"}
+    
+    Q2 -->|"Yes — related<br/>investigation exists"| ADD["ADD to existing<br/>investigation<br/>Link this notable"]
+    
+    Q2 -->|"No — this is a<br/>new incident"| CREATE["CREATE new<br/>investigation"]
+    
+    CREATE --> POPULATE["POPULATE investigation:<br/>• Add all related notables<br/>• Attach SPL queries<br/>• Add analyst notes<br/>• Add external evidence"]
+    
+    ADD --> POPULATE
+    
+    POPULATE --> Q3{"Investigation<br/>complete?"}
+    
+    Q3 -->|"Not yet — more<br/>data needed"| CONTINUE["Continue collecting<br/>evidence. Add new<br/>notables as they arrive."]
+    CONTINUE --> Q3
+    
+    Q3 -->|"Yes — conclusion<br/>reached"| CLOSE_INV["CLOSE investigation:<br/>• Add final summary<br/>• Record conclusion<br/>• Link to incident ticket<br/>• Close all related notables"]
+    
+    style CLOSE fill:#6e7681,stroke:#484f58,color:#fff
+    style CREATE fill:#58a6ff,stroke:#388bfd,color:#fff
+    style ADD fill:#58a6ff,stroke:#388bfd,color:#fff
+    style CLOSE_INV fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <h3>Investigation Triggers</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Trigger</th>
+                                <th>Example Scenario</th>
+                                <th>Why Investigation (Not Just Notable Triage)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Multiple related notables</strong></td>
+                                <td>3 different detections fire for the same user in 2 hours: brute force → MFA fatigue → unusual mailbox rule</td>
+                                <td>Each notable alone might be dismissed. Together, they indicate a kill chain. Investigation groups them.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>True positive requiring containment</strong></td>
+                                <td>WAF alert shows successful SQL injection that passed to origin server</td>
+                                <td>Containment actions, evidence collection, and remediation tracking need a single workspace.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Escalation to incident response</strong></td>
+                                <td>Notable triage reveals compromised admin credentials</td>
+                                <td>IR team needs organized evidence. Investigation provides the hand-off package.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cross-domain correlation</strong></td>
+                                <td>WAF attacks from same IP + auth failures from same IP + endpoint detection on web server</td>
+                                <td>No single detection captures the full story. Investigation connects the dots across domains.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Management or audit reporting</strong></td>
+                                <td>"Show me the evidence for the incident last Tuesday"</td>
+                                <td>Investigation provides the structured record with timeline, evidence, and conclusion.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: CREATING AN INVESTIGATION -->
+                <!-- ============================================== -->
+                <h2>Creating an Investigation — Exact Steps</h2>
+
+                <h3>Method 1: From Incident Review (Recommended)</h3>
+                <ol>
+                    <li>In <strong>Incident Review</strong>, click on the notable that triggered the investigation</li>
+                    <li>In the notable detail pane, click the <strong>Actions</strong> dropdown</li>
+                    <li>Select <strong>Add to Investigation</strong></li>
+                    <li>Choose <strong>Create New Investigation</strong></li>
+                    <li>Fill in the investigation details:
+                        <ul>
+                            <li><strong>Title:</strong> Descriptive name following format: <code>INV-[DATE]-[Entity]-[Summary]</code><br/>Example: <code>INV-2024-02-15-JSmith-MFA-Fatigue-Attack</code></li>
+                            <li><strong>Description:</strong> Initial assessment: "Multiple MFA push alerts for jsmith@corp.com from unknown IP. Investigating possible credential compromise."</li>
+                        </ul>
+                    </li>
+                    <li>Click <strong>Create</strong> — the notable is automatically linked to the new investigation</li>
+                    <li>Return to Incident Review and add any other related notables to the same investigation</li>
+                </ol>
+
+                <h3>Method 2: From the Investigations Dashboard</h3>
+                <ol>
+                    <li>Navigate to <strong>Enterprise Security → Investigations</strong></li>
+                    <li>Click <strong>Create New Investigation</strong></li>
+                    <li>Fill in Title and Description as above</li>
+                    <li>The investigation is created empty — you'll need to add notables and evidence manually</li>
+                </ol>
+
+                <h3>Adding Notables to an Existing Investigation</h3>
+                <ol>
+                    <li>In <strong>Incident Review</strong>, click on a related notable</li>
+                    <li>Actions → <strong>Add to Investigation</strong></li>
+                    <li>Select <strong>Add to Existing Investigation</strong></li>
+                    <li>Search for the investigation by title or browse the list</li>
+                    <li>Click <strong>Add</strong> — the notable is now linked</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ATTACHING EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Attaching Evidence</h2>
+
+                <h3>Types of Evidence to Attach</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence Type</th>
+                                <th>How to Attach in ES</th>
+                                <th>What to Include</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>SPL Query + Results</strong></td>
+                                <td>In the investigation → <strong>Add Action</strong> → <strong>Note</strong> → Paste the SPL query and key findings</td>
+                                <td>The exact SPL, time range used, and a summary of what the results showed</td>
+                                <td><code>index=auth user="jsmith" action=failure earliest=-24h | stats count by src_ip, app</code> — "Result: 47 failures from 185.220.x.x targeting O365, all within 3 hours"</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Analyst Notes</strong></td>
+                                <td>Investigation → <strong>Add Action</strong> → <strong>Note</strong></td>
+                                <td>Observations, hypotheses, decisions made, people contacted</td>
+                                <td>"Contacted jsmith's manager. User confirms they did NOT approve any MFA pushes today. Proceeding with credential reset."</td>
+                            </tr>
+                            <tr>
+                                <td><strong>External Ticket Link</strong></td>
+                                <td>Investigation → <strong>Add Action</strong> → <strong>Note</strong> → Include ticket URL</td>
+                                <td>Link to ITSM ticket, IR case number, or external tracker</td>
+                                <td>"Escalated to IR team. ServiceNow ticket: INC0045231. IR case: SEC-2024-0089."</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Timeline Entries</strong></td>
+                                <td>Add notes with timestamps for each investigative step</td>
+                                <td>What you did and when, in chronological order</td>
+                                <td>"14:30 — Claimed notable. 14:35 — Pivoted to auth logs. 14:45 — Confirmed MFA fatigue pattern. 14:50 — Escalated to IR."</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Collaborator Tags</strong></td>
+                                <td>Investigation → <strong>Add Collaborator</strong></td>
+                                <td>Other analysts or teams involved in the investigation</td>
+                                <td>Added IR analyst, IAM team lead as collaborators for credential reset coordination</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Evidence Quality Matters</div>
+                    <p>A note that says "checked logs — looks fine" is useless. Include: what query you ran, what time range, what you found (or didn't find), and why that matters. Your future self, the next-shift analyst, and the auditor will all thank you.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: INVESTIGATION CHECKLISTS -->
+                <!-- ============================================== -->
+                <h2>Repeatable Investigation Checklists</h2>
+
+                <p>Use these domain-specific checklists to ensure consistent investigation quality. Each item should result in a note in the investigation with findings.</p>
+
+                <h3>WAF Attack Investigation Checklist</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>✅</th>
+                                <th>Investigation Step</th>
+                                <th>SPL or Action</th>
+                                <th>Finding to Record</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>☐</td><td>1. Identify attack type and WAF action</td><td>Review notable fields: <code>attack_type</code>, <code>rule_id</code>, <code>action</code></td><td>Attack type: ___. Action: blocked / passed / alerted.</td></tr>
+                            <tr><td>☐</td><td>2. Profile the source IP</td><td><code>| iplocation src_ip</code> + threat intel lookup + known scanner list</td><td>IP: ___. Geo: ___. Threat intel: ___. Known scanner: yes/no.</td></tr>
+                            <tr><td>☐</td><td>3. Count attack volume and duration</td><td><code>index=waf src_ip="X" | stats count, earliest(_time), latest(_time)</code></td><td>Total requests: ___. Duration: ___. Requests/min: ___.</td></tr>
+                            <tr><td>☐</td><td>4. Identify targeted URIs</td><td><code>index=waf src_ip="X" | stats count by uri_path | sort -count</code></td><td>Top targets: ___. Targeting pattern: random scan / focused attack.</td></tr>
+                            <tr><td>☐</td><td>5. Check if any requests passed the WAF</td><td><code>index=waf src_ip="X" action!="blocked" | stats count</code></td><td>Passed requests: ___. If >0, check origin server logs immediately.</td></tr>
+                            <tr><td>☐</td><td>6. Check origin server for impact</td><td><code>index=web src_ip="X" | stats count by status, uri_path</code></td><td>Origin hits: ___. HTTP status codes: ___. Signs of exploitation: yes/no.</td></tr>
+                            <tr><td>☐</td><td>7. Check for data exfiltration indicators</td><td><code>index=web src_ip="X" | stats sum(bytes_out) by uri_path</code></td><td>Unusual outbound data volume: yes/no. If yes, escalate immediately.</td></tr>
+                            <tr><td>☐</td><td>8. Determine scope (other targets from same source)</td><td><code>index=waf src_ip="X" | stats dc(dest) dc(uri_path)</code></td><td>Unique targets: ___. Single-target or scanning multiple sites.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>MFA Compromise Investigation Checklist</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>✅</th>
+                                <th>Investigation Step</th>
+                                <th>SPL or Action</th>
+                                <th>Finding to Record</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>☐</td><td>1. Confirm user identity and role</td><td>Identity lookup: <code>| inputlookup identity_lookup_expanded | search identity="user"</code></td><td>User: ___. Department: ___. VIP: yes/no. Manager: ___.</td></tr>
+                            <tr><td>☐</td><td>2. Timeline all auth events (24h)</td><td><code>index=auth user="X" earliest=-24h | sort _time | table _time, src_ip, action, app, mfa_method</code></td><td>Total events: ___. Success/failure ratio: ___. Unusual hours: yes/no.</td></tr>
+                            <tr><td>☐</td><td>3. Identify source IPs and geolocations</td><td><code>index=auth user="X" | iplocation src_ip | stats count by src_ip, City, Country</code></td><td>IPs: ___. Locations: ___. Impossible travel: yes/no.</td></tr>
+                            <tr><td>☐</td><td>4. Check for MFA fatigue pattern</td><td><code>index=auth user="X" mfa_method="push" | timechart span=5m count</code></td><td>Rapid push count: ___. Any approved after burst: yes/no.</td></tr>
+                            <tr><td>☐</td><td>5. Check conditional access results</td><td><code>index=auth user="X" | stats count by conditionalAccessStatus, app</code></td><td>Policies applied: ___. Policies bypassed: ___. NotApplied: ___.</td></tr>
+                            <tr><td>☐</td><td>6. Check post-authentication activity</td><td><code>index=o365 user="X" | stats count by Operation | sort -count</code></td><td>Operations: ___. Suspicious: mailbox rules, file downloads, sharing changes.</td></tr>
+                            <tr><td>☐</td><td>7. Check for lateral movement</td><td><code>index=auth src_user="X" action=success | stats dc(dest) values(dest)</code></td><td>Systems accessed: ___. Unusual systems: yes/no.</td></tr>
+                            <tr><td>☐</td><td>8. Contact user and manager</td><td>Phone call or verified communication channel (NOT the potentially compromised email)</td><td>User confirms/denies activity: ___. Manager notified: yes/no.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: INVESTIGATION LIFECYCLE -->
+                <!-- ============================================== -->
+                <h2>Investigation Lifecycle</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    OPEN["OPENED<br/>Title, description, initial notable<br/>Owner assigned"] --> ACTIVE["ACTIVE<br/>Evidence being collected<br/>Notables being added<br/>Notes documenting findings"]
+    
+    ACTIVE --> Q1{"All evidence<br/>collected?<br/>Conclusion reached?"}
+    
+    Q1 -->|"No — more<br/>work needed"| Q2{"Stale?<br/>(No updates<br/>in 7 days)"}
+    Q2 -->|"No"| ACTIVE
+    Q2 -->|"Yes"| STALE["⚠️ STALE INVESTIGATION<br/>Review: still active?<br/>Reassign if owner<br/>changed roles"]
+    STALE -->|"Resume"| ACTIVE
+    STALE -->|"Close as<br/>inconclusive"| CLOSE_INC["Close: Inconclusive<br/>Document what was found<br/>and what remains unknown"]
+    
+    Q1 -->|"Yes"| CONCLUDE["Add final summary:<br/>• Conclusion (TP/FP/Inconclusive)<br/>• Actions taken<br/>• Recommendations<br/>• Linked tickets"]
+    
+    CONCLUDE --> CLOSE["CLOSED<br/>All notables resolved<br/>Investigation archived<br/>Audit evidence preserved"]
+    
+    CLOSE --> Q3{"Did this reveal<br/>a detection gap<br/>or tuning need?"}
+    Q3 -->|"Yes"| FEEDBACK["Feedback to Detection Eng:<br/>• New detection request<br/>• Tuning recommendation<br/>• Data source gap"]
+    Q3 -->|"No"| DONE["DONE ✅"]
+    FEEDBACK --> DONE
+    
+    style OPEN fill:#58a6ff,stroke:#388bfd,color:#fff
+    style ACTIVE fill:#238636,stroke:#2ea043,color:#fff
+    style STALE fill:#d29922,stroke:#bb8009,color:#fff
+    style CLOSE fill:#6e7681,stroke:#484f58,color:#fff
+    style DONE fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <h3>Investigation Closure Requirements</h3>
+                <p>Before closing any investigation, verify:</p>
+                <ol>
+                    <li><strong>Summary note added:</strong> Clear conclusion explaining what happened, what was found, what actions were taken</li>
+                    <li><strong>All linked notables resolved:</strong> Every notable in the investigation has a status of Resolved + disposition set</li>
+                    <li><strong>External ticket linked:</strong> If escalated, the IR/ITSM ticket number is recorded</li>
+                    <li><strong>Timeline complete:</strong> Key events are documented with timestamps</li>
+                    <li><strong>Feedback loop complete:</strong> If the investigation revealed a detection gap, tuning need, or data source issue — a ticket exists for Detection Engineering</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FAILURE MODES -->
+                <!-- ============================================== -->
+                <h2>Failure Modes</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Failure Mode</th>
+                                <th>Symptom</th>
+                                <th>Root Cause</th>
+                                <th>Impact</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Empty investigation</strong></td>
+                                <td>Investigation created but contains only the initial notable, no notes or evidence</td>
+                                <td>Analyst created investigation but didn't have time to populate it</td>
+                                <td>Useless for audit or handoff. Creates false sense that investigation happened.</td>
+                                <td>Don't create investigations unless you can add evidence. A well-commented notable is better than an empty investigation.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Investigations never closed</strong></td>
+                                <td>Dozens of open investigations, some months old</td>
+                                <td>No lifecycle process. No review cadence for open investigations.</td>
+                                <td>Can't tell what's active vs abandoned. Dashboard becomes unusable.</td>
+                                <td>Weekly review of open investigations. Close or update stale ones (>7 days no activity).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Duplicate investigations</strong></td>
+                                <td>Two analysts create separate investigations for the same incident</td>
+                                <td>Shift handoff gap. No check for existing investigation before creating new.</td>
+                                <td>Evidence split across two places. Work duplicated.</td>
+                                <td>Always search for existing investigations before creating. Include check in triage workflow.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>KV store failure</strong></td>
+                                <td>Investigation page fails to load or shows errors</td>
+                                <td>KV store service is down or degraded on the search head</td>
+                                <td>Cannot create, view, or update investigations</td>
+                                <td>Check <code>| rest /services/server/info | table kvStoreStatus</code>. Escalate to Splunk admin. Temporary: document in external tracker.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>No feedback loop</strong></td>
+                                <td>Investigations close but detection improvements never happen</td>
+                                <td>No process connecting investigation conclusions to Detection Engineering backlog</td>
+                                <td>Same incidents recur. Same gaps persist. SOC loses faith.</td>
+                                <td>Investigation closure checklist includes "Detection Engineering feedback" step. Track follow-up tickets.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: VALIDATION SPL -->
+                <!-- ============================================== -->
+                <h2>Validation SPL & Expected Output</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Investigation Health Check</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Check investigation operational health")`
+`comment("Identifies stale, empty, or orphaned investigations")`
+
+| rest /services/storage/collections/data/investigations splunk_server=local
+| rename data.title AS title, data.status AS status, 
+    data.owner AS owner, data.updated_time AS updated
+| eval age_days = round((now() - updated) / 86400, 0)
+| eval issue = case(
+    status="open" AND age_days > 14, "🔴 STALE — Open 14+ days without update",
+    status="open" AND age_days > 7, "🟡 AGING — Open 7+ days",
+    status="open", "🟢 Active",
+    status="closed", "⚪ Closed",
+    true(), "❓ Unknown status"
+)
+| stats count BY issue
+| sort issue</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK -->
+                <!-- ============================================== -->
+                <h2>Rollback Steps</h2>
+
+                <ol>
+                    <li><strong>Accidentally closed investigation:</strong> Reopen from the Investigations dashboard → Click the investigation → Change status back to Open → Add note explaining the reopening.</li>
+                    <li><strong>Wrong notable added:</strong> Open the investigation → Find the notable link → Remove it (if your ES version supports unlinking, otherwise add a note: "Notable [ID] was added in error — not related to this investigation").</li>
+                    <li><strong>Need to merge two investigations:</strong> ES does not natively support merging. Workaround: Choose one as primary. Copy key notes from secondary to primary. Close secondary with note: "Merged into [primary investigation title]."</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>Investigation reveals active data exfiltration.</strong> Stop investigating, start containing. Escalate to IR team immediately. Every minute counts.</li>
+                        <li><strong>Investigation reveals compromised admin/privileged credentials.</strong> Escalate to IAM team + IR team. Initiate credential rotation before continuing investigation.</li>
+                        <li><strong>Investigation scope expands beyond SOC capability.</strong> If you need forensic analysis, legal involvement, or cross-organizational coordination — escalate to IR team. The investigation becomes the evidence package for handoff.</li>
+                        <li><strong>More than 10 open investigations with no updates in 7 days.</strong> Process breakdown. Escalate to SOC Lead for triage of open investigations.</li>
+                        <li><strong>KV store failures preventing investigation access.</strong> Escalate to Splunk admin. Fall back to external documentation (shared drive, ticketing system) until resolved.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Create investigation for everything"</strong></td>
+                                <td>50 empty investigations are worse than 5 thorough ones. Volume without quality wastes time.</td>
+                                <td>Only create investigations for multi-notable incidents, true positives requiring containment, or escalations. Simple FPs/benigns get a notable comment.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Investigate in my head, close in the system"</strong></td>
+                                <td>If it's not written down, it didn't happen. No evidence = no audit trail = liability.</td>
+                                <td>Document every investigative step with a note. Use the checklists above. Future-you will be grateful.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Investigation = screenshot dump"</strong></td>
+                                <td>Screenshots without context are useless. What query produced this? What does it mean?</td>
+                                <td>For every piece of evidence: state what you searched, what you found, and what it means for the investigation.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Someone else will close it"</strong></td>
+                                <td>Orphaned investigations clutter the system and suggest process failures to auditors.</td>
+                                <td>Investigation owner is responsible for closure. If transferring, hand off explicitly with a note.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"No feedback to Detection Engineering"</strong></td>
+                                <td>Every investigation that reveals a gap, a missed detection, or a tuning need is wasted learning if DE never hears about it.</td>
+                                <td>Close every investigation with a DE feedback note: "Detection gap identified: [describe]. Ticket: [#]" or "No detection changes needed."</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Create investigation + link initial notables</strong></td>
+                                <td>5 minutes</td>
+                                <td>10 minutes</td>
+                                <td>20 minutes (many related notables)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Complete WAF investigation checklist</strong></td>
+                                <td>30 minutes</td>
+                                <td>1-2 hours</td>
+                                <td>4+ hours (complex attack, origin compromise)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Complete MFA investigation checklist</strong></td>
+                                <td>30 minutes</td>
+                                <td>1-2 hours</td>
+                                <td>4+ hours (credential compromise confirmed)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Close investigation with full documentation</strong></td>
+                                <td>15 minutes</td>
+                                <td>30 minutes</td>
+                                <td>1 hour (complex conclusion, multiple tickets)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Weekly stale investigation review</strong></td>
+                                <td>15 minutes</td>
+                                <td>30 minutes</td>
+                                <td>1-2 hours (many stale investigations)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Investigation creation record</strong></td>
+                                <td>ES Investigation (automatic)</td>
+                                <td>ES KV store</td>
+                                <td>When investigation is created</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SPL queries and results summaries</strong></td>
+                                <td>Notes within investigation</td>
+                                <td>ES Investigation + export for archival</td>
+                                <td>During each investigative step</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Investigation closure summary</strong></td>
+                                <td>Final note with conclusion, actions, tickets</td>
+                                <td>ES Investigation + incident tracker</td>
+                                <td>At investigation close</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detection Engineering feedback</strong></td>
+                                <td>Ticket or structured form: gap description, recommendation</td>
+                                <td>Detection registry / backlog tracker</td>
+                                <td>At investigation close</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Open investigation aging report</strong></td>
+                                <td>SPL output from health check query</td>
+                                <td>Weekly SOC report</td>
+                                <td>Weekly</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="enablement-mechanics.html" class="next-steps-link">Correlation Search Enablement Mechanics →</a>
+                        <a href="incident-review.html" class="next-steps-link">← Back to Incident Review & Triage</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

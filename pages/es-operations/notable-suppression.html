@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notable Suppression & Noise Operations - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="../es-content-management/tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="../es-content-management/health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="../es-content-management/governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                    <a href="../es-content-management/escu-overview.html" class="nav-item nav-item-sub">ESCU Overview</a>
+                    <a href="../es-content-management/escu-operationalize.html" class="nav-item nav-item-sub">Operationalizing ESCU</a>
+                    <a href="../es-content-management/escu-log-mapping.html" class="nav-item nav-item-sub">ESCU Log Mapping</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="notable-suppression.html" class="nav-item nav-item-sub active">Notable Suppression</a>
+                    <a href="investigations-evidence.html" class="nav-item nav-item-sub">Investigations & Evidence</a>
+                    <a href="enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">Notable Suppression & Noise Operations</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Operations</span>
+                <h1>Notable Suppression & Noise Operations</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES OPERATIONS</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> Defines when, how, and why to suppress notable events. Covers short-term and long-term strategies, per-entity vs global suppression, audit trail requirements, and the critical risks of suppression misuse.</p>
+                    <p><strong>Ownership:</strong> Detection Engineering (suppression rules) + SOC Lead (approval)</p>
+                    <p><strong>Preconditions:</strong> Notables exist in Incident Review. The detection generating noise has been evaluated per the <a href="../es-content-management/tuning-noise.html">Tuning Hierarchy</a>. Suppression is being used as a safety valve, not the first response.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 CRITICAL: Suppression Is NOT Tuning</div>
+                    <p><strong>Suppression hides notables. It does NOT fix the detection.</strong></p>
+                    <ul>
+                        <li>The correlation search still runs and consumes concurrency</li>
+                        <li>Notable events are still created and stored in the notable index</li>
+                        <li>They are just hidden from Incident Review — invisible to analysts</li>
+                        <li>If the suppressed entity is compromised, the attack notables are also hidden</li>
+                    </ul>
+                    <p>Use suppression only as a <strong>temporary bridge</strong> while the underlying detection is being tuned. Every suppression rule must have an expiration or review date.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> You have the <code>edit_notable_events</code> capability. <strong>Verify:</strong> Try to suppress a notable from Incident Review. If the option is missing, check your role.</li>
+                        <li><strong>Assumption:</strong> The Tuning Hierarchy has been evaluated (data quality → logic → threshold → throttle). <strong>Risk if wrong:</strong> Suppression masks a fixable root cause. See <a href="../es-content-management/tuning-noise.html">Tuning & Noise Reduction</a>.</li>
+                        <li><strong>Assumption:</strong> There is a ticketing system to track suppression rules. <strong>Risk if wrong:</strong> Suppressions accumulate with no review, creating permanent blind spots.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: SUPPRESSION DECISION TREE -->
+                <!-- ============================================== -->
+                <h2>When to Suppress vs. When to Tune or Disable</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    NOISE["Detection is generating<br/>excessive false positives"] --> Q1{"Can you fix it<br/>in the detection<br/>logic RIGHT NOW?"}
+    
+    Q1 -->|"Yes — tuning<br/>is straightforward"| TUNE["✅ TUNE the detection<br/>• Adjust threshold<br/>• Add filter<br/>• Fix data quality<br/>See Tuning Hierarchy"]
+    
+    Q1 -->|"No — fix needs<br/>research / testing /<br/>change window"| Q2{"Is the noise<br/>from a SPECIFIC<br/>entity or pattern?"}
+    
+    Q2 -->|"Yes — specific<br/>src, user, or host"| Q3{"Is this entity<br/>ALWAYS benign<br/>for this detection?"}
+    
+    Q3 -->|"Yes — always benign<br/>(e.g., vuln scanner IP)"| PERM["LONG-TERM SUPPRESSION<br/>Suppress by entity<br/>Set review: quarterly<br/>Document thoroughly"]
+    
+    Q3 -->|"No — sometimes<br/>benign, sometimes real"| SHORT["SHORT-TERM SUPPRESSION<br/>Suppress for 7 days max<br/>Create tuning ticket<br/>Remove after fix deployed"]
+    
+    Q2 -->|"No — noise is<br/>everywhere / no pattern"| Q4{"Is the detection<br/>worth keeping?"}
+    
+    Q4 -->|"Yes — concept is<br/>valid, execution is wrong"| DISABLE_TUNE["DISABLE + TUNE OFFLINE<br/>Disable the search<br/>Fix the logic offline<br/>Re-deploy through lifecycle"]
+    
+    Q4 -->|"No — fundamentally<br/>unsuitable"| RETIRE["RETIRE<br/>Disable permanently<br/>Document why"]
+    
+    style TUNE fill:#238636,stroke:#2ea043,color:#fff
+    style PERM fill:#d29922,stroke:#bb8009,color:#fff
+    style SHORT fill:#58a6ff,stroke:#388bfd,color:#fff
+    style DISABLE_TUNE fill:#d29922,stroke:#bb8009,color:#fff
+    style RETIRE fill:#6e7681,stroke:#484f58,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: SHORT-TERM VS LONG-TERM -->
+                <!-- ============================================== -->
+                <h2>Short-Term vs. Long-Term Suppression</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Attribute</th>
+                                <th>Short-Term Suppression</th>
+                                <th>Long-Term Suppression</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Duration</strong></td>
+                                <td>1–14 days maximum</td>
+                                <td>Indefinite, but with quarterly review</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Purpose</strong></td>
+                                <td>Bridge while detection is being tuned</td>
+                                <td>Permanent exclusion for known-benign patterns</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Approval</strong></td>
+                                <td>Detection Engineer can create; notify SOC Lead</td>
+                                <td>SOC Lead approval required before creation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ticket Required?</strong></td>
+                                <td>Yes — tuning ticket with deadline</td>
+                                <td>Yes — review ticket with quarterly recurrence</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Risk Level</strong></td>
+                                <td>Medium — time-limited blind spot</td>
+                                <td>High — permanent blind spot for that entity</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Example</strong></td>
+                                <td>"Suppress brute force alerts from 10.5.0.0/16 for 7 days while we tune POS subnet exclusion"</td>
+                                <td>"Suppress WAF SQLi alerts from Qualys scanner IPs permanently — always benign, confirmed quarterly"</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Removal Trigger</strong></td>
+                                <td>Tuning fix deployed → remove suppression</td>
+                                <td>Quarterly review: still valid? Entity still exists?</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: PER-ENTITY VS GLOBAL -->
+                <!-- ============================================== -->
+                <h2>Per-Entity vs. Global Suppression</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Strategy</th>
+                                <th>What It Does</th>
+                                <th>When to Use</th>
+                                <th>Risk</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Per-Entity Suppression</strong></td>
+                                <td>Hides notables matching specific field values (e.g., <code>src=10.5.1.1</code>)</td>
+                                <td>A specific, identified source is generating known FPs. The detection is otherwise healthy.</td>
+                                <td style="color: var(--accent-orange);">🟡 Medium — Blind spot for this specific entity only. If entity is compromised, you miss it.</td>
+                                <td>Suppress WAF alerts from <code>src=203.0.113.50</code> (Qualys scanner) on "CUSTOM - WAF SQLi Burst"</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Multi-Field Suppression</strong></td>
+                                <td>Hides notables matching a combination of fields (e.g., <code>src=X AND dest=Y</code>)</td>
+                                <td>FP only occurs for a specific source-destination pair. Other combinations are valid.</td>
+                                <td style="color: var(--accent-green);">🟢 Lower — Narrow scope reduces blind spot size.</td>
+                                <td>Suppress brute force from <code>src=10.1.1.100 AND dest=10.2.2.200</code> (monitoring server → SIEM)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Global Suppression (by search name)</strong></td>
+                                <td>Hides ALL notables from a specific correlation search</td>
+                                <td>Almost NEVER. Only valid during emergency storm cleanup while detection is disabled and being fixed.</td>
+                                <td style="color: var(--accent-red);">🔴 Extreme — Equivalent to disabling the detection but worse: it still runs, still consumes resources, and nobody sees the results.</td>
+                                <td>Do NOT use. Disable the search instead.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Never Use Global Suppression as a Noise Fix</div>
+                    <p>If a detection is so noisy that you want to suppress ALL its notables, <strong>disable the detection</strong> instead. Disabling stops the search from running (saving concurrency). Global suppression leaves the search running and burning resources while hiding every result. It's the worst of both worlds.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EXACT UI STEPS -->
+                <!-- ============================================== -->
+                <h2>Creating a Suppression Rule — Exact Steps</h2>
+
+                <h3>Method 1: From Incident Review (Recommended)</h3>
+                <ol>
+                    <li>In <strong>Incident Review</strong>, click on the notable you want to use as the suppression template</li>
+                    <li>In the notable detail pane, click the <strong>Actions</strong> dropdown</li>
+                    <li>Select <strong>Suppress Notable Events</strong></li>
+                    <li>The suppression form opens pre-populated with the notable's fields:
+                        <ul>
+                            <li><strong>Suppression Name:</strong> Give it a descriptive name following format: <code>SUPP - [Detection] - [Entity] - [Reason]</code></li>
+                            <li><strong>Description:</strong> Explain WHY this suppression exists. Include ticket number.</li>
+                            <li><strong>Expiration:</strong> Set an expiration date. For short-term: 7 days. For long-term: leave blank but set quarterly review.</li>
+                            <li><strong>Suppression Fields:</strong> Select which field values to match. Narrower = safer.</li>
+                        </ul>
+                    </li>
+                    <li>Review the field selections. <strong>Remove any fields that are too broad</strong> (e.g., don't suppress by <code>search_name</code> alone)</li>
+                    <li>Click <strong>Save</strong></li>
+                </ol>
+
+                <h3>Method 2: From Configure → Notable Event Suppressions</h3>
+                <ol>
+                    <li>Navigate to <strong>Enterprise Security → Configure → Content → Content Management</strong></li>
+                    <li>Filter by Type: <strong>Notable Event Suppression</strong></li>
+                    <li>Click <strong>Create New Suppression</strong></li>
+                    <li>Fill in:
+                        <ul>
+                            <li><strong>Name:</strong> <code>SUPP - [Detection] - [Entity] - [Reason]</code></li>
+                            <li><strong>Search:</strong> The filter criteria, e.g., <code>search_name="CUSTOM - Brute Force" src="10.5.1.1"</code></li>
+                            <li><strong>Expiration:</strong> Date/time when suppression auto-expires</li>
+                            <li><strong>Description:</strong> Full documentation (who, why, ticket #, review date)</li>
+                        </ul>
+                    </li>
+                    <li>Click <strong>Save</strong></li>
+                </ol>
+
+                <h3>Required Documentation for Every Suppression</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Content</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Suppression Name</strong></td><td>Naming convention</td><td><code>SUPP - WAF SQLi Burst - Qualys Scanner - Known Benign</code></td></tr>
+                            <tr><td><strong>Created By</strong></td><td>Your name</td><td>[Your Name]</td></tr>
+                            <tr><td><strong>Created Date</strong></td><td>When created</td><td>2024-02-15</td></tr>
+                            <tr><td><strong>Type</strong></td><td>Short-term or Long-term</td><td>Long-term</td></tr>
+                            <tr><td><strong>Reason</strong></td><td>Why this suppression exists</td><td>"Qualys vulnerability scanner generates 15+ SQLi WAF alerts per scan. Always blocked. Confirmed benign with security team."</td></tr>
+                            <tr><td><strong>Suppression Scope</strong></td><td>Exact fields being matched</td><td><code>src=203.0.113.50 AND search_name="CUSTOM - WAF SQLi Burst"</code></td></tr>
+                            <tr><td><strong>Ticket #</strong></td><td>Tracking ticket</td><td>SEC-4521</td></tr>
+                            <tr><td><strong>Expiration</strong></td><td>When it auto-expires or next review</td><td>Short-term: 2024-02-22. Long-term: Review by 2024-05-15.</td></tr>
+                            <tr><td><strong>Approval</strong></td><td>Who approved (SOC Lead for long-term)</td><td>Approved by [SOC Lead] on 2024-02-15</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: AUDIT SPL -->
+                <!-- ============================================== -->
+                <h2>Suppression Audit Queries</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: List All Active Notable Suppressions</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Audit all active suppressions — run monthly minimum")`
+`comment("Any suppression without documentation or expired review date = risk")`
+
+| rest /services/notable_event_suppressions splunk_server=local
+| eval created = strftime(updated, "%Y-%m-%d")
+| eval expiry = if(isnotnull(expiration), strftime(expiration, "%Y-%m-%d"), "NO EXPIRY ⚠️")
+| eval age_days = round((now() - updated) / 86400, 0)
+| eval risk = case(
+    isnull(expiration) AND age_days > 90, "🔴 HIGH — No expiry, 90+ days old",
+    isnull(expiration), "🟡 MEDIUM — No expiry set",
+    expiration < now(), "🔴 EXPIRED — Should have been reviewed/removed",
+    age_days > 30, "🟡 REVIEW — 30+ days old",
+    true(), "🟢 Current"
+)
+| table title, description, search, created, expiry, age_days, risk
+| sort - age_days</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Count Notables Hidden by Each Suppression (Last 30 Days)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Shows how many notables each suppression is hiding")`
+`comment("High counts on stale suppressions = large blind spots")`
+
+`notable`
+| search is_suppressed=1
+| stats count AS suppressed_count,
+    dc(src) AS unique_sources,
+    dc(user) AS unique_users
+    BY suppression_name, search_name
+| sort - suppressed_count
+| table suppression_name, search_name, suppressed_count, unique_sources, unique_users</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Detect Suppressions Without Documentation</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Find suppressions with empty or minimal descriptions — audit risk")`
+
+| rest /services/notable_event_suppressions splunk_server=local
+| where isnull(description) OR len(description) < 20
+| table title, description, search, updated
+| eval issue = "Missing documentation — who created this and why?"</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: SUPPRESSION LIFECYCLE -->
+                <!-- ============================================== -->
+                <h2>Suppression Lifecycle</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    CREATE["CREATED<br/>Suppression documented<br/>Ticket assigned<br/>Expiry set"] --> ACTIVE["ACTIVE<br/>Notables suppressed<br/>Detection still running"]
+    
+    ACTIVE --> Q1{"Expiry reached<br/>or review date?"}
+    
+    Q1 -->|"Short-term:<br/>tuning fix deployed?"| Q2{"Fix confirmed<br/>working?"}
+    Q2 -->|"Yes"| REMOVE["✅ REMOVE SUPPRESSION<br/>Detection is fixed<br/>Suppression no longer needed"]
+    Q2 -->|"No — fix delayed"| EXTEND["EXTEND 7 days<br/>Update ticket<br/>Escalate if >3 extensions"]
+    EXTEND --> ACTIVE
+    
+    Q1 -->|"Long-term:<br/>quarterly review"| Q3{"Entity still<br/>exists and<br/>still benign?"}
+    Q3 -->|"Yes — confirmed benign"| RENEW["RENEW<br/>Update review date<br/>Document confirmation"]
+    RENEW --> ACTIVE
+    Q3 -->|"Entity decommissioned"| REMOVE
+    Q3 -->|"Entity may<br/>no longer be benign"| REVOKE["🔴 REVOKE<br/>Remove suppression<br/>Monitor for 1 week<br/>Re-evaluate"]
+    
+    Q1 -->|"No review triggered"| STALE["⚠️ STALE<br/>No review in 90+ days<br/>Flag for immediate audit"]
+    STALE -->|"Audit complete"| Q3
+    
+    REMOVE --> CLOSED["CLOSED<br/>Suppression removed<br/>Ticket closed<br/>Registry updated"]
+    REVOKE --> ACTIVE
+
+    style CREATE fill:#58a6ff,stroke:#388bfd,color:#fff
+    style ACTIVE fill:#238636,stroke:#2ea043,color:#fff
+    style REMOVE fill:#238636,stroke:#2ea043,color:#fff
+    style CLOSED fill:#6e7681,stroke:#484f58,color:#fff
+    style STALE fill:#f85149,stroke:#da3633,color:#fff
+    style REVOKE fill:#f85149,stroke:#da3633,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FAILURE MODES -->
+                <!-- ============================================== -->
+                <h2>Failure Modes</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Failure Mode</th>
+                                <th>Symptom</th>
+                                <th>Root Cause</th>
+                                <th>Impact</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Suppression too broad</strong></td>
+                                <td>Legitimate notables for other entities from the same detection are also hidden</td>
+                                <td>Suppression matches on <code>search_name</code> only, without entity-specific fields</td>
+                                <td>Complete blind spot for the entire detection — equivalent to disabling it</td>
+                                <td>Add entity-specific fields to the suppression filter. Never suppress by search_name alone.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Stale suppression (never reviewed)</strong></td>
+                                <td>Suppression created 6+ months ago with no review date, no ticket, no documentation</td>
+                                <td>No lifecycle process. Nobody tracked it.</td>
+                                <td>Permanent blind spot. If the entity is compromised, attack notables are hidden forever.</td>
+                                <td>Audit all suppressions monthly. Add expiration or review dates to every rule.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Suppression hides a real attack</strong></td>
+                                <td>Post-incident review reveals notables existed but were suppressed</td>
+                                <td>Entity was suppressed as "known benign" but was then compromised</td>
+                                <td>Missed detection. Incident response delayed. Audit finding.</td>
+                                <td>Quarterly review of all long-term suppressions. Verify entity is still benign.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Suppression count creep</strong></td>
+                                <td>30+ active suppression rules. Nobody knows what they all do.</td>
+                                <td>Suppressions created as quick fixes and never cleaned up</td>
+                                <td>Complex web of blind spots. Audit nightmare. Impossible to understand actual detection coverage.</td>
+                                <td>Target: <15 active suppressions. Each must have documentation + review date. Audit quarterly.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Suppression doesn't work</strong></td>
+                                <td>Suppression rule exists but notables still appear in Incident Review</td>
+                                <td>Field names in suppression don't match notable field names. Typo in value. Case sensitivity mismatch.</td>
+                                <td>SOC still sees noise. Suppression provides false sense of "handled".</td>
+                                <td>Test suppression: verify the notable fields match EXACTLY. Use <code>is_suppressed</code> field to verify.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Short-term becomes permanent</strong></td>
+                                <td>"Temporary" suppression still active 6 months later. Tuning ticket was never completed.</td>
+                                <td>No follow-up process. Ticket closed without removing suppression.</td>
+                                <td>Intended 7-day bridge becomes permanent blind spot.</td>
+                                <td>Suppression removal must be part of the tuning ticket completion criteria. Verify removal at ticket close.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: VALIDATION SPL -->
+                <!-- ============================================== -->
+                <h2>Validation SPL & Expected Output</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Suppression Health Score</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Overall suppression hygiene assessment")`
+
+| rest /services/notable_event_suppressions splunk_server=local
+| stats count AS total_suppressions,
+    sum(case(isnull(expiration), 1, 0)) AS no_expiry,
+    sum(case(len(description) < 20 OR isnull(description), 1, 0)) AS no_docs,
+    sum(case((now() - updated) > 7776000, 1, 0)) AS stale_90d
+| eval health = case(
+    total_suppressions > 25, "🔴 CRITICAL — Too many suppressions",
+    no_expiry > 5, "🔴 WARNING — Multiple suppressions without expiry",
+    no_docs > 0, "🟡 REVIEW — Undocumented suppressions exist",
+    stale_90d > 0, "🟡 REVIEW — Stale suppressions found",
+    true(), "🟢 Healthy"
+)
+| table total_suppressions, no_expiry, no_docs, stale_90d, health</code></pre>
+                </div>
+
+                <p><strong>Expected healthy output:</strong> <code>total_suppressions</code> < 15, <code>no_expiry</code> = 0, <code>no_docs</code> = 0, <code>stale_90d</code> = 0.</p>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK -->
+                <!-- ============================================== -->
+                <h2>Rollback Steps</h2>
+
+                <h3>Removing a Suppression</h3>
+                <ol>
+                    <li>Navigate to <strong>Enterprise Security → Configure → Content → Content Management</strong></li>
+                    <li>Filter by Type: <strong>Notable Event Suppression</strong></li>
+                    <li>Find the suppression by name</li>
+                    <li>Click the suppression → Click <strong>Delete</strong> (or <strong>Disable</strong> if you want to preserve the rule for reference)</li>
+                    <li>Verify: In Incident Review, the previously suppressed notables should now appear (for new events going forward; historical suppressed events may remain hidden)</li>
+                    <li>Update your suppression registry and close the tracking ticket</li>
+                </ol>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Removing a Suppression May Cause a Burst</div>
+                    <p>If the underlying noise was never fixed, removing the suppression will immediately expose the SOC to all the notables that were previously hidden. <strong>Always verify the root cause was fixed BEFORE removing the suppression.</strong></p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>Total active suppressions exceed 25.</strong> Suppression sprawl is out of control. Freeze new suppressions. Audit and remove stale ones first.</li>
+                        <li><strong>A suppression has been "short-term" for more than 30 days.</strong> The tuning fix is overdue. Escalate the tuning ticket. Remove the suppression and disable the detection if the fix can't be completed within 1 week.</li>
+                        <li><strong>Post-incident investigation reveals a suppression hid attack evidence.</strong> Document the finding. Review ALL suppressions immediately. Report to security management.</li>
+                        <li><strong>An auditor asks about suppressions and you can't explain what they all do.</strong> Immediate audit of all suppressions. Document every rule. Remove any that can't be justified.</li>
+                        <li><strong>Someone creates a global suppression (by search_name only).</strong> Revoke immediately. Disable the detection instead. This is a process violation.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Suppress instead of tune"</strong></td>
+                                <td>Suppression doesn't fix the detection. The search still runs, still uses concurrency, still generates hidden notables. The problem grows silently.</td>
+                                <td>Always attempt tuning first (data quality → logic → threshold → throttle). Suppress only as a bridge.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"I'll remove it later"</strong></td>
+                                <td>"Later" becomes never. Temporary suppressions become permanent blind spots.</td>
+                                <td>Set expiration on every short-term suppression. Tie removal to the tuning ticket close criteria.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Suppress entire detection"</strong></td>
+                                <td>Global suppression = disabling the detection with extra steps and extra resource waste.</td>
+                                <td>If the whole detection is noisy, DISABLE it. Tune offline. Re-enable through lifecycle.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"No need to document"</strong></td>
+                                <td>In 3 months, nobody will know why this suppression exists, who created it, or whether it's still needed.</td>
+                                <td>Every suppression gets a name, description, ticket, creator, reason, and review date. No exceptions.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"SOC can just suppress whatever is noisy"</strong></td>
+                                <td>Uncontrolled suppression creation leads to sprawl. Each analyst adds their own, nobody tracks the total. Coverage gaps multiply.</td>
+                                <td>Only Detection Engineering creates suppression rules. SOC requests suppression via ticket. SOC Lead approves long-term.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Create one suppression (from IR)</strong></td>
+                                <td>5 minutes</td>
+                                <td>15 minutes (including documentation)</td>
+                                <td>30 minutes (complex field matching)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Audit all suppressions</strong></td>
+                                <td>30 minutes (< 10 rules)</td>
+                                <td>1-2 hours (10-25 rules)</td>
+                                <td>Half day (25+ rules, poor documentation)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Remove a suppression</strong></td>
+                                <td>5 minutes</td>
+                                <td>15 minutes (verify fix first)</td>
+                                <td>1 hour (fix isn't working, need to re-suppress)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Quarterly suppression review</strong></td>
+                                <td>1 hour</td>
+                                <td>2-3 hours</td>
+                                <td>Half day (many stale rules to resolve)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Clean up suppression sprawl (>25 rules)</strong></td>
+                                <td>Half day</td>
+                                <td>1-2 days</td>
+                                <td>1 week (each removal requires investigation)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Suppression creation record</strong></td>
+                                <td>Documentation template (above) filled out</td>
+                                <td>Detection registry + tracking ticket</td>
+                                <td>When creating any suppression</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Suppression audit report</strong></td>
+                                <td>SPL output from audit queries above</td>
+                                <td>Quarterly governance report</td>
+                                <td>Monthly audit, quarterly formal report</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Suppression removal confirmation</strong></td>
+                                <td>Screenshot or SPL confirming rule removed + ticket closure</td>
+                                <td>Tracking ticket</td>
+                                <td>When removing a suppression</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Quarterly review sign-off</strong></td>
+                                <td>SOC Lead confirmation that all long-term suppressions are still valid</td>
+                                <td>Governance records</td>
+                                <td>Quarterly</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hidden notable count (per suppression)</strong></td>
+                                <td>SPL output from count query above</td>
+                                <td>Quarterly governance report</td>
+                                <td>Quarterly (shows the "cost" of each suppression)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="investigations-evidence.html" class="next-steps-link">Investigations & Evidence Handling →</a>
+                        <a href="enablement-mechanics.html" class="next-steps-link">Correlation Search Enablement Mechanics →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

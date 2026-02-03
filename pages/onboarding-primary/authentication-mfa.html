@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication & MFA Onboarding - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="index.html" class="nav-item">Overview</a>
+                    <a href="akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="authentication-mfa.html" class="nav-item nav-item-sub active">Authentication / MFA</a>
+                    <a href="syslog-hf.html" class="nav-item nav-item-sub">Syslog via HF</a>
+                    <a href="endpoint-telemetry.html" class="nav-item nav-item-sub">Endpoint Telemetry</a>
+                    <a href="hec-ingestion.html" class="nav-item nav-item-sub">HEC Ingestion</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Alternate Onboarding</div>
+                    <a href="../onboarding-alternate/index.html" class="nav-item">Overview</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase1-log-coverage/index.html">Phase 1</a>
+                <span class="separator">/</span>
+                <a href="index.html">Primary Onboarding</a>
+                <span class="separator">/</span>
+                <span class="current">Authentication / MFA</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-1">📊 Phase 1 — Log Coverage</span>
+                <h1>Authentication & MFA Log Onboarding</h1>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title">🔐 Multi-Provider Guide</div>
+                    <p>This guide covers onboarding authentication and MFA logs from multiple identity providers commonly found in enterprise environments. Most organizations have 2-4 authentication sources that need to be correlated for complete visibility.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- PROVIDER MATRIX -->
+                <!-- ============================================== -->
+                <h2>Supported Providers</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>Log Types</th>
+                                <th>Delivery Method</th>
+                                <th>Splunk Add-on</th>
+                                <th>Typical Use</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Microsoft Entra ID</strong><br/>(formerly Azure AD)</td>
+                                <td>Sign-in logs, Audit logs, MFA logs, Risky sign-ins</td>
+                                <td>Event Hub → HEC, or Graph API polling</td>
+                                <td>Splunk Add-on for Microsoft Cloud Services</td>
+                                <td>Primary IdP for M365 environments</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CyberArk Identity</strong><br/>(formerly Idaptive)</td>
+                                <td>Authentication events, MFA challenges, Session logs</td>
+                                <td>SIEM Integration (push) or API polling</td>
+                                <td>Splunk Add-on for CyberArk</td>
+                                <td>Privileged access MFA</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Okta</strong></td>
+                                <td>System logs (auth, MFA, admin events)</td>
+                                <td>Event Hook (push) or API polling</td>
+                                <td>Splunk Add-on for Okta</td>
+                                <td>Workforce identity, SSO</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Duo Security</strong></td>
+                                <td>Authentication logs, Admin logs, Telephony logs</td>
+                                <td>Admin API polling</td>
+                                <td>Splunk Add-on for Duo Security</td>
+                                <td>MFA provider</td>
+                            </tr>
+                            <tr>
+                                <td><strong>On-Premises AD</strong></td>
+                                <td>Windows Security Events (4624, 4625, 4768, etc.)</td>
+                                <td>Universal Forwarder → Domain Controllers</td>
+                                <td>Splunk Add-on for Windows</td>
+                                <td>Legacy/hybrid authentication</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ping Identity</strong></td>
+                                <td>Authentication events, Federation logs</td>
+                                <td>Syslog or API</td>
+                                <td>Generic syslog parsing or custom</td>
+                                <td>Enterprise SSO, federation</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION A: WHY THIS STEP EXISTS -->
+                <!-- ============================================== -->
+                <h2>Why Authentication Log Onboarding Matters</h2>
+
+                <h3>Business Justification</h3>
+                <p>Authentication is the front door to your organization. Every account takeover, every unauthorized access, every insider threat begins with an authentication event. In retail environments with distributed workforce, seasonal employees, and customer-facing systems, authentication visibility is non-negotiable:</p>
+                <ul>
+                    <li><strong>Account takeover is the #1 attack vector.</strong> Credential stuffing, phishing, and password spray attacks target authentication systems daily. Without logs, you're blind to these attacks.</li>
+                    <li><strong>MFA fatigue attacks are increasing.</strong> The Uber (2022) and Cisco (2022) breaches both involved MFA fatigue—repeatedly sending push notifications until users approve. You cannot detect this without MFA-specific logs.</li>
+                    <li><strong>Compliance mandates visibility.</strong> PCI DSS, SOX, and internal audit requirements all demand authentication logging and monitoring.</li>
+                    <li><strong>Insider threat detection requires auth context.</strong> Unusual login times, impossible travel, and access from new devices all require authentication log analysis.</li>
+                </ul>
+
+                <h3>Security Justification</h3>
+                <p>Authentication logs enable detection of:</p>
+                <ul>
+                    <li><strong>Credential Attacks:</strong> Brute force, password spray, credential stuffing</li>
+                    <li><strong>MFA Attacks:</strong> MFA fatigue/prompt bombing, MFA bypass, SIM swapping indicators</li>
+                    <li><strong>Account Compromise:</strong> Impossible travel, new device login, suspicious IP geolocation</li>
+                    <li><strong>Privilege Escalation:</strong> Unusual admin access, service account abuse</li>
+                    <li><strong>Policy Violations:</strong> Legacy protocol usage, conditional access bypass attempts</li>
+                </ul>
+
+                <h3>The Multi-Provider Challenge</h3>
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Enterprise Reality: You Probably Have Multiple IdPs</div>
+                    <p>Most enterprises don't have a single authentication system. Common patterns include:</p>
+                </div>
+                <ul>
+                    <li><strong>Entra ID + CyberArk:</strong> Entra for regular users, CyberArk for privileged access</li>
+                    <li><strong>Okta + Duo:</strong> Okta for SSO, Duo as MFA provider</li>
+                    <li><strong>Entra ID + On-Prem AD:</strong> Hybrid identity with cloud and legacy systems</li>
+                    <li><strong>Multiple Entra tenants:</strong> Acquired companies, separate business units</li>
+                </ul>
+                <p>Each provider has different log formats, field names, and delivery mechanisms. Your detection logic must account for ALL of them—an attacker won't limit themselves to one.</p>
+
+                <h3>What Breaks If This Is Not Done Correctly</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Misconfiguration</th>
+                                <th>Impact</th>
+                                <th>Detection Gap</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Only onboarding one IdP when multiple exist</td>
+                                <td>Partial visibility</td>
+                                <td>Attacks against other IdPs invisible</td>
+                            </tr>
+                            <tr>
+                                <td>Missing MFA-specific logs</td>
+                                <td>No MFA event detail</td>
+                                <td>Cannot detect MFA fatigue attacks</td>
+                            </tr>
+                            <tr>
+                                <td>Username format mismatch between providers</td>
+                                <td>Correlation fails</td>
+                                <td>Cannot link events for same user across systems</td>
+                            </tr>
+                            <tr>
+                                <td>Only collecting success events</td>
+                                <td>Missing failures</td>
+                                <td>Cannot detect brute force or spray attacks</td>
+                            </tr>
+                            <tr>
+                                <td>High latency (>15 min)</td>
+                                <td>Delayed detection</td>
+                                <td>Attacker has access before alert fires</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Who Owns This Onboarding</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Role</th>
+                                <th>Responsibility</th>
+                                <th>What You Need From Them</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Detection Engineer (You)</strong></td>
+                                <td>Define requirements, configure Splunk, validate data, build correlation</td>
+                                <td>Splunk admin access, understanding of identity architecture</td>
+                            </tr>
+                            <tr>
+                                <td><strong>IAM / Identity Team</strong></td>
+                                <td>IdP configuration, API credentials, diagnostic access, Event Hub setup</td>
+                                <td>Admin access to Entra/Okta/CyberArk, understanding of tenant structure</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cloud Infrastructure Team</strong></td>
+                                <td>Azure Event Hub, diagnostic settings, networking</td>
+                                <td>Azure subscription access, Event Hub namespace configuration</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Splunk Admin</strong></td>
+                                <td>HEC configuration, TA installation, index management</td>
+                                <td>HEC tokens, index creation, app deployment</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ARCHITECTURE -->
+                <!-- ============================================== -->
+                <h2>Architecture Overview</h2>
+
+                <h3>Multi-Provider Authentication Data Flow</h3>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    subgraph Users["Users & Systems"]
+        EMP["Employees"]
+        ADMIN["Privileged Users"]
+        SVC["Service Accounts"]
+        CUST["Customers"]
+    end
+    
+    subgraph IdPs["Identity Providers"]
+        ENTRA["Microsoft Entra ID<br/>(Primary IdP)"]
+        CYBER["CyberArk Identity<br/>(Privileged MFA)"]
+        OKTA["Okta<br/>(SSO/Federation)"]
+        ONAD["On-Prem AD<br/>(Legacy)"]
+    end
+    
+    subgraph Delivery["Log Delivery"]
+        EHUB["Azure Event Hub"]
+        CAPI["CyberArk SIEM API"]
+        OAPI["Okta System Log API"]
+        UF["Universal Forwarder<br/>(Domain Controllers)"]
+    end
+    
+    subgraph Splunk["Splunk Platform"]
+        HEC["HTTP Event<br/>Collector"]
+        IDX["Indexers<br/>(auth_* indexes)"]
+        DM["Authentication<br/>Data Model"]
+        ES["Enterprise Security"]
+    end
+    
+    EMP --> ENTRA
+    ADMIN --> CYBER
+    EMP --> OKTA
+    SVC --> ONAD
+    CUST --> ENTRA
+    
+    ENTRA -->|"Diagnostic Settings"| EHUB
+    CYBER -->|"SIEM Integration"| CAPI
+    OKTA -->|"Event Hooks"| OAPI
+    ONAD -->|"WinEventLog"| UF
+    
+    EHUB --> HEC
+    CAPI --> HEC
+    OAPI --> HEC
+    UF --> IDX
+    
+    HEC --> IDX
+    IDX --> DM
+    DM --> ES
+    
+    style ENTRA fill:#0078d4,stroke:#106ebe,color:#fff
+    style CYBER fill:#6f42c1,stroke:#5a32a3,color:#fff
+    style OKTA fill:#007dc1,stroke:#0066a1,color:#fff
+    style ES fill:#58a6ff,stroke:#1f6feb,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION B: PRECISE PREREQUISITES -->
+                <!-- ============================================== -->
+                <h2>Prerequisites</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 STOP — Complete IdP Discovery Before Starting</div>
+                    <p><strong>The #1 mistake in authentication log onboarding is missing an IdP.</strong> Before configuring anything, complete a full identity provider inventory. Attackers will target whichever system you're not monitoring.</p>
+                </div>
+
+                <h3>Step 0: Identity Provider Discovery</h3>
+                <p>Complete this discovery checklist before any technical work. For each question, document the answer and the system.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>IdP Discovery Questions</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>ASK THESE QUESTIONS TO IAM TEAM, IT LEADERSHIP, AND ACQUIRED COMPANY CONTACTS:
+
+1. PRIMARY WORKFORCE IDENTITY
+   Q: "What system do employees use to log into their computers?"
+   □ Entra ID (Azure AD)
+   □ On-premises Active Directory
+   □ Okta
+   □ Other: _____________
+   
+2. CLOUD SSO
+   Q: "What system handles single sign-on for cloud applications?"
+   □ Same as above
+   □ Entra ID
+   □ Okta
+   □ Ping Identity
+   □ Other: _____________
+
+3. PRIVILEGED ACCESS MFA
+   Q: "What MFA system do admins/IT staff use for privileged access?"
+   □ Entra ID MFA
+   □ CyberArk Identity
+   □ Duo Security
+   □ RSA SecurID
+   □ Other: _____________
+   
+4. CUSTOMER AUTHENTICATION
+   Q: "What system handles customer logins (website, loyalty app)?"
+   □ Azure AD B2C
+   □ Okta Customer Identity
+   □ Custom application
+   □ Not in scope
+   
+5. LEGACY SYSTEMS
+   Q: "Are there any legacy authentication systems still in use?"
+   □ ADFS (Active Directory Federation Services)
+   □ Legacy RADIUS
+   □ Mainframe authentication
+   □ Other: _____________
+   
+6. ACQUIRED COMPANIES
+   Q: "Do acquired companies have separate identity systems?"
+   □ Separate Entra tenants: _____________
+   □ Separate Okta orgs: _____________
+   □ Still migrating from: _____________
+
+7. VPN/REMOTE ACCESS
+   Q: "What authenticates VPN connections?"
+   □ Same as workforce identity
+   □ Separate VPN MFA
+   □ Provider: _____________
+
+DOCUMENT ALL SYSTEMS IN THIS FORMAT:
+| System              | Type      | Users           | Log Available? | Owner      |
+|--------------------|-----------|-----------------|----------------|------------|
+| Entra ID (tenant1) | Primary   | 50,000 employees| Yes            | IAM Team   |
+| CyberArk Identity  | Priv MFA  | 500 admins      | Unknown        | IAM Team   |
+| Legacy ADFS        | Legacy    | 2,000 (one app) | Unknown        | App Team   |</code></pre>
+                </div>
+
+                <h3>Entra ID License Verification</h3>
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Entra ID Logging Requires Specific Licenses</div>
+                    <p>Not all Entra ID log categories are available with all licenses. Verify your license level before expecting certain log types.</p>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Log Category</th>
+                                <th>Required License</th>
+                                <th>How to Check</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Sign-in Logs (basic)</td>
+                                <td>Any Entra ID (Free included)</td>
+                                <td>Always available</td>
+                            </tr>
+                            <tr>
+                                <td>Sign-in Logs (30 day retention)</td>
+                                <td>Entra ID P1 or P2</td>
+                                <td>Azure Portal → Entra ID → Licenses</td>
+                            </tr>
+                            <tr>
+                                <td>Risky Sign-ins</td>
+                                <td>Entra ID P2</td>
+                                <td>Azure Portal → Entra ID → Security → Risky sign-ins</td>
+                            </tr>
+                            <tr>
+                                <td>Risk Detections</td>
+                                <td>Entra ID P2</td>
+                                <td>If page shows data, P2 is enabled</td>
+                            </tr>
+                            <tr>
+                                <td>Authentication Methods Activity</td>
+                                <td>Entra ID P1 or P2</td>
+                                <td>Azure Portal → Entra ID → Security → Authentication methods</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Check Entra ID License Level</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>OPTION 1: Azure Portal
+1. Azure Portal → Microsoft Entra ID → Overview
+2. Look for "License" in the overview blade
+3. Should show "Premium P1", "Premium P2", or "Free"
+
+OPTION 2: Check Specific Features
+1. Azure Portal → Entra ID → Security → Risky sign-ins
+2. If you see data, you have P2
+3. If you see "Requires Premium P2", you don't have P2
+
+OPTION 3: PowerShell
+Connect-MgGraph -Scopes "Directory.Read.All"
+Get-MgSubscribedSku | Where-Object {$_.ServicePlans.ServicePlanName -like "*AAD_PREMIUM*"}
+
+LICENSE IMPLICATIONS:
+- Free/P1: Basic sign-in logs available, no risk data
+- P2: Full security logging including risk detections
+
+IF P2 NOT AVAILABLE:
+- Document as limitation
+- Consider requesting P2 license for security monitoring
+- Build detections with available data (sign-in failures, etc.)</code></pre>
+                </div>
+
+                <h3>Azure Event Hub Provisioning Warning</h3>
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Event Hub Setup Can Take Days</div>
+                    <p>The recommended delivery method for Entra ID logs (Event Hub → Splunk) requires Azure infrastructure that may not exist. Plan for 3-7 days if Event Hub namespace needs to be created.</p>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Event Hub Readiness Check</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>CHECK IF EVENT HUB EXISTS:
+1. Azure Portal → Event Hubs → [Your Subscription]
+2. Look for existing namespace (e.g., "eh-security-logs" or "splunk-ingest")
+3. If namespace exists, check for available capacity
+
+IF EVENT HUB DOES NOT EXIST:
+Required resources to create:
+- Event Hub Namespace (Standard tier minimum for production)
+- Event Hub instance within namespace
+- Consumer group for Splunk
+- Shared Access Policy with "Listen" permission
+
+TIMELINE ESTIMATE:
+| Task                              | Typical Duration |
+|-----------------------------------|------------------|
+| Azure team creates namespace      | 1-3 days        |
+| Security review/approval          | 1-2 days        |
+| Network configuration (if needed) | 1-2 days        |
+| Total if Event Hub missing        | 3-7 days        |
+
+ALTERNATIVE IF URGENT:
+- Use Graph API polling instead of Event Hub
+- Higher latency (5-15 min vs <2 min)
+- Requires service principal with appropriate permissions
+- See API Polling section below</code></pre>
+                </div>
+
+                <h3>Multi-Tenant Discovery</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Entra ID Tenant Discovery</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>DISCOVERY QUESTIONS:
+1. "How many Entra ID tenants does the organization have?"
+2. "Are acquired companies on separate tenants?"
+3. "Is there a B2C tenant for customers?"
+4. "Are there dev/test tenants with production-like data?"
+
+COMMON MULTI-TENANT SCENARIOS:
+| Tenant Type        | Example                   | Include in Monitoring? |
+|-------------------|---------------------------|------------------------|
+| Primary workforce  | contoso.onmicrosoft.com   | ✓ Required            |
+| Acquired company  | acquired.onmicrosoft.com  | ✓ Required            |
+| Customer (B2C)    | contosob2c.onmicrosoft.com| ✓ If customer auth in scope |
+| Development       | contosodev.onmicrosoft.com| Optional              |
+
+FOR EACH TENANT, DOCUMENT:
+| Tenant Name     | Tenant ID                              | Users  | Owner    | Event Hub Needed |
+|-----------------|----------------------------------------|--------|----------|------------------|
+| Sobeys Main     | 12345678-1234-1234-1234-123456789012   | 50,000 | IAM Team | Yes              |
+| IGA Acquisition | 87654321-4321-4321-4321-210987654321   | 10,000 | Acquired | Yes              |
+
+EACH TENANT REQUIRES SEPARATE:
+- Diagnostic setting configuration
+- Event Hub (or shared Event Hub with routing)
+- Splunk input configuration</code></pre>
+                </div>
+
+                <h3>What MUST Already Exist</h3>
+                <div class="checklist-group">
+                    <div class="checklist-title">Hard Requirements — Common to All Providers</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-prereq">
+                        <span><strong>IdP Discovery Complete:</strong> All authentication systems identified (see Step 0 above)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-prereq">
+                        <span><strong>Tenant Inventory Complete:</strong> All Entra ID tenants documented with IDs</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-prereq">
+                        <span><strong>License Verification:</strong> Entra ID license level confirmed (P1/P2 for full logs)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-prereq">
+                        <span><strong>Identity Provider Inventory:</strong> Documented list of ALL authentication systems in use</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-prereq">
+                        <span><strong>Admin Access:</strong> Accounts with permission to configure logging/export in each IdP</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-prereq">
+                        <span><strong>Event Hub Status:</strong> Confirmed exists or creation requested (for Entra ID)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-prereq">
+                        <span><strong>Splunk Indexes:</strong> Dedicated indexes for authentication data (e.g., auth_azure, auth_cyberark)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-prereq">
+                        <span><strong>HEC Endpoints:</strong> Available for cloud-based log delivery</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-prereq">
+                        <span><strong>Splunk Add-ons:</strong> Installed for each IdP (see provider sections below)</span>
+                    </label>
+                </div>
+
+                <h3>What Often Does NOT Exist (Plan For This)</h3>
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Enterprise Reality Check</div>
+                    <p>Based on real deployments, these are commonly missing. Budget 1-2 weeks extra for discovery and remediation:</p>
+                </div>
+                <ul>
+                    <li><strong>Complete IdP inventory:</strong> "We use Entra ID" often becomes "We use Entra ID, plus CyberArk for admins, plus legacy ADFS for one app, plus a separate tenant for the acquired company." Always ask: "Is this the ONLY authentication system?"</li>
+                    <li><strong>MFA log access:</strong> Many organizations have Entra ID sign-in logs but NOT the detailed MFA logs (authenticationDetails array). Verify MFA details are included.</li>
+                    <li><strong>Azure Event Hub:</strong> The recommended delivery method for Entra ID requires Event Hub, which may not exist. Cloud team may need 1-2 weeks to provision.</li>
+                    <li><strong>API credentials with correct permissions:</strong> Okta/CyberArk API keys often exist but have read-only permissions that don't include the log types you need.</li>
+                    <li><strong>Username consistency:</strong> Entra uses UPN (user@domain.com), CyberArk might use SAMAccountName (DOMAIN\user), on-prem AD uses various formats. Correlation requires understanding these differences.</li>
+                    <li><strong>Working diagnostic settings:</strong> Azure diagnostic settings may have been configured once and broken by subscription changes, policy updates, or Event Hub deletions.</li>
+                </ul>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ENTRA ID (AZURE AD) -->
+                <!-- ============================================== -->
+                <h2>Provider 1: Microsoft Entra ID (Azure AD)</h2>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📘 Entra ID Log Types</div>
+                    <p>Entra ID provides multiple log categories. For security monitoring, you need at minimum: <strong>Sign-in logs</strong> and <strong>Audit logs</strong>. For MFA detection, you need the detailed <strong>authenticationDetails</strong> within sign-in logs.</p>
+                </div>
+
+                <h3>Entra ID Log Categories</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Log Category</th>
+                                <th>Contents</th>
+                                <th>Security Use Cases</th>
+                                <th>Required?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>SignInLogs</strong></td>
+                                <td>Interactive user sign-ins</td>
+                                <td>Brute force, impossible travel, MFA fatigue</td>
+                                <td>✓ Required</td>
+                            </tr>
+                            <tr>
+                                <td><strong>NonInteractiveUserSignInLogs</strong></td>
+                                <td>Token refreshes, background auth</td>
+                                <td>Session hijacking, token theft</td>
+                                <td>✓ Required</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ServicePrincipalSignInLogs</strong></td>
+                                <td>Application/service account auth</td>
+                                <td>Compromised service principals</td>
+                                <td>Recommended</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ManagedIdentitySignInLogs</strong></td>
+                                <td>Azure managed identity auth</td>
+                                <td>Cloud resource compromise</td>
+                                <td>Recommended</td>
+                            </tr>
+                            <tr>
+                                <td><strong>AuditLogs</strong></td>
+                                <td>Directory changes, user/group modifications</td>
+                                <td>Privilege escalation, persistence</td>
+                                <td>✓ Required</td>
+                            </tr>
+                            <tr>
+                                <td><strong>RiskyUsers</strong></td>
+                                <td>Identity Protection risk assessments</td>
+                                <td>Compromised account indicators</td>
+                                <td>Optional (P2 license)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>RiskyServicePrincipals</strong></td>
+                                <td>Service principal risk assessments</td>
+                                <td>Compromised app indicators</td>
+                                <td>Optional (P2 license)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Delivery Method: Azure Event Hub (Recommended)</h3>
+
+                <h4>Step 1: Create Event Hub Namespace and Hub</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Azure Portal: Create Event Hub</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># Azure Portal → Event Hubs → Create
+
+Resource Group: rg-security-logging
+Namespace Name: evhns-entra-splunk-prod
+Location: Same region as Splunk (minimize latency)
+Pricing Tier: Standard (supports multiple consumer groups)
+Throughput Units: Start with 2, scale as needed
+
+# After namespace creation, create Event Hub:
+Event Hub Name: evh-entra-signin-logs
+Partition Count: 4 (default, increase for high volume)
+Message Retention: 1 day (Splunk should consume quickly)</code></pre>
+                </div>
+
+                <h4>Step 2: Configure Shared Access Policy</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Event Hub Shared Access Policy</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># Event Hub Namespace → Shared access policies → Add
+
+Policy Name: splunk-consumer
+Permissions: ☑ Listen (required)
+             ☐ Send (not needed for consumption)
+             ☐ Manage (not needed)
+
+# Save and copy the Connection String - Primary Key
+# Format: Endpoint=sb://evhns-xxx.servicebus.windows.net/;SharedAccessKeyName=splunk-consumer;SharedAccessKey=xxx</code></pre>
+                </div>
+
+                <h4>Step 3: Configure Entra ID Diagnostic Settings</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Azure Portal: Entra ID Diagnostic Settings</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># Microsoft Entra ID → Monitoring → Diagnostic settings → Add diagnostic setting
+
+Diagnostic setting name: splunk-security-logs
+
+Categories to enable:
+  ☑ SignInLogs
+  ☑ NonInteractiveUserSignInLogs
+  ☑ ServicePrincipalSignInLogs
+  ☑ ManagedIdentitySignInLogs
+  ☑ AuditLogs
+  ☑ RiskyUsers (if P2 license)
+  ☑ RiskyServicePrincipals (if P2 license)
+  ☑ UserRiskEvents (if P2 license)
+  ☑ ServicePrincipalRiskEvents (if P2 license)
+
+Destination:
+  ☑ Stream to an event hub
+  Subscription: [Your subscription]
+  Event hub namespace: evhns-entra-splunk-prod
+  Event hub name: evh-entra-signin-logs
+  Event hub policy name: RootManageSharedAccessKey</code></pre>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Critical: Enable ALL Sign-in Log Types</div>
+                    <p>The most common mistake is only enabling "SignInLogs" and missing NonInteractiveUserSignInLogs. Service account abuse and token theft often appear only in non-interactive logs. Enable ALL four sign-in log categories.</p>
+                </div>
+
+                <h4>Step 4: Configure Splunk Add-on for Microsoft Cloud Services</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Splunk Add-on Configuration</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>App Name: Splunk Add-on for Microsoft Cloud Services
+Splunkbase ID: 3110
+Install On: Heavy Forwarder (for Event Hub input) + Search Heads (for parsing)
+
+# On Heavy Forwarder, configure Event Hub input:
+# Splunk Add-on for Microsoft Cloud Services → Inputs → Create New Input
+
+Input Type: Azure Event Hub
+Name: entra_signin_logs
+Event Hub Namespace: evhns-entra-splunk-prod
+Event Hub Name: evh-entra-signin-logs
+Consumer Group: $Default (or create dedicated group)
+SAS Key Name: splunk-consumer
+SAS Key: [Connection string from Step 2]
+Index: auth_azure
+Sourcetype: azure:aad:signin</code></pre>
+                </div>
+
+                <h4>Step 5: Verify Entra ID Data</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Validate Entra ID Sign-in Logs</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=auth_azure sourcetype="azure:aad:signin" earliest=-1h
+| stats count BY category
+| eval expected = case(
+    category=="SignInLogs", "Interactive sign-ins",
+    category=="NonInteractiveUserSignInLogs", "Token refreshes",
+    category=="ServicePrincipalSignInLogs", "Service principals",
+    category=="ManagedIdentitySignInLogs", "Managed identities",
+    true(), "Other"
+)
+| table category, expected, count</code></pre>
+                </div>
+
+                <h4>Step 6: Verify MFA Details Are Present</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check MFA Field Availability (Critical for MFA Fatigue Detection)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=auth_azure sourcetype="azure:aad:signin" category="SignInLogs" earliest=-24h
+| head 1000
+| spath output=mfa_detail path=authenticationDetails{}.authenticationMethod
+| spath output=mfa_result path=authenticationDetails{}.succeeded
+| eval has_mfa_detail = if(isnotnull(mfa_detail), 1, 0)
+| stats 
+    count AS total,
+    sum(has_mfa_detail) AS with_mfa_detail
+| eval mfa_detail_pct = round(with_mfa_detail/total*100, 1)."%"
+| eval status = if(with_mfa_detail > 0, "✓ MFA Details Available", "✗ MFA Details Missing - Check Diagnostic Settings")</code></pre>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ MFA Details Not Always Present</div>
+                    <p>The authenticationDetails array is only populated for interactive sign-ins where MFA was challenged. If your query shows 0 MFA details but you have sign-in events, verify that MFA is actually being triggered (check Conditional Access policies). If MFA is configured but details are missing, the diagnostic setting may need to be recreated.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: CYBERARK IDENTITY -->
+                <!-- ============================================== -->
+                <h2>Provider 2: CyberArk Identity (Privileged Access MFA)</h2>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">🔒 CyberArk Context</div>
+                    <p>CyberArk Identity (formerly Idaptive) is often used alongside primary IdPs to provide additional MFA for privileged accounts. If your organization uses CyberArk Mobile Authenticator for admin access, these logs are critical for detecting privileged account attacks.</p>
+                </div>
+
+                <h3>CyberArk Log Types</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Log Type</th>
+                                <th>Contents</th>
+                                <th>Security Use Cases</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Authentication Events</strong></td>
+                                <td>Login attempts, successes, failures</td>
+                                <td>Privileged account brute force</td>
+                            </tr>
+                            <tr>
+                                <td><strong>MFA Challenges</strong></td>
+                                <td>Push notifications sent/approved/denied</td>
+                                <td>MFA fatigue attacks on admins</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Session Events</strong></td>
+                                <td>Session creation, termination</td>
+                                <td>Session hijacking indicators</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Admin Events</strong></td>
+                                <td>Policy changes, user modifications</td>
+                                <td>Privilege escalation, persistence</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Delivery Method: SIEM Integration API</h3>
+
+                <h4>Step 1: Enable SIEM Integration in CyberArk</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>CyberArk Admin Portal Configuration</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># CyberArk Identity Admin Portal → Settings → SIEM Integration
+
+Enable SIEM Integration: Yes
+Integration Type: Splunk (or Generic Syslog/HEC)
+
+If using HEC Push:
+  HEC URL: https://http-inputs-&lt;stack&gt;.splunkcloud.com:443/services/collector/event
+  HEC Token: [Create dedicated token]
+  Format: JSON
+  
+If using API Polling:
+  Generate API credentials with "Audit" read permissions
+  Note: API credentials typically last 90 days - set renewal reminder</code></pre>
+                </div>
+
+                <h4>Step 2: Configure Splunk Add-on for CyberArk</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>inputs.conf (CyberArk API Polling)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>[cyberark://identity_events]
+account = cyberark_prod
+endpoint_url = https://&lt;tenant&gt;.my.idaptive.app
+api_client_id = &lt;client_id&gt;
+api_client_secret = &lt;client_secret&gt;
+event_types = authentication,mfa,session,admin
+index = auth_cyberark
+interval = 300
+disabled = 0</code></pre>
+                </div>
+
+                <h4>Step 3: Verify CyberArk Data</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Validate CyberArk Events</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=auth_cyberark sourcetype="cyberark:identity" earliest=-24h
+| stats count BY event_type
+| sort - count</code></pre>
+                </div>
+
+                <h4>Step 4: Check for MFA Push Events</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify MFA Challenge Logging</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=auth_cyberark sourcetype="cyberark:identity" event_type="mfa*" earliest=-7d
+| stats count BY event_type, result
+| eval status = case(
+    event_type="mfa_push_sent", "Push notification sent",
+    event_type="mfa_push_approved", "User approved",
+    event_type="mfa_push_denied", "User denied",
+    event_type="mfa_push_timeout", "Push timed out",
+    true(), event_type
+)</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: OKTA -->
+                <!-- ============================================== -->
+                <h2>Provider 3: Okta</h2>
+
+                <h3>Okta System Log</h3>
+                <p>Okta provides a unified System Log that contains all authentication, MFA, and administrative events.</p>
+
+                <h4>Step 1: Create API Token in Okta</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Okta Admin Console: API Token Creation</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># Okta Admin Console → Security → API → Tokens → Create Token
+
+Token Name: splunk-siem-integration
+Permissions: Read-only Admin (minimum for System Log access)
+
+# Copy the token immediately - it won't be shown again
+# Token format: 00xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code></pre>
+                </div>
+
+                <h4>Step 2: Configure Splunk Add-on for Okta</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Splunk Add-on for Okta Configuration</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>App Name: Splunk Add-on for Okta
+Splunkbase ID: 3353
+Install On: Heavy Forwarder + Search Heads
+
+# Configuration → Add Okta Account:
+Account Name: okta_prod
+Okta Domain: yourcompany.okta.com (without https://)
+API Token: [Token from Step 1]
+
+# Inputs → Create New Input:
+Input Name: okta_system_log
+Account: okta_prod
+Index: auth_okta
+Interval: 60 (seconds - Okta supports frequent polling)
+Start Time: -24h (initial backfill)</code></pre>
+                </div>
+
+                <h4>Step 3: Verify Okta Data</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Validate Okta System Log</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=auth_okta sourcetype="OktaIM2:log" earliest=-24h
+| spath output=event_type path=eventType
+| stats count BY event_type
+| sort - count
+| head 20</code></pre>
+                </div>
+
+                <h4>Key Okta Event Types for Security</h4>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Event Type</th>
+                                <th>Description</th>
+                                <th>Detection Use Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>user.session.start</code></td>
+                                <td>User login success</td>
+                                <td>Baseline for anomaly detection</td>
+                            </tr>
+                            <tr>
+                                <td><code>user.authentication.auth_via_mfa</code></td>
+                                <td>MFA challenge completed</td>
+                                <td>MFA fatigue detection</td>
+                            </tr>
+                            <tr>
+                                <td><code>user.account.lock</code></td>
+                                <td>Account locked out</td>
+                                <td>Brute force indicator</td>
+                            </tr>
+                            <tr>
+                                <td><code>policy.evaluate_sign_on</code></td>
+                                <td>Sign-on policy evaluation</td>
+                                <td>Policy bypass attempts</td>
+                            </tr>
+                            <tr>
+                                <td><code>user.mfa.factor.activate</code></td>
+                                <td>New MFA factor registered</td>
+                                <td>Persistence indicator</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ON-PREM AD -->
+                <!-- ============================================== -->
+                <h2>Provider 4: On-Premises Active Directory</h2>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">🏢 Legacy but Critical</div>
+                    <p>Even cloud-first organizations often have on-premises AD for legacy applications, service accounts, or hybrid identity. Windows Security Event logs from Domain Controllers provide authentication visibility that may not appear in cloud IdP logs.</p>
+                </div>
+
+                <h3>Critical Windows Event IDs</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Event ID</th>
+                                <th>Description</th>
+                                <th>Security Use Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>4624</strong></td>
+                                <td>Successful logon</td>
+                                <td>Baseline, lateral movement</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4625</strong></td>
+                                <td>Failed logon</td>
+                                <td>Brute force, password spray</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4768</strong></td>
+                                <td>Kerberos TGT requested</td>
+                                <td>AS-REP roasting</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4769</strong></td>
+                                <td>Kerberos service ticket requested</td>
+                                <td>Kerberoasting</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4771</strong></td>
+                                <td>Kerberos pre-auth failed</td>
+                                <td>Password spray via Kerberos</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4776</strong></td>
+                                <td>NTLM authentication</td>
+                                <td>Pass-the-hash</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4720</strong></td>
+                                <td>User account created</td>
+                                <td>Persistence</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4728/4732/4756</strong></td>
+                                <td>User added to security group</td>
+                                <td>Privilege escalation</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Deployment: Universal Forwarder on Domain Controllers</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>inputs.conf (Domain Controllers)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>[WinEventLog://Security]
+disabled = 0
+start_from = oldest
+current_only = 0
+evt_resolve_ad_obj = 1
+checkpointInterval = 5
+# Filter to security-relevant events to manage volume
+whitelist = 4624,4625,4634,4648,4672,4720,4722,4723,4724,4725,4726,4728,4732,4733,4738,4740,4756,4767,4768,4769,4770,4771,4776
+index = auth_windows
+
+[WinEventLog://System]
+disabled = 0
+start_from = oldest
+current_only = 0
+whitelist = 7045,7040
+index = auth_windows</code></pre>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Volume Warning</div>
+                    <p>Domain Controller Security logs can generate massive volume (100GB+/day for large enterprises). Use the whitelist parameter to filter to security-relevant events. Monitor license impact before enabling on all DCs.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FIELD NORMALIZATION -->
+                <!-- ============================================== -->
+                <h2>Cross-Provider Field Normalization</h2>
+
+                <p>The biggest challenge in multi-provider authentication monitoring is correlating events for the same user across different systems. Each provider uses different field names and username formats.</p>
+
+                <h3>Username Format Mapping</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>Field Name</th>
+                                <th>Format</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Entra ID</td>
+                                <td>userPrincipalName</td>
+                                <td>UPN (email-like)</td>
+                                <td>john.smith@contoso.com</td>
+                            </tr>
+                            <tr>
+                                <td>CyberArk</td>
+                                <td>user</td>
+                                <td>Variable (often UPN)</td>
+                                <td>john.smith@contoso.com</td>
+                            </tr>
+                            <tr>
+                                <td>Okta</td>
+                                <td>actor.alternateId</td>
+                                <td>UPN or email</td>
+                                <td>john.smith@contoso.com</td>
+                            </tr>
+                            <tr>
+                                <td>Windows AD</td>
+                                <td>Account_Name</td>
+                                <td>SAMAccountName</td>
+                                <td>jsmith</td>
+                            </tr>
+                            <tr>
+                                <td>Windows AD</td>
+                                <td>TargetUserName</td>
+                                <td>SAMAccountName</td>
+                                <td>jsmith</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>CIM Normalization</h3>
+                <p>Use the Authentication data model with consistent field aliases:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>props.conf: Normalize to CIM Authentication Fields</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># Entra ID
+[azure:aad:signin]
+FIELDALIAS-user = userPrincipalName AS user
+FIELDALIAS-src = ipAddress AS src
+FIELDALIAS-dest = resourceDisplayName AS dest
+FIELDALIAS-app = appDisplayName AS app
+EVAL-action = case('status.errorCode'==0, "success", true(), "failure")
+EVAL-authentication_method = 'authenticationDetails{}.authenticationMethod'
+
+# Okta
+[OktaIM2:log]
+FIELDALIAS-user = actor.alternateId AS user
+FIELDALIAS-src = client.ipAddress AS src
+EVAL-action = case(outcome.result=="SUCCESS", "success", true(), "failure")
+
+# Windows Security
+[WinEventLog:Security]
+FIELDALIAS-user = Account_Name AS user
+FIELDALIAS-src = Source_Network_Address AS src
+EVAL-action = case(EventCode==4624, "success", EventCode==4625, "failure", true(), "unknown")</code></pre>
+                </div>
+
+                <h3>Username Correlation Lookup</h3>
+                <p>For environments where username formats differ, create a lookup table:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>identity_lookup.csv</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>upn,samaccountname,employee_id,display_name
+john.smith@contoso.com,jsmith,EMP001,John Smith
+jane.doe@contoso.com,jdoe,EMP002,Jane Doe
+...</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Cross-Provider User Activity</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| tstats count FROM datamodel=Authentication WHERE earliest=-24h BY Authentication.user, Authentication.action, sourcetype
+| rename Authentication.* AS *
+| lookup identity_lookup upn AS user OUTPUT employee_id, display_name
+| stats sum(count) AS events, values(sourcetype) AS sources BY employee_id, display_name, action</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION D: VALIDATION & ACCEPTANCE -->
+                <!-- ============================================== -->
+                <h2>Validation & Acceptance</h2>
+
+                <h3>Comprehensive Validation Query</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Multi-Provider Authentication Health Check</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| tstats count WHERE index IN (auth_azure, auth_cyberark, auth_okta, auth_windows) earliest=-24h BY index, sourcetype
+| stats sum(count) AS events BY index, sourcetype
+| eval provider = case(
+    index=="auth_azure", "Entra ID",
+    index=="auth_cyberark", "CyberArk",
+    index=="auth_okta", "Okta",
+    index=="auth_windows", "On-Prem AD",
+    true(), index
+)
+| eval status = if(events > 0, "✓ Data Flowing", "✗ NO DATA")
+| table provider, index, sourcetype, events, status</code></pre>
+                </div>
+
+                <h3>Latency Check Across Providers</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Authentication Log Latency</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| tstats count WHERE index IN (auth_azure, auth_cyberark, auth_okta, auth_windows) earliest=-4h latest=-1h BY index, _time span=5m
+| join type=left index 
+    [search index IN (auth_azure, auth_cyberark, auth_okta, auth_windows) earliest=-4h latest=-1h
+     | eval latency = _indextime - _time
+     | stats avg(latency) AS avg_latency, perc95(latency) AS p95_latency BY index]
+| stats values(avg_latency) AS avg_latency, values(p95_latency) AS p95_latency BY index
+| eval avg_latency_min = round(avg_latency/60, 1)
+| eval p95_latency_min = round(p95_latency/60, 1)
+| eval status = case(
+    p95_latency < 300, "✓ Acceptable (<5 min)",
+    p95_latency < 900, "⚠️ Marginal (5-15 min)",
+    true(), "✗ High (>15 min)"
+)
+| table index, avg_latency_min, p95_latency_min, status</code></pre>
+                </div>
+
+                <h3>CIM Data Model Compliance</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify Authentication Data Model Mapping</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| tstats count FROM datamodel=Authentication WHERE earliest=-24h BY sourcetype, Authentication.action
+| rename Authentication.action AS action
+| stats sum(count) AS events BY sourcetype, action
+| eval cim_status = "✓ Mapped to Authentication Data Model"
+| table sourcetype, action, events, cim_status</code></pre>
+                </div>
+
+                <h3>Acceptance Criteria Checklist</h3>
+                <div class="checklist-group">
+                    <div class="checklist-title">Authentication Onboarding — Exit Criteria</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-accept">
+                        <span><strong>All Providers Onboarded:</strong> Every IdP in inventory is sending logs</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-accept">
+                        <span><strong>Success AND Failure Events:</strong> Both authentication outcomes captured</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-accept">
+                        <span><strong>MFA Details Available:</strong> MFA method and result fields populated (for MFA fatigue detection)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-accept">
+                        <span><strong>Latency Acceptable:</strong> P95 latency &lt;5 minutes for all providers</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-accept">
+                        <span><strong>CIM Mapped:</strong> All sources appear in Authentication data model</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-accept">
+                        <span><strong>Username Correlation Possible:</strong> User field normalized or lookup available</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="auth-accept">
+                        <span><strong>Documentation Complete:</strong> Indexes, sourcetypes, field mappings documented</span>
+                    </label>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION E: FAILURE MODES & FIXES -->
+                <!-- ============================================== -->
+                <h2>Failure Modes & Fixes</h2>
+
+                <h3>Failure Mode 1: Event Hub Not Receiving Data</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Entra ID diagnostic settings configured, but no events in Splunk.</p>
+                </div>
+                <p><strong>Why It Happens:</strong></p>
+                <ul>
+                    <li>Diagnostic setting not properly saved</li>
+                    <li>Event Hub namespace in different subscription than Entra tenant</li>
+                    <li>Event Hub has no consumer reading messages (messages expire)</li>
+                    <li>Permissions issue between Entra and Event Hub</li>
+                </ul>
+                <p><strong>How to Diagnose:</strong></p>
+                <ol>
+                    <li>Check Event Hub metrics in Azure Portal: Incoming Messages should be > 0</li>
+                    <li>Verify diagnostic setting shows "Enabled" status (not just configured)</li>
+                    <li>Check Event Hub access policies include RootManageSharedAccessKey</li>
+                </ol>
+                <p><strong>Resolution:</strong></p>
+                <ol>
+                    <li>Delete and recreate diagnostic setting</li>
+                    <li>Ensure Event Hub is in same subscription or has proper cross-subscription permissions</li>
+                    <li>Verify Splunk consumer is running and connected</li>
+                </ol>
+
+                <hr>
+
+                <h3>Failure Mode 2: MFA Details Missing from Entra Logs</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Sign-in events arrive but authenticationDetails array is empty or missing.</p>
+                </div>
+                <p><strong>Why It Happens:</strong></p>
+                <ul>
+                    <li>MFA not triggered for these sign-ins (no Conditional Access requiring MFA)</li>
+                    <li>Old events (MFA details only in recent log format)</li>
+                    <li>Non-interactive sign-ins don't include MFA details</li>
+                    <li>Service principal sign-ins don't have MFA</li>
+                </ul>
+                <p><strong>How to Diagnose:</strong></p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check Event Types with MFA Details</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=auth_azure sourcetype="azure:aad:signin" earliest=-7d
+| spath output=mfa_methods path=authenticationDetails{}.authenticationMethod
+| eval has_mfa = if(isnotnull(mfa_methods), "Yes", "No")
+| stats count BY category, has_mfa
+| sort category</code></pre>
+                </div>
+                <p><strong>Resolution:</strong></p>
+                <ol>
+                    <li>Verify Conditional Access policies require MFA for target users</li>
+                    <li>Focus MFA fatigue detection on SignInLogs category only</li>
+                    <li>Accept that some sign-ins won't have MFA details (this is expected)</li>
+                </ol>
+
+                <hr>
+
+                <h3>Failure Mode 3: API Token Expiration (Okta/CyberArk)</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Data was flowing, then stopped. API-based collection returns authentication errors.</p>
+                </div>
+                <p><strong>Why It Happens:</strong></p>
+                <ul>
+                    <li>API tokens have expiration dates (Okta: no expiration by default but can be revoked; CyberArk: typically 90 days)</li>
+                    <li>Token revoked by admin unaware of SIEM integration</li>
+                    <li>Password rotation on service account</li>
+                </ul>
+                <p><strong>How to Diagnose:</strong></p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check for API Errors</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=_internal sourcetype=splunkd component=*okta* OR component=*cyberark*
+| search "error" OR "unauthorized" OR "401" OR "403"
+| table _time, component, message</code></pre>
+                </div>
+                <p><strong>Resolution:</strong></p>
+                <ol>
+                    <li>Generate new API token with appropriate permissions</li>
+                    <li>Update Splunk add-on configuration with new credentials</li>
+                    <li>Document token expiration dates and set calendar reminders for renewal</li>
+                    <li>Consider using service accounts with longer/no expiration where possible</li>
+                </ol>
+
+                <hr>
+
+                <h3>Failure Mode 4: Username Format Mismatch Breaking Correlation</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Cannot correlate events for same user across Entra (UPN) and Windows AD (SAMAccountName).</p>
+                </div>
+                <p><strong>Why It Happens:</strong></p>
+                <ul>
+                    <li>Different identity systems use different username formats</li>
+                    <li>No identity lookup table configured</li>
+                    <li>CIM user field populated with different values per source</li>
+                </ul>
+                <p><strong>Resolution:</strong></p>
+                <ol>
+                    <li>Export identity data from AD/Entra with all username formats</li>
+                    <li>Create lookup table mapping UPN ↔ SAMAccountName ↔ Employee ID</li>
+                    <li>Use lookup in searches to normalize user identity</li>
+                    <li>Consider using Splunk ES Identity Manager for enterprise identity correlation</li>
+                </ol>
+
+                <hr>
+
+                <h3>Failure Mode 5: Missing One of Multiple Entra Tenants</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Entra logs flowing, but attacks against users in acquired company's tenant are not visible.</p>
+                </div>
+                <p><strong>Why It Happens:</strong></p>
+                <ul>
+                    <li>Multiple Entra tenants exist (common after acquisitions)</li>
+                    <li>Diagnostic settings only configured for primary tenant</li>
+                    <li>Different Azure subscriptions with separate logging</li>
+                </ul>
+                <p><strong>How to Diagnose:</strong></p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check Tenant IDs in Logs</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=auth_azure sourcetype="azure:aad:signin" earliest=-7d
+| spath output=tenant_id path=tenantId
+| stats count BY tenant_id
+| lookup tenant_names.csv tenant_id OUTPUT tenant_name</code></pre>
+                </div>
+                <p><strong>Resolution:</strong></p>
+                <ol>
+                    <li>Inventory all Entra tenants in the organization</li>
+                    <li>Configure diagnostic settings in each tenant</li>
+                    <li>Use separate Event Hubs or same Event Hub with different consumer groups</li>
+                    <li>Document which tenant IDs map to which business units</li>
+                </ol>
+
+                <hr>
+
+                <h3>Failure Mode 6: Domain Controller Logs Overwhelming License</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Splunk license usage spikes dramatically after enabling Windows Security logs on Domain Controllers.</p>
+                </div>
+                <p><strong>Why It Happens:</strong></p>
+                <ul>
+                    <li>Domain Controllers generate massive volume of authentication events</li>
+                    <li>Default Windows Security logging includes many non-security-relevant events</li>
+                    <li>Service account activity creates continuous stream of events</li>
+                </ul>
+                <p><strong>Resolution:</strong></p>
+                <ol>
+                    <li>Implement whitelist filtering in inputs.conf for security-relevant Event IDs only</li>
+                    <li>Consider sampling for extremely high-volume service accounts</li>
+                    <li>Use Splunk data routing to separate index for volume management</li>
+                    <li>Discuss license increase with Splunk account team if security-critical events can't be reduced</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK & SAFETY -->
+                <!-- ============================================== -->
+                <h2>Rollback & Safety</h2>
+
+                <h3>How to Disable Authentication Log Collection</h3>
+                <p>If you need to stop collection due to volume issues, troubleshooting, or other reasons:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>How to Disable</th>
+                                <th>Time to Stop</th>
+                                <th>Data Impact</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Entra ID (Event Hub)</strong></td>
+                                <td>Azure Portal → Entra ID → Diagnostic Settings → Delete/Disable setting</td>
+                                <td>5-10 minutes</td>
+                                <td>Events continue in Event Hub buffer briefly</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Entra ID (API)</strong></td>
+                                <td>Splunk → inputs.conf → disabled = 1 → restart</td>
+                                <td>Immediate</td>
+                                <td>No new polls; gap until re-enabled</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CyberArk</strong></td>
+                                <td>CyberArk Admin Portal → SIEM Integration → Disable</td>
+                                <td>5-10 minutes</td>
+                                <td>No loss; events resume when re-enabled</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Okta</strong></td>
+                                <td>Splunk TA → inputs.conf → disabled = 1</td>
+                                <td>Immediate</td>
+                                <td>API polling stops</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Windows AD (UF)</strong></td>
+                                <td>Stop Splunk forwarder service on DC</td>
+                                <td>Immediate</td>
+                                <td>Local queue builds until resumed</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Entra ID Diagnostic Settings Rollback</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Disable Entra ID Log Export</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>AZURE PORTAL METHOD:
+1. Azure Portal → Microsoft Entra ID
+2. Monitoring → Diagnostic settings
+3. Find your diagnostic setting (e.g., "splunk-security-logs")
+4. Click "Edit setting"
+5. Either: Uncheck log categories you want to stop
+   Or: Click "Delete" to remove entirely
+6. Save
+
+AZURE CLI METHOD (faster for automation):
+# List diagnostic settings
+az monitor diagnostic-settings list --resource /subscriptions/[sub]/providers/microsoft.aadiam/diagnosticSettings/[name]
+
+# Delete diagnostic setting
+az monitor diagnostic-settings delete --name "splunk-security-logs" --resource /subscriptions/[sub]/providers/microsoft.aadiam/diagnosticSettings/[name]
+
+VERIFICATION:
+- Events should stop arriving within 10 minutes
+- Run: index=auth_azure earliest=-15m | stats count
+- If count continues high, check for other diagnostic settings</code></pre>
+                </div>
+
+                <h3>API Credential Expiration Tracking</h3>
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ API Tokens Expire Silently</div>
+                    <p>Authentication API tokens (Okta, CyberArk, Graph API) can expire without warning, causing silent data loss. Track expiration dates proactively.</p>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Credential Expiration Tracking Template</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>TRACK IN YOUR PASSWORD MANAGER OR WIKI:
+
+| Provider      | Credential Type      | Created    | Expires    | Owner     | Renewal Reminder |
+|---------------|---------------------|------------|------------|-----------|------------------|
+| Entra ID      | App Registration    | 2024-01-15 | 2026-01-15 | IAM Team  | 2025-12-15      |
+| CyberArk      | API Client Secret   | 2024-02-01 | 2024-05-01 | IAM Team  | 2024-04-15      |
+| Okta          | API Token           | 2024-01-20 | Never*     | IAM Team  | N/A             |
+
+* Okta tokens don't expire by default but can be revoked
+
+MONITORING FOR CREDENTIAL FAILURES:
+Set up this Splunk alert to detect API authentication failures:
+
+index=_internal sourcetype=splunkd 
+  (component=*azure* OR component=*okta* OR component=*cyberark*)
+  (error OR unauthorized OR "401" OR "403" OR "invalid_client")
+| stats count BY component, message
+| where count > 5
+
+PROACTIVE RENEWAL PROCESS:
+1. Set calendar reminder 30 days before expiration
+2. Generate new credential in IdP admin portal
+3. Update Splunk add-on configuration
+4. Verify data flow resumes
+5. Revoke old credential after 24 hours of successful collection</code></pre>
+                </div>
+
+                <h3>Emergency: MFA Logs Missing During Active Attack</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Emergency Verification Procedure</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>IF SOC REPORTS MFA LOGS NOT ARRIVING DURING SUSPECTED ATTACK:
+
+STEP 1: Verify Last Event Time (30 seconds)
+index=auth_azure sourcetype="azure:aad:signin" 
+| stats max(_time) AS last_event 
+| eval minutes_ago = round((now() - last_event) / 60, 1)
+| eval status = if(minutes_ago > 15, "⚠️ Data gap detected", "✓ Recent data")
+
+STEP 2: Check Alternative Sources (if primary failing)
+- Entra ID Audit Logs (Azure Portal direct access)
+- Entra ID Sign-in Logs (Azure Portal)
+- Office 365 Admin Center Activity Logs
+
+STEP 3: Direct Azure Query (if Splunk pipeline broken)
+# Use Azure CLI or Azure Portal → Entra ID → Sign-in logs
+# Filter to suspected user/IP for immediate investigation
+
+STEP 4: Escalate if Complete Blindness
+- Contact Azure/Cloud team for portal access
+- Contact IdP vendor support if logs not generating
+- Document gap for post-incident review
+
+DO NOT WAIT for Splunk pipeline to be fixed during active incident.
+Use direct console access to continue investigation.</code></pre>
+                </div>
+
+                <h3>Diagnostic Settings Verification Query</h3>
+                <p>Azure diagnostic settings can fail silently. Run this periodically to verify settings are working:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Azure CLI: Check Diagnostic Settings Health</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># List all Entra ID diagnostic settings
+az monitor diagnostic-settings list \
+  --resource "/providers/microsoft.aadiam" \
+  --resource-type "microsoft.aadiam/diagnosticSettings" \
+  --output table
+
+# Check specific setting details
+az monitor diagnostic-settings show \
+  --name "splunk-security-logs" \
+  --resource "/providers/microsoft.aadiam"
+
+# Common issues to look for:
+# - Setting exists but Event Hub deleted
+# - Setting exists but logs array empty
+# - Setting exists but wrong Event Hub selected
+# - Setting exists but SAS policy expired</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION F: WHAT YOU DO NEXT -->
+                <!-- ============================================== -->
+                <h2>What You Do Next</h2>
+
+                <h3>If Validation Passed ✓</h3>
+                <ol>
+                    <li><strong>Document the configuration:</strong> Record all indexes, sourcetypes, username formats, and field mappings</li>
+                    <li><strong>Create identity lookup:</strong> If multiple username formats exist, create correlation lookup</li>
+                    <li><strong>Update Log Source Matrix:</strong> Mark all authentication providers as "Verified"</li>
+                    <li><strong>Proceed to next log source</strong> or <strong>move to Phase 2</strong></li>
+                </ol>
+
+                <h3>Related Use Cases (Phase 3)</h3>
+                <p>Once authentication logs are validated, you can build these detections:</p>
+                <ul>
+                    <li><a href="../use-cases/mfa-auth.html">MFA & Authentication Detection Use Cases</a> — MFA fatigue, brute force, impossible travel</li>
+                    <li>Password Spray Detection</li>
+                    <li>Privileged Account Monitoring</li>
+                    <li>Legacy Protocol Detection</li>
+                </ul>
+
+                <div class="next-steps">
+                    <a href="syslog-hf.html" class="next-step-link">
+                        <span class="step-direction">Next Onboarding →</span>
+                        <span class="step-title">Syslog via Heavy Forwarder</span>
+                    </a>
+                    <a href="../use-cases/mfa-auth.html" class="next-step-link">
+                        <span class="step-direction">Build Detections →</span>
+                        <span class="step-title">MFA / Authentication Use Cases</span>
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../assets/app.js"></script>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#0d1117',
+                primaryColor: '#238636',
+                primaryTextColor: '#c9d1d9',
+                primaryBorderColor: '#30363d',
+                lineColor: '#8b949e',
+                secondaryColor: '#161b22',
+                tertiaryColor: '#21262d'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 20
+            }
+        });
+    </script>
+</body>
+</html>

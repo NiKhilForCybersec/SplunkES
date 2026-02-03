@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CIM Fundamentals for ES - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Data Layer & CIM ⚠️</div>
+                    <a href="how-es-uses-data.html" class="nav-item nav-item-sub">How ES Uses Data</a>
+                    <a href="cim-fundamentals.html" class="nav-item nav-item-sub active">CIM Fundamentals for ES</a>
+                    <a href="data-models-deep-dive.html" class="nav-item nav-item-sub">Data Models Deep Dive</a>
+                    <a href="validating-es-data.html" class="nav-item nav-item-sub">Validating ES Data ⛔</a>
+                    <a href="missing-fields.html" class="nav-item nav-item-sub">Missing Fields After Add-ons</a>
+                    <a href="safe-addon-tuning.html" class="nav-item nav-item-sub">Safe Add-on Tuning</a>
+                    <a href="safe-correlation-path.html" class="nav-item nav-item-sub">Data Model → Correlation</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="../es-content-management/tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="../es-content-management/health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="../es-content-management/governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                    <a href="../es-content-management/escu-overview.html" class="nav-item nav-item-sub">ESCU Overview</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="../es-operations/notable-suppression.html" class="nav-item nav-item-sub">Notable Suppression</a>
+                    <a href="../es-operations/investigations-evidence.html" class="nav-item nav-item-sub">Investigations & Evidence</a>
+                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="how-es-uses-data.html">ES Data Layer</a>
+                <span class="separator">/</span>
+                <span class="current">CIM Fundamentals for ES</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-2">⚠️ ES DATA LAYER — CRITICAL</span>
+                <h1>CIM Fundamentals for ES</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES DATA LAYER</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> Practical guide to the Common Information Model (CIM) as it applies to Splunk ES. Not CIM theory — CIM practice. Which fields ES actually depends on, what "compliance" really means, why add-ons don't guarantee it, and how to assess your CIM status without breaking anything.</p>
+                    <p><strong>Ownership:</strong> Detection Engineering (assessment + gap identification)</p>
+                    <p><strong>Preconditions:</strong> You've read <a href="how-es-uses-data.html">How ES Uses Data</a> and understand the 6-layer pipeline.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> The Splunk CIM add-on (Splunk_SA_CIM) is installed. <strong>Verify:</strong> <code>| rest /services/apps/local | search title="Splunk_SA_CIM" | table title, version</code>. If missing, data models don't exist and nothing in ES works.</li>
+                        <li><strong>Assumption:</strong> You have partial CIM compliance. Some fields work, some don't. <strong>This is the expected state.</strong> Perfect CIM compliance is rare. This page teaches you how to assess what you have and what you need.</li>
+                        <li><strong>Assumption:</strong> You will NOT achieve 100% CIM compliance for all fields across all data sources. <strong>That's fine.</strong> The goal is to have the right fields for the detections you want to run — not theoretical completeness.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT CIM IS (PRACTICAL) -->
+                <!-- ============================================== -->
+                <h2>What CIM Actually Is — Practical Definition</h2>
+
+                <p>The Common Information Model (CIM) is a set of field naming standards. That's it. It defines that no matter what device or vendor produced a log, certain types of information should be stored in standard field names. When a firewall log says <code>srcip=10.1.2.3</code> and a Windows log says <code>IpAddress=10.1.2.3</code>, CIM says both should map to <code>src=10.1.2.3</code>.</p>
+
+                <p>CIM is implemented through three mechanisms in Splunk:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>CIM Mechanism</th>
+                                <th>Where It Lives</th>
+                                <th>What It Does</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Field Aliases</strong></td>
+                                <td><code>props.conf</code> in the TA</td>
+                                <td>Maps a vendor field name to a CIM field name at search time. The vendor field still exists; the CIM field becomes an alias.</td>
+                                <td><code>FIELDALIAS-src = srcip AS src</code> — Now <code>src</code> returns the value of <code>srcip</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Calculated Fields</strong></td>
+                                <td><code>props.conf</code> in the TA</td>
+                                <td>Creates a new CIM field by evaluating an expression against existing fields. Used when the CIM field can't be a simple rename.</td>
+                                <td><code>EVAL-action = if(status="allow", "allowed", "blocked")</code> — Derives the CIM <code>action</code> field from a vendor <code>status</code> field</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Eventtypes + Tags</strong></td>
+                                <td><code>eventtypes.conf</code> + <code>tags.conf</code> in the TA</td>
+                                <td>Classifies events into categories that data models use as constraints. Without the right tags, events are invisible to data models even if CIM fields are present.</td>
+                                <td>Eventtype: <code>cisco_asa_traffic</code> → Tags: <code>network</code>, <code>communicate</code> — These tags match the Network_Traffic data model's constraint.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 CIM Is Three Things — All Three Must Work</div>
+                    <p>A common mistake is fixing only the field aliases and declaring CIM compliance. But without the correct <strong>eventtypes and tags</strong>, your data still won't appear in data models. All three mechanisms must be correctly configured:</p>
+                    <ol>
+                        <li><strong>Fields:</strong> CIM field names are populated (via alias or calculated field)</li>
+                        <li><strong>Eventtypes:</strong> Events are classified into named types</li>
+                        <li><strong>Tags:</strong> Eventtypes have the correct tags that match data model constraints</li>
+                    </ol>
+                    <p>Missing any one of these = events invisible to data models = detections silently fail.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: CIM FIELDS ES ACTUALLY DEPENDS ON -->
+                <!-- ============================================== -->
+                <h2>Which CIM Fields ES Actually Depends On</h2>
+
+                <p>The CIM defines hundreds of fields. ES does NOT use all of them. Here are the fields that matter for each major data model — split into "required for any detection to work" and "needed for enrichment but not blocking."</p>
+
+                <h3>Authentication Data Model — Critical Fields</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>CIM Field</th>
+                                <th>Priority</th>
+                                <th>What It Is</th>
+                                <th>Used By</th>
+                                <th>If Missing</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>action</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>success / failure</td><td>Every auth detection (brute force, failed login, etc.)</td><td>🔴 Cannot distinguish success from failure. Brute force detection blind.</td></tr>
+                            <tr><td><code>user</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>Username being authenticated</td><td>Every auth detection, identity correlation</td><td>🔴 Cannot identify WHO is being attacked. Per-user correlation impossible.</td></tr>
+                            <tr><td><code>src</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>Source IP of the auth attempt</td><td>Brute force, geo-impossible travel, credential stuffing</td><td>🔴 Cannot identify WHERE attacks come from. Geo correlation impossible.</td></tr>
+                            <tr><td><code>dest</code></td><td style="color: var(--accent-orange);"><strong>HIGH</strong></td><td>Destination system being accessed</td><td>Lateral movement, targeted system detection</td><td>🟡 Reduces context but core detections still work.</td></tr>
+                            <tr><td><code>app</code></td><td style="color: var(--accent-orange);"><strong>HIGH</strong></td><td>Application or service name (VPN, O365, SSH)</td><td>Application-specific detections, MFA analysis</td><td>🟡 Can't filter by app. Detections less specific but still functional.</td></tr>
+                            <tr><td><code>src_user</code></td><td style="color: var(--accent-green);"><strong>MEDIUM</strong></td><td>Source user (for delegation scenarios)</td><td>Delegation abuse, RunAs detection</td><td>⚪ Niche detections lose context. Core detections unaffected.</td></tr>
+                            <tr><td><code>authentication_method</code></td><td style="color: var(--accent-green);"><strong>MEDIUM</strong></td><td>Auth method (password, MFA push, FIDO2, etc.)</td><td>MFA fatigue, legacy auth detection</td><td>⚪ MFA-specific detections lose precision.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Network Traffic Data Model — Critical Fields</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>CIM Field</th>
+                                <th>Priority</th>
+                                <th>What It Is</th>
+                                <th>Used By</th>
+                                <th>If Missing</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>src</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>Source IP</td><td>All network detections</td><td>🔴 Cannot identify traffic origin. All network detections blind.</td></tr>
+                            <tr><td><code>dest</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>Destination IP</td><td>All network detections</td><td>🔴 Cannot identify traffic destination. C2, exfil detections fail.</td></tr>
+                            <tr><td><code>dest_port</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>Destination port</td><td>Port-based detections, service identification</td><td>🔴 Cannot identify services targeted. Port scan, unusual port detections fail.</td></tr>
+                            <tr><td><code>action</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>allowed / blocked / dropped</td><td>Distinguish passed vs blocked traffic</td><td>🔴 Cannot tell if attack traffic was blocked. Critical for WAF and firewall detections.</td></tr>
+                            <tr><td><code>transport</code></td><td style="color: var(--accent-orange);"><strong>HIGH</strong></td><td>TCP / UDP / ICMP</td><td>Protocol-based anomaly detection</td><td>🟡 Reduces detection specificity.</td></tr>
+                            <tr><td><code>bytes_in</code> / <code>bytes_out</code></td><td style="color: var(--accent-orange);"><strong>HIGH</strong></td><td>Traffic volume</td><td>Data exfiltration, DDoS volume detection</td><td>🟡 Volume-based detections lose accuracy.</td></tr>
+                            <tr><td><code>app</code></td><td style="color: var(--accent-green);"><strong>MEDIUM</strong></td><td>Application identified by firewall</td><td>Application-layer detections</td><td>⚪ App-specific detections lose context.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Web Data Model — Critical Fields</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>CIM Field</th>
+                                <th>Priority</th>
+                                <th>What It Is</th>
+                                <th>Used By</th>
+                                <th>If Missing</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>src</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>Client IP</td><td>WAF detections, web attack source identification</td><td>🔴 Cannot identify attack source.</td></tr>
+                            <tr><td><code>url</code> / <code>uri_path</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>Requested URL or path</td><td>SQLi, XSS, RCE, path traversal detections</td><td>🔴 Cannot identify targeted endpoints. Attack type classification fails.</td></tr>
+                            <tr><td><code>status</code></td><td style="color: var(--accent-red);"><strong>REQUIRED</strong></td><td>HTTP status code</td><td>Error-based detections, successful exploit identification</td><td>🔴 Cannot distinguish successful from failed attacks.</td></tr>
+                            <tr><td><code>http_method</code></td><td style="color: var(--accent-orange);"><strong>HIGH</strong></td><td>GET, POST, PUT, DELETE</td><td>Method-based anomaly detection</td><td>🟡 Reduces specificity of web detections.</td></tr>
+                            <tr><td><code>dest</code></td><td style="color: var(--accent-orange);"><strong>HIGH</strong></td><td>Web server / host</td><td>Target identification, per-server analysis</td><td>🟡 Can't distinguish which server was targeted.</td></tr>
+                            <tr><td><code>http_user_agent</code></td><td style="color: var(--accent-green);"><strong>MEDIUM</strong></td><td>User agent string</td><td>Bot detection, automation detection</td><td>⚪ Bot/scanner detection loses a key signal.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: CIM COMPLIANCE LEVELS -->
+                <!-- ============================================== -->
+                <h2>CIM Compliance Levels</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    CHECK["Assess CIM compliance<br/>for a data source"] --> Q1{"Are events tagged<br/>for the correct<br/>data model?"}
+    
+    Q1 -->|"No tags"| NONE["⛔ LEVEL 0: NONE<br/>Data is invisible to ES.<br/>No data model sees it.<br/>No detection can use it<br/>via tstats."]
+    
+    Q1 -->|"Yes, tags present"| Q2{"Are the REQUIRED<br/>CIM fields populated?<br/>(action, user, src, dest)"}
+    
+    Q2 -->|"None of them"| TAGGED["🟡 LEVEL 1: TAGGED ONLY<br/>Events appear in data model<br/>count, but fields are null.<br/>Detections can count events<br/>but can't filter or correlate."]
+    
+    Q2 -->|"Some of them"| PARTIAL["🟠 LEVEL 2: PARTIAL<br/>Some detections work.<br/>Others silently fail<br/>on missing fields.<br/>Most common state."]
+    
+    Q2 -->|"All REQUIRED fields"| Q3{"Are HIGH priority<br/>fields also populated?"}
+    
+    Q3 -->|"No"| CORE["🟢 LEVEL 3: CORE<br/>All critical detections work.<br/>Some advanced detections<br/>have reduced context.<br/>Acceptable for production."]
+    
+    Q3 -->|"Yes"| FULL["✅ LEVEL 4: FULL<br/>All detections for this<br/>data model are supported.<br/>Ideal state. Rare."]
+    
+    style NONE fill:#f85149,stroke:#da3633,color:#fff
+    style TAGGED fill:#d29922,stroke:#bb8009,color:#fff
+    style PARTIAL fill:#d29922,stroke:#bb8009,color:#fff
+    style CORE fill:#238636,stroke:#2ea043,color:#fff
+    style FULL fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Level</th>
+                                <th>Definition</th>
+                                <th>Can You Enable Detections?</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: var(--accent-red);"><strong>⛔ Level 0: None</strong></td>
+                                <td>Data exists in Splunk but has no CIM tags. Data model doesn't see it.</td>
+                                <td><strong>NO.</strong> Zero detections will work against this data via tstats.</td>
+                                <td>Fix tags first (<a href="missing-fields.html">Missing Fields</a>). Or use raw-event-based detections only.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>🟡 Level 1: Tagged Only</strong></td>
+                                <td>Events appear in data model but CIM fields are null. tstats returns event counts but can't filter.</td>
+                                <td><strong>NO.</strong> Detections that filter on fields (all useful detections) will fail.</td>
+                                <td>Fix CIM field mappings (<a href="safe-addon-tuning.html">Safe Add-on Tuning</a>).</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>🟠 Level 2: Partial</strong></td>
+                                <td>Some CIM fields populated, others null. Some detections work; others silently fail.</td>
+                                <td><strong>ONLY</strong> for detections whose required fields are all populated. Must verify per-detection.</td>
+                                <td>Document which fields work. Enable only validated detections. Fix remaining fields as capacity allows.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>🟢 Level 3: Core</strong></td>
+                                <td>All REQUIRED fields populated. HIGH fields may be partial. Most detections work.</td>
+                                <td><strong>YES</strong> — for most detections. Verify individual detections if they need specific HIGH fields.</td>
+                                <td>Standard operating state. Continue improving HIGH fields. Enable detections through lifecycle.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>✅ Level 4: Full</strong></td>
+                                <td>All REQUIRED and HIGH fields populated. All detections for this data model are supported.</td>
+                                <td><strong>YES</strong> — unrestricted.</td>
+                                <td>Maintain through upgrades. Monitor for regression.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: CIM MYTHS -->
+                <!-- ============================================== -->
+                <h2>Common CIM Myths — Debunked</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Myth</th>
+                                <th>Reality</th>
+                                <th>Impact of Believing the Myth</th>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Installing the TA gives me full CIM compliance"</strong></td>
+                                <td>TAs vary enormously in CIM coverage. Some map 90% of CIM fields; others map 30%. Older TAs may not have been updated for current CIM versions. Some TAs are community-developed with inconsistent quality.</td>
+                                <td>You assume data is ready. You enable detections. They silently fail on unmapped fields. You report coverage that doesn't exist.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"CIM compliance is all-or-nothing"</strong></td>
+                                <td>CIM compliance is a spectrum (Level 0–4 above). Partial compliance is the norm and is workable. You can run detections that only need the fields you have.</td>
+                                <td>Teams delay detection engineering indefinitely, waiting for "full CIM" that may never come. Or they give up and build everything as raw-event searches.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"I only need field aliases — tags don't matter"</strong></td>
+                                <td>Tags are the mechanism that includes events in data models. Without correct tags, events with perfect CIM fields are invisible to tstats queries. Tags are equally as important as field aliases.</td>
+                                <td>You fix all the fields but data model still shows 0 events. Confusing and time-consuming to diagnose.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"The CIM add-on does the CIM mapping"</strong></td>
+                                <td>The CIM add-on (Splunk_SA_CIM) defines the data model schemas — the structure. The actual field mapping is done by the Technology Add-ons (TAs) for each vendor/source. The CIM add-on doesn't know about your Palo Alto or Windows logs.</td>
+                                <td>You install Splunk_SA_CIM and expect CIM fields to appear. They don't. Because the CIM add-on provides the schema, not the mapping.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"CIM fields are the same across all Splunk versions"</strong></td>
+                                <td>CIM evolves. New fields are added, some are deprecated. Field names occasionally change between CIM versions. The CIM version must match the TAs and ES version.</td>
+                                <td>A TA built for CIM 4.x may not properly map fields for CIM 5.x. Field aliases may point to wrong names after a CIM update.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: PER-USE-CASE DEPENDENCY MATRIX -->
+                <!-- ============================================== -->
+                <h2>CIM Dependency Matrix — Per Use Case</h2>
+
+                <p>This matrix shows exactly which CIM fields are needed for common detection use cases. Use it to determine: "Given my current CIM status, which detections can I actually run?"</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Detection Use Case</th>
+                                <th>Data Model</th>
+                                <th>Required Fields (ALL must be populated)</th>
+                                <th>High-Value Fields (improve quality)</th>
+                                <th>Tags Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Brute Force Detection</strong></td>
+                                <td>Authentication</td>
+                                <td><code>action</code>, <code>user</code>, <code>src</code></td>
+                                <td><code>dest</code>, <code>app</code></td>
+                                <td><code>authentication</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>MFA Fatigue / Push Bombing</strong></td>
+                                <td>Authentication</td>
+                                <td><code>action</code>, <code>user</code>, <code>src</code></td>
+                                <td><code>authentication_method</code>, <code>app</code></td>
+                                <td><code>authentication</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Impossible Travel</strong></td>
+                                <td>Authentication</td>
+                                <td><code>action</code>, <code>user</code>, <code>src</code></td>
+                                <td><code>app</code>, <code>dest</code></td>
+                                <td><code>authentication</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Port Scan Detection</strong></td>
+                                <td>Network Traffic</td>
+                                <td><code>src</code>, <code>dest</code>, <code>dest_port</code></td>
+                                <td><code>action</code>, <code>transport</code></td>
+                                <td><code>network</code>, <code>communicate</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Firewall Allowed → Blocked Patterns</strong></td>
+                                <td>Network Traffic</td>
+                                <td><code>src</code>, <code>dest</code>, <code>action</code></td>
+                                <td><code>dest_port</code>, <code>app</code></td>
+                                <td><code>network</code>, <code>communicate</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data Exfiltration (Volume)</strong></td>
+                                <td>Network Traffic</td>
+                                <td><code>src</code>, <code>dest</code>, <code>bytes_out</code></td>
+                                <td><code>bytes_in</code>, <code>app</code></td>
+                                <td><code>network</code>, <code>communicate</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>WAF Attack Detection</strong></td>
+                                <td>Web</td>
+                                <td><code>src</code>, <code>url</code>/<code>uri_path</code>, <code>status</code></td>
+                                <td><code>http_method</code>, <code>dest</code>, <code>http_user_agent</code></td>
+                                <td><code>web</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>SQL Injection / XSS</strong></td>
+                                <td>Web</td>
+                                <td><code>src</code>, <code>url</code>/<code>uri_path</code>, <code>status</code></td>
+                                <td><code>http_method</code>, <code>http_content_type</code></td>
+                                <td><code>web</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>DDoS (Request Volume)</strong></td>
+                                <td>Web or Network Traffic</td>
+                                <td><code>src</code>, <code>dest</code></td>
+                                <td><code>status</code>, <code>bytes_in</code>, <code>url</code></td>
+                                <td><code>web</code> or <code>network</code>, <code>communicate</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: HOW TO ASSESS YOUR CIM STATUS -->
+                <!-- ============================================== -->
+                <h2>How to Assess Your CIM Status (Safe Queries)</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: CIM Field Population Report for a Specific Sourcetype</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Replace INDEX and SOURCETYPE with your values")`
+`comment("SAFE: Read-only query. Does not modify anything.")`
+`comment("Shows which CIM fields are populated and what percentage")`
+
+index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-4h latest=now
+| head 2000
+| eval has_action = if(isnotnull(action) AND action!="", 1, 0),
+    has_user = if(isnotnull(user) AND user!="", 1, 0),
+    has_src = if(isnotnull(src) AND src!="", 1, 0),
+    has_dest = if(isnotnull(dest) AND dest!="", 1, 0),
+    has_src_port = if(isnotnull(src_port) AND src_port!="", 1, 0),
+    has_dest_port = if(isnotnull(dest_port) AND dest_port!="", 1, 0),
+    has_app = if(isnotnull(app) AND app!="", 1, 0),
+    has_transport = if(isnotnull(transport) AND transport!="", 1, 0),
+    has_bytes_in = if(isnotnull(bytes_in) AND bytes_in!="", 1, 0),
+    has_bytes_out = if(isnotnull(bytes_out) AND bytes_out!="", 1, 0),
+    has_url = if(isnotnull(url) AND url!="", 1, 0),
+    has_status = if(isnotnull(status) AND status!="", 1, 0),
+    has_http_method = if(isnotnull(http_method) AND http_method!="", 1, 0)
+| stats count AS total,
+    avg(has_action) AS pct_action,
+    avg(has_user) AS pct_user,
+    avg(has_src) AS pct_src,
+    avg(has_dest) AS pct_dest,
+    avg(has_dest_port) AS pct_dest_port,
+    avg(has_app) AS pct_app,
+    avg(has_transport) AS pct_transport,
+    avg(has_bytes_in) AS pct_bytes_in,
+    avg(has_bytes_out) AS pct_bytes_out,
+    avg(has_url) AS pct_url,
+    avg(has_status) AS pct_status,
+    avg(has_http_method) AS pct_http_method
+| foreach pct_* [eval <<FIELD>> = round(<<FIELD>> * 100, 1) . "%"]
+| table total, pct_action, pct_user, pct_src, pct_dest, pct_dest_port,
+    pct_app, pct_transport, pct_bytes_in, pct_bytes_out,
+    pct_url, pct_status, pct_http_method</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check Tag Assignment for a Sourcetype</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Shows what tags are assigned to events from this sourcetype")`
+`comment("SAFE: Read-only. No modifications.")`
+`comment("If no tags appear, events are invisible to data models.")`
+
+index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-4h latest=now
+| head 100
+| eval tag_list = mvjoin(tag, ", ")
+| eval eventtype_list = mvjoin(eventtype, ", ")
+| stats dc(tag_list) AS unique_tag_combos,
+    values(tag_list) AS tags_found,
+    values(eventtype_list) AS eventtypes_found
+| eval status = case(
+    isnull(tags_found) OR tags_found="", "❌ NO TAGS — Events invisible to data models",
+    match(tags_found, "authentication"), "✅ Auth tags present — Authentication DM",
+    match(tags_found, "network.*communicate"), "✅ Network tags present — Network_Traffic DM",
+    match(tags_found, "web"), "✅ Web tags present — Web DM",
+    true(), "🟡 Tags found but may not match a standard data model — verify manually"
+)
+| table status, tags_found, eventtypes_found</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHEN PARTIAL CIM IS ACCEPTABLE -->
+                <!-- ============================================== -->
+                <h2>When Partial CIM Is Acceptable</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    Q["You have partial CIM<br/>compliance for a data source"] --> Q1{"Can you run the<br/>SPECIFIC detections<br/>you need with the<br/>fields you have?"}
+    
+    Q1 -->|"Yes — all required<br/>fields for my planned<br/>detections are populated"| ACCEPT["✅ ACCEPTABLE<br/>Document the partial state.<br/>Enable detections that work.<br/>Track missing fields for<br/>future improvement."]
+    
+    Q1 -->|"No — detections need<br/>fields that are null"| Q2{"Can you fix the<br/>missing fields safely?<br/>(See Safe Add-on Tuning)"}
+    
+    Q2 -->|"Yes — fix is low-risk<br/>and reversible"| FIX["Fix the fields first.<br/>Validate. Then enable<br/>detections."]
+    
+    Q2 -->|"No — fix is complex<br/>or risky"| Q3{"Can you build a<br/>raw-event detection<br/>instead of tstats?"}
+    
+    Q3 -->|"Yes"| RAW["Build detection using<br/>| search against raw events.<br/>Accepts higher resource cost.<br/>See Safe Correlation Path."]
+    
+    Q3 -->|"No — detection<br/>requires data model"| DEFER["⏸️ DEFER this detection.<br/>Document: 'Detection X blocked<br/>by CIM gap Y on source Z.'<br/>Add field fix to backlog."]
+    
+    style ACCEPT fill:#238636,stroke:#2ea043,color:#fff
+    style FIX fill:#58a6ff,stroke:#388bfd,color:#fff
+    style RAW fill:#d29922,stroke:#bb8009,color:#fff
+    style DEFER fill:#6e7681,stroke:#484f58,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>A data source is at CIM Level 0 (no tags) and detections are expected against it.</strong> Tags must be fixed before any tstats-based detection can work. This is a hard prerequisite.</li>
+                        <li><strong>A critical CIM field (action, user, src) is null across all events for a key data source.</strong> This blocks the majority of detections for that source. Escalate as a data quality issue to be resolved before detection work.</li>
+                        <li><strong>The CIM add-on (Splunk_SA_CIM) version is mismatched with ES.</strong> This can cause data model schema inconsistencies. Verify version compatibility.</li>
+                        <li><strong>Someone reports "detection is working" but the data source is Level 0 or Level 1.</strong> The detection is either using raw search (not tstats) or it's actually returning zero results and nobody checked.</li>
+                        <li><strong>A TA upgrade changed CIM field mappings.</strong> After any TA upgrade, re-run the CIM field population report for affected sourcetypes. Regressions are common.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Wait for perfect CIM before any detection work"</strong></td>
+                                <td>Perfect CIM may never come. You wait indefinitely while threats go undetected.</td>
+                                <td>Assess per-detection. If the fields for THIS detection are populated, enable it. Don't hold everything for theoretical completeness.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"CIM is the TA vendor's problem"</strong></td>
+                                <td>TA vendors provide best-effort CIM mapping. They don't know your specific data format variants, index configurations, or ES requirements.</td>
+                                <td>Treat CIM validation as a Detection Engineering responsibility. Verify after every TA install. Fix gaps in local/ configs.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Just add field aliases for everything"</strong></td>
+                                <td>Field aliases without corresponding eventtypes/tags means data still doesn't appear in data models. You've done half the work.</td>
+                                <td>When fixing CIM gaps, always address all three: field aliases + eventtypes + tags. See <a href="safe-addon-tuning.html">Safe Add-on Tuning</a>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Run the CIM Validator once and you're done"</strong></td>
+                                <td>CIM status changes. TA upgrades, ES upgrades, new data sources, log format changes — all can break CIM compliance.</td>
+                                <td>Schedule quarterly CIM validation. Re-validate after every TA or ES upgrade.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"We'll fix CIM after we deploy detections"</strong></td>
+                                <td>You deploy detections that silently fail. SOC thinks they're protected. Auditors think you have coverage. Reality: no alerts fire.</td>
+                                <td>CIM validation is a HARD GATE before detection enablement. See <a href="validating-es-data.html">Validating ES Data</a>.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>CIM field population report (1 sourcetype)</strong></td><td>10 minutes</td><td>20 minutes</td><td>30 minutes (interpreting ambiguous results)</td></tr>
+                            <tr><td><strong>Tag assessment for 1 sourcetype</strong></td><td>5 minutes</td><td>15 minutes</td><td>30 minutes (missing tags need investigation)</td></tr>
+                            <tr><td><strong>Full CIM assessment for 1 data source (all fields + tags + DM check)</strong></td><td>30 minutes</td><td>1-2 hours</td><td>Half day (significant gaps found)</td></tr>
+                            <tr><td><strong>Assess all data sources for 1 data model</strong></td><td>2-4 hours</td><td>1 day</td><td>2-3 days (many sources, many gaps)</td></tr>
+                            <tr><td><strong>Fix a missing CIM field alias (in local/)</strong></td><td>15 minutes</td><td>30 minutes (with testing)</td><td>2 hours (complex field derivation)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>CIM compliance level per sourcetype</strong></td><td>Table: sourcetype, data model, CIM level (0-4), missing fields</td><td>Data quality tracker</td><td>After initial assessment. Re-validate quarterly.</td></tr>
+                            <tr><td><strong>CIM field population report</strong></td><td>SPL output: per-field population percentages</td><td>Data quality tracker</td><td>After TA install, after TA upgrade, quarterly</td></tr>
+                            <tr><td><strong>Tag assignment verification</strong></td><td>SPL output: tags found per sourcetype</td><td>Data quality tracker</td><td>After TA install, after TA upgrade</td></tr>
+                            <tr><td><strong>CIM gap register</strong></td><td>Per-sourcetype list: missing fields, impact on detections, fix plan</td><td>Detection registry / data quality tracker</td><td>Ongoing — updated as gaps are found and fixed</td></tr>
+                            <tr><td><strong>Accepted CIM gaps with risk documentation</strong></td><td>Risk acceptance: what's missing, why, compensating control, accepted by</td><td>Risk register</td><td>When a gap cannot be fixed and is accepted</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="data-models-deep-dive.html" class="next-steps-link">Data Models Deep Dive →</a>
+                        <a href="validating-es-data.html" class="next-steps-link">Validating ES Data (Hard Gate) →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

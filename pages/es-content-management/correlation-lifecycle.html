@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correlation Search Lifecycle Management - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="correlation-lifecycle.html" class="nav-item nav-item-sub active">Correlation Search Lifecycle</a>
+                    <a href="tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">Correlation Search Lifecycle Management</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Content Management</span>
+                <h1>Correlation Search Lifecycle Management</h1>
+
+                <!-- ============================================== -->
+                <!-- HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES CONTENT MANAGEMENT</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This page covers the complete lifecycle of correlation searches from draft through retirement, including scheduling strategy, throttling, versioning, failure modes, and operational health monitoring.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 CRITICAL: Single Production Environment</div>
+                    <p><strong>There is no DEV or UAT for Splunk ES in this environment.</strong> Every correlation search change is a production change. This makes the lifecycle stages below non-optional — they are your only safety net.</p>
+                    <ul>
+                        <li>Backtesting replaces what DEV would do</li>
+                        <li>Monitoring-only mode replaces what UAT would do</li>
+                        <li>Throttling and kill switches replace what rollback infrastructure would do</li>
+                    </ul>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> You have permission to create, modify, and schedule saved searches. <strong>Verify:</strong> Check your role includes <code>schedule_search</code> and <code>edit_correlationsearches</code> capabilities.</li>
+                        <li><strong>Assumption:</strong> Search concurrency has headroom for new scheduled searches. <strong>Verify:</strong> Check <a href="health-performance.html">Health & Performance</a> page for concurrency assessment.</li>
+                        <li><strong>Assumption:</strong> SOC is aware of the lifecycle and their role in it. <strong>Risk if wrong:</strong> SOC receives alerts they weren't expecting.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FULL LIFECYCLE -->
+                <!-- ============================================== -->
+                <h2>Full Correlation Search Lifecycle</h2>
+
+                <p>Every correlation search — OOTB, cloned, or custom — follows this lifecycle. Skipping stages in a single-production environment is how alert storms and detection failures happen.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    subgraph DRAFT["1️⃣ DRAFT"]
+        DR1["Define threat hypothesis"]
+        DR2["Identify data sources"]
+        DR3["Map to MITRE ATT&CK"]
+        DR4["Write initial SPL"]
+        DR5["Document inline"]
+        DR1 --> DR2 --> DR3 --> DR4 --> DR5
+    end
+
+    subgraph BACKTEST["2️⃣ BACKTEST"]
+        BT1["Run against 30-day<br/>historical data"]
+        BT2["Analyze result volume"]
+        BT3["Sample 20+ results<br/>for TP/FP classification"]
+        BT4["Identify filter<br/>candidates"]
+        BT1 --> BT2 --> BT3 --> BT4
+    end
+
+    subgraph MONITORING["3️⃣ MONITORING-ONLY"]
+        MO1["Deploy as scheduled<br/>report (no alerting)"]
+        MO2["Output to<br/>summary index"]
+        MO3["Review daily<br/>for 1-2 weeks"]
+        MO4["Tune thresholds<br/>and filters"]
+        MO1 --> MO2 --> MO3 --> MO4
+    end
+
+    subgraph PRODUCTION["4️⃣ PRODUCTION"]
+        PR1["Enable notable<br/>event creation"]
+        PR2["Configure throttle"]
+        PR3["SOC begins triage"]
+        PR4["Track metrics:<br/>volume, FP rate, MTTR"]
+        PR1 --> PR2 --> PR3 --> PR4
+    end
+
+    subgraph TUNE["5️⃣ TUNE"]
+        TU1["Monthly review<br/>of metrics"]
+        TU2["SOC feedback<br/>integration"]
+        TU3["Threshold<br/>adjustment"]
+        TU4["Allowlist<br/>updates"]
+        TU1 --> TU2 --> TU3 --> TU4
+    end
+
+    subgraph RETIRE["6️⃣ RETIRE"]
+        RE1["Detection no<br/>longer effective"]
+        RE2["Data source<br/>decommissioned"]
+        RE3["Disable search"]
+        RE4["Document reason<br/>and date"]
+        RE1 --> RE3
+        RE2 --> RE3
+        RE3 --> RE4
+    end
+
+    DRAFT --> BACKTEST
+    BACKTEST -->|"Results acceptable"| MONITORING
+    BACKTEST -->|"Too noisy /<br/>logic wrong"| DRAFT
+    MONITORING -->|"Clean for 1-2 weeks"| PRODUCTION
+    MONITORING -->|"Still noisy<br/>after tuning"| BACKTEST
+    PRODUCTION --> TUNE
+    TUNE -->|"Still effective"| PRODUCTION
+    TUNE -->|"No longer valuable"| RETIRE
+    PRODUCTION -->|"Emergency:<br/>alert storm"| EMERGENCY["🚨 EMERGENCY<br/>DISABLE<br/>See kill switch"]
+
+    style DRAFT fill:#21262d,stroke:#58a6ff,color:#e6edf3
+    style BACKTEST fill:#21262d,stroke:#a371f7,color:#e6edf3
+    style MONITORING fill:#21262d,stroke:#d29922,color:#e6edf3
+    style PRODUCTION fill:#21262d,stroke:#3fb950,color:#e6edf3
+    style TUNE fill:#21262d,stroke:#d29922,color:#e6edf3
+    style RETIRE fill:#21262d,stroke:#6e7681,color:#e6edf3
+    style EMERGENCY fill:#f85149,stroke:#da3633,color:#fff
+                    </div>
+                </div>
+
+                <h3>Stage Details & Exit Criteria</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Stage</th>
+                                <th>Duration</th>
+                                <th>Key Activities</th>
+                                <th>Exit Criteria (ALL must be met)</th>
+                                <th>Evidence Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1. Draft</strong></td>
+                                <td>2-8 hours</td>
+                                <td>Threat research, SPL writing, inline documentation</td>
+                                <td>Working SPL, MITRE mapping documented, data sources confirmed available</td>
+                                <td>SPL query, detection design document</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2. Backtest</strong></td>
+                                <td>1-4 hours</td>
+                                <td>Run against historical data, classify results</td>
+                                <td>Volume is reasonable (<50/day avg), 20+ results reviewed, FP patterns identified</td>
+                                <td>Backtest CSV, TP/FP classification, volume chart</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3. Monitoring-Only</strong></td>
+                                <td>1-2 weeks</td>
+                                <td>Scheduled run without alerting, daily review</td>
+                                <td>Daily volume stable, FP rate <30%, no unexpected patterns, SOC reviewed samples</td>
+                                <td>Daily volume log, sample review notes, SOC feedback</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4. Production</strong></td>
+                                <td>Ongoing</td>
+                                <td>Live alerting, SOC triage, metric tracking</td>
+                                <td>N/A (continuous monitoring)</td>
+                                <td>Ongoing metrics dashboard or report</td>
+                            </tr>
+                            <tr>
+                                <td><strong>5. Tune</strong></td>
+                                <td>Monthly (1-2 hours per detection)</td>
+                                <td>Review metrics, integrate SOC feedback, adjust</td>
+                                <td>Metrics within acceptable range, SOC confirms usefulness</td>
+                                <td>Tuning change log, before/after metrics</td>
+                            </tr>
+                            <tr>
+                                <td><strong>6. Retire</strong></td>
+                                <td>30 minutes</td>
+                                <td>Disable search, document reason</td>
+                                <td>Search disabled, documentation updated, registry updated</td>
+                                <td>Retirement record in detection registry</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: SCHEDULING STRATEGY -->
+                <!-- ============================================== -->
+                <h2>Scheduling Strategy</h2>
+
+                <p>Scheduling is one of the most impactful decisions for correlation search reliability. Bad scheduling causes skipped searches, missed detections, and performance problems.</p>
+
+                <h3>Cron Selection Guide</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Detection Priority</th>
+                                <th>Recommended Cron</th>
+                                <th>Lookback Window</th>
+                                <th>Use When</th>
+                                <th>Concurrency Impact</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Critical (real-time-ish)</strong></td>
+                                <td><code>*/5 * * * *</code></td>
+                                <td><code>-6m@m</code> to <code>-1m@m</code></td>
+                                <td>Active attack detection, brute force in progress, DDoS</td>
+                                <td style="color: var(--accent-red);">🔴 HIGH — Use sparingly (max 3-5 at this frequency)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>High</strong></td>
+                                <td><code>*/15 * * * *</code></td>
+                                <td><code>-16m@m</code> to <code>-1m@m</code></td>
+                                <td>Privilege escalation, account compromise, MFA bypass</td>
+                                <td style="color: var(--accent-orange);">🟡 MEDIUM — Reasonable for 10-15 searches</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Standard</strong></td>
+                                <td><code>*/30 * * * *</code> or <code>7,37 * * * *</code></td>
+                                <td><code>-35m@m</code> to <code>-5m@m</code></td>
+                                <td>Most detections: failed logins, policy violations, anomalies</td>
+                                <td style="color: var(--accent-green);">🟢 LOW — Bulk of detections should be here</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Low / Compliance</strong></td>
+                                <td><code>15 * * * *</code> (hourly)</td>
+                                <td><code>-65m@m</code> to <code>-5m@m</code></td>
+                                <td>Compliance checks, account lifecycle, slow-burn threats</td>
+                                <td style="color: var(--accent-green);">🟢 MINIMAL</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Daily reports</strong></td>
+                                <td><code>30 6 * * *</code> (6:30 AM)</td>
+                                <td><code>-25h@h</code> to <code>-1h@h</code></td>
+                                <td>Daily summaries, trend reports, overnight activity review</td>
+                                <td style="color: var(--accent-green);">🟢 MINIMAL</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 NEVER Use These Cron Patterns</div>
+                    <ul>
+                        <li><code>* * * * *</code> — Every minute. Will overwhelm search concurrency immediately.</li>
+                        <li><code>0 * * * *</code> — Top of every hour. This is when EVERY other scheduled search runs. Guaranteed concurrency collision.</li>
+                        <li><code>*/5 * * * *</code> on more than 5 searches — Five-minute searches compete aggressively for slots. Reserve for truly critical detections only.</li>
+                    </ul>
+                </div>
+
+                <h3>Lookback Window Logic</h3>
+
+                <p>The lookback window determines how much historical data each search run examines. Getting this wrong causes either missed events (gap) or duplicate detections (overlap).</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart LR
+    subgraph CORRECT["✅ CORRECT: Lookback > Cron Interval (with buffer)"]
+        direction LR
+        C1["Cron: */15 * * * *<br/>(every 15 min)"] --> C2["Lookback: -16m@m to -1m@m<br/>(16 min window)"]
+        C2 --> C3["Result: 1-min overlap<br/>catches late-arriving events<br/>Throttle prevents duplicates"]
+    end
+
+    subgraph GAP["❌ GAP: Lookback = Cron Interval"]
+        direction LR
+        G1["Cron: */15 * * * *"] --> G2["Lookback: -15m to now"]
+        G2 --> G3["Result: Events arriving<br/>1 second late are MISSED<br/>Detection has blind spots"]
+    end
+
+    subgraph EXCESSIVE["⚠️ EXCESSIVE: Lookback >> Cron"]
+        direction LR
+        E1["Cron: */15 * * * *"] --> E2["Lookback: -60m to now"]
+        E2 --> E3["Result: Same event<br/>matched 4 times<br/>Quadruple notables without throttle"]
+    end
+
+    style CORRECT fill:#0d1117,stroke:#238636,color:#e6edf3
+    style GAP fill:#0d1117,stroke:#f85149,color:#e6edf3
+    style EXCESSIVE fill:#0d1117,stroke:#d29922,color:#e6edf3
+                    </div>
+                </div>
+
+                <h3>Lookback Rules</h3>
+                <ul>
+                    <li><strong>Lookback window = cron interval + 1 minute buffer.</strong> If cron runs every 15 minutes, lookback should be 16 minutes.</li>
+                    <li><strong>Always use <code>@m</code> rounding.</strong> <code>-16m@m</code> rounds to the minute boundary, preventing sub-minute gaps.</li>
+                    <li><strong>The <code>-1m@m</code> end boundary</strong> gives a 1-minute buffer for indexing delay. Events that arrived in the last minute may not be fully indexed.</li>
+                    <li><strong>When data has high latency</strong> (e.g., Azure Event Hubs can have 2-5 min delay), increase the buffer accordingly: <code>-21m@m</code> to <code>-5m@m</code>.</li>
+                </ul>
+
+                <h3>Skew Handling</h3>
+
+                <p>Search skew is when a scheduled search doesn't run exactly on time due to concurrency or system load. Splunk Cloud has a default skew window.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Situation</th>
+                                <th>What Happens</th>
+                                <th>Impact</th>
+                                <th>Mitigation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Normal skew (< 60 seconds)</strong></td>
+                                <td>Search starts a few seconds late</td>
+                                <td>None — lookback buffer covers this</td>
+                                <td>No action needed</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Moderate skew (1-5 min)</strong></td>
+                                <td>Search starts significantly late</td>
+                                <td>If using <code>now</code> as end time, you examine future-relative data. Use <code>-1m@m</code> instead.</td>
+                                <td>Always use static end boundary, never <code>now</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Search skipped entirely</strong></td>
+                                <td>Concurrency full, search could not start within its window</td>
+                                <td><strong>Detection gap — events during this window are not evaluated</strong></td>
+                                <td>See skipped search detection SPL below. Reduce concurrency load.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: THROTTLE VS SUPPRESS VS FILTER -->
+                <!-- ============================================== -->
+                <h2>Throttling vs. Suppression vs. Filtering</h2>
+
+                <p>These three mechanisms reduce alert volume, but they work differently and have very different risk profiles. Choosing the wrong one can hide real attacks.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mechanism</th>
+                                <th>What It Does</th>
+                                <th>When to Use</th>
+                                <th>Risk</th>
+                                <th>Reversibility</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Throttling</strong></td>
+                                <td>Limits notable creation to one per time window per throttle key (e.g., one notable per src per hour)</td>
+                                <td>ALWAYS. Every production detection should have a throttle configured.</td>
+                                <td style="color: var(--accent-green);">🟢 Low — Events still match, just fewer notables. First hit always fires.</td>
+                                <td>Instant — change throttle settings</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Suppression (Notable Suppression)</strong></td>
+                                <td>Hides specific notables from Incident Review based on field values</td>
+                                <td>Known false positives from specific sources. Temporary use while tuning.</td>
+                                <td style="color: var(--accent-orange);">🟡 Medium — Suppressed notables still exist but are invisible to analysts. Easy to forget.</td>
+                                <td>Requires manual removal of suppression rules</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Filtering (Search Logic)</strong></td>
+                                <td>Adds <code>WHERE</code> or <code>NOT</code> clauses to exclude specific patterns from detection logic</td>
+                                <td>Permanent exclusions for known-good patterns (service accounts, known IPs)</td>
+                                <td style="color: var(--accent-red);">🔴 High — Filtered events are NEVER evaluated. If filter is too broad, real attacks are missed permanently.</td>
+                                <td>Requires search modification and re-backtest</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 The Correct Order of Noise Reduction</div>
+                    <p><strong>Always apply mechanisms in this order:</strong></p>
+                    <ol>
+                        <li><strong>Throttle first.</strong> Reduces duplicate notables without hiding anything. Zero risk.</li>
+                        <li><strong>Suppress second.</strong> Hides known FPs temporarily while you plan a proper fix.</li>
+                        <li><strong>Filter last.</strong> Only after you've confirmed the filtered pattern is ALWAYS benign. Document heavily.</li>
+                    </ol>
+                    <p>Never jump to filtering. A broad filter is an unrecoverable blind spot.</p>
+                </div>
+
+                <h3>Throttle Configuration Examples</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Detection Type</th>
+                                <th>Throttle Key Fields</th>
+                                <th>Throttle Window</th>
+                                <th>Rationale</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Brute force</td>
+                                <td><code>src, dest</code></td>
+                                <td>1 hour</td>
+                                <td>One alert per source-destination pair per hour. Ongoing attacks don't flood.</td>
+                            </tr>
+                            <tr>
+                                <td>Account lockout</td>
+                                <td><code>user</code></td>
+                                <td>4 hours</td>
+                                <td>One alert per user per 4 hours. Repeated lockouts don't stack.</td>
+                            </tr>
+                            <tr>
+                                <td>WAF attack burst</td>
+                                <td><code>src_ip, attack_category</code></td>
+                                <td>30 minutes</td>
+                                <td>One alert per attacker per attack type per 30 min. Fast enough for active attacks.</td>
+                            </tr>
+                            <tr>
+                                <td>Privilege escalation</td>
+                                <td><code>user, dest</code></td>
+                                <td>24 hours</td>
+                                <td>One alert per user-system pair per day. Privilege changes are not rapid events.</td>
+                            </tr>
+                            <tr>
+                                <td>Threat intel match</td>
+                                <td><code>src, threat_match_value</code></td>
+                                <td>6 hours</td>
+                                <td>One alert per source per matched IOC per 6 hours. Persistent connections don't flood.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: VERSIONING STRATEGY -->
+                <!-- ============================================== -->
+                <h2>Versioning Strategy (Without Git)</h2>
+
+                <p>This environment does not have Git-based version control for Splunk content. You still need to track changes. Use this approach:</p>
+
+                <h3>Version Tracking via Inline Comments</h3>
+                <p>Every correlation search MUST have a version history block at the top of the SPL:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Required Inline Version Header</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("============================================")`
+`comment("Detection: CUSTOM - Brute Force - Retail Tuned")`
+`comment("Owner: Detection Engineering Team")`
+`comment("MITRE: T1110.001 - Password Guessing")`
+`comment("Version: 1.3")`
+`comment("Last Modified: 2024-02-15")`
+`comment("============================================")`
+`comment("CHANGE LOG:")`
+`comment("v1.0 2024-01-10 - Initial deployment from OOTB clone")`
+`comment("v1.1 2024-01-17 - Increased threshold from 10 to 25")`
+`comment("v1.2 2024-01-24 - Added service account exclusions")`
+`comment("v1.3 2024-02-15 - Added POS subnet exclusion per SOC feedback")`
+`comment("============================================")`
+
+| tstats summariesonly=true count from datamodel=Authentication
+  WHERE Authentication.action="failure"
+  BY Authentication.src, Authentication.user, _time span=5m
+| ... (rest of detection logic)</code></pre>
+                </div>
+
+                <h3>Change Documentation Template</h3>
+
+                <p>For every change to any detection, fill out this template and store it in the detection registry:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Value (Example)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Detection Name</strong></td><td>CUSTOM - Brute Force - Retail Tuned</td></tr>
+                            <tr><td><strong>Change Date</strong></td><td>2024-02-15</td></tr>
+                            <tr><td><strong>Changed By</strong></td><td>[Your Name]</td></tr>
+                            <tr><td><strong>Version</strong></td><td>1.2 → 1.3</td></tr>
+                            <tr><td><strong>What Changed</strong></td><td>Added POS subnet exclusion: NOT src_ip IN ("10.50.0.0/16")</td></tr>
+                            <tr><td><strong>Why</strong></td><td>SOC reported 15+ FPs/day from POS self-checkout reboots triggering brute force pattern</td></tr>
+                            <tr><td><strong>Backtest Done?</strong></td><td>Yes — 30-day backtest with new filter. Volume dropped from 18/day to 3/day. TP rate improved from 40% to 85%.</td></tr>
+                            <tr><td><strong>Monitoring Period?</strong></td><td>1 week monitoring-only before re-enabling alerting</td></tr>
+                            <tr><td><strong>Rollback Plan</strong></td><td>Remove POS subnet exclusion line. Re-enable previous version from description backup.</td></tr>
+                            <tr><td><strong>SOC Notified?</strong></td><td>Yes — email sent 2024-02-14</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Description Field as Backup</h3>
+                <p>Splunk's saved search <code>description</code> field can store a previous version of the SPL. Before making changes:</p>
+                <ol>
+                    <li>Copy the current SPL to the description field (prefix with <code>BACKUP v1.2:</code>)</li>
+                    <li>Make your change to the search SPL</li>
+                    <li>Update the inline version header</li>
+                    <li>If you need to rollback, copy from description back to SPL</li>
+                </ol>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Limitation: Description field has a character limit</div>
+                    <p>The description field is limited to ~8000 characters in Splunk Cloud. For complex detections, store the full backup in the detection registry (external document) instead.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FAILURE MODES -->
+                <!-- ============================================== -->
+                <h2>Failure Modes</h2>
+
+                <p>Correlation searches fail silently. If you are not actively monitoring for these failure modes, you have detection gaps and don't know it.</p>
+
+                <h3>Skipped Searches</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 This Is the #1 Silent Killer of Detection Coverage</div>
+                    <p>A skipped search means the search was scheduled to run but didn't, usually because all search concurrency slots were full. <strong>During the skipped window, no events were evaluated.</strong> Attacks during that window are invisible.</p>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Detect Skipped Correlation Searches (Last 24 Hours)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("CRITICAL: Run this daily. Skipped searches = detection blind spots.")`
+
+index=_internal sourcetype=scheduler status="skipped"
+| eval search_name=savedsearch_name
+| stats count AS skip_count, 
+    latest(_time) AS last_skip,
+    earliest(_time) AS first_skip
+    BY search_name, app
+| where skip_count > 0
+| eval severity = case(
+    skip_count > 20, "🔴 CRITICAL — Persistent skipping",
+    skip_count > 5, "🟡 WARNING — Intermittent skipping",
+    true(), "🟢 Low — Occasional skip"
+)
+| sort - skip_count
+| table search_name, app, skip_count, severity, first_skip, last_skip</code></pre>
+                </div>
+
+                <h3>Long-Running Searches</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Correlation Search Runtime Analysis (Last 7 Days)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Searches running longer than their cron interval are a problem.")`
+`comment("A 15-min cron search that takes 20 min will eventually skip.")`
+
+index=_internal sourcetype=scheduler status="success"
+| eval runtime_sec = run_time
+| eval runtime_min = round(runtime_sec / 60, 1)
+| stats avg(runtime_min) AS avg_runtime,
+    max(runtime_min) AS max_runtime,
+    p95(runtime_min) AS p95_runtime,
+    count AS run_count
+    BY savedsearch_name, app
+| eval health = case(
+    max_runtime > 15, "🔴 CRITICAL — Exceeded 15 min",
+    p95_runtime > 10, "🟡 WARNING — P95 above 10 min",
+    avg_runtime > 5, "🟡 REVIEW — Avg above 5 min",
+    true(), "🟢 Healthy"
+)
+| sort - max_runtime
+| table savedsearch_name, app, run_count, avg_runtime, p95_runtime, max_runtime, health</code></pre>
+                </div>
+
+                <h3>Concurrency Conflicts</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Search Concurrency Utilization (Last 24 Hours)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Shows how many searches are running simultaneously over time.")`
+`comment("If this consistently hits the limit, searches WILL skip.")`
+
+index=_internal sourcetype=scheduler
+| bin _time span=5m
+| stats dc(sid) AS concurrent_searches BY _time
+| timechart span=5m max(concurrent_searches) AS peak_concurrent
+| eval danger_threshold = 24
+| eval status = if(peak_concurrent > danger_threshold, "OVER LIMIT", "OK")</code></pre>
+                </div>
+
+                <h3>Failure Mode Summary</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Failure Mode</th>
+                                <th>Symptom</th>
+                                <th>Impact</th>
+                                <th>Detection Method</th>
+                                <th>Remediation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Skipped search</strong></td>
+                                <td>No results during expected window</td>
+                                <td>Complete detection gap for that time period</td>
+                                <td>Scheduler log query above</td>
+                                <td>Reduce concurrency load, reschedule, increase priority</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Long runtime</strong></td>
+                                <td>Search takes longer than cron interval</td>
+                                <td>Cascading delays, eventual skipping</td>
+                                <td>Runtime analysis query above</td>
+                                <td>Optimize SPL, use tstats, reduce lookback, add filters</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model gap</strong></td>
+                                <td>tstats returns zero where raw search finds events</td>
+                                <td>Detection uses stale or incomplete accelerated data</td>
+                                <td>Compare <code>tstats</code> vs <code>search</code> counts</td>
+                                <td>Rebuild data model acceleration, check CIM compliance</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Lookup file corruption</strong></td>
+                                <td>Detection uses lookup that returns empty or stale</td>
+                                <td>Allowlists, asset lookups, or threat intel not applied</td>
+                                <td>Check lookup file timestamps and row counts</td>
+                                <td>Regenerate lookup, fix context-gen searches</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Throttle misconfiguration</strong></td>
+                                <td>Either zero notables (over-throttled) or flood (under-throttled)</td>
+                                <td>Missed alerts or alert storm</td>
+                                <td>Compare search results count vs notable count</td>
+                                <td>Review and adjust throttle key fields and window</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ingestion lag</strong></td>
+                                <td>Events arrive after the search window has passed</td>
+                                <td>Late events never evaluated by any search run</td>
+                                <td>Check index time vs event time for data sources</td>
+                                <td>Increase lookback end buffer (e.g., <code>-5m@m</code> instead of <code>-1m@m</code>)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>More than 5 correlation searches are consistently skipping.</strong> Escalate to Splunk admin. This is a platform capacity issue, not a detection issue.</li>
+                        <li><strong>Any critical-priority search skips even once.</strong> This means an active attack could be missed. Investigate concurrency immediately.</li>
+                        <li><strong>Average search runtime for any search exceeds its cron interval.</strong> The search needs optimization or the schedule needs adjustment before it causes cascading problems.</li>
+                        <li><strong>Data model acceleration is behind by more than 1 hour.</strong> All tstats-based detections are using stale data. Escalate to Splunk admin.</li>
+                        <li><strong>A search has been in monitoring-only mode for more than 4 weeks.</strong> It's stuck. Decide: fix it, or kill it. Don't let monitoring-mode searches accumulate indefinitely.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Run everything every 5 minutes"</strong></td>
+                                <td>Consumes all concurrency slots. Causes skipping across ALL searches. Degrades entire ES platform.</td>
+                                <td>Reserve 5-min cron for 3-5 truly critical detections. Use 15-30 min for the rest.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Use <code>earliest=-24h</code> to catch everything"</strong></td>
+                                <td>Each run scans 24 hours of data. At 15-min intervals, that's 96 redundant scans per day per search. Massive performance waste.</td>
+                                <td>Match lookback to cron interval + small buffer. Never lookback farther than necessary.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"No throttle — we want every alert"</strong></td>
+                                <td>A single brute force attack generates hundreds of events. Without throttle, that's hundreds of identical notables. SOC drowns.</td>
+                                <td>Always throttle. Key on meaningful fields (src, user). Minimum 30-min window.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Skip monitoring mode — it's just an OOTB search"</strong></td>
+                                <td>Even OOTB searches behave differently in YOUR data. Monitoring mode is how you catch this before the SOC does.</td>
+                                <td>1-2 weeks monitoring-only for EVERY new production detection. No exceptions.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"No version tracking — it's just a search"</strong></td>
+                                <td>When something breaks, you have no way to know what changed or revert. Debugging becomes guessing.</td>
+                                <td>Inline version comments in every search. Change log in detection registry.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>New detection: Draft → Backtest</strong></td>
+                                <td>Half day</td>
+                                <td>1-2 days</td>
+                                <td>3+ days (complex logic, data issues)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Monitoring period</strong></td>
+                                <td>1 week (low volume, clean results)</td>
+                                <td>2 weeks (needs tuning iteration)</td>
+                                <td>4+ weeks (persistent noise)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Production enablement</strong></td>
+                                <td>30 minutes (toggle + notify SOC)</td>
+                                <td>1-2 hours (configure throttle, create runbook, communicate)</td>
+                                <td>Blocked until SOC available</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Monthly tuning review (per detection)</strong></td>
+                                <td>15 minutes (metrics look good)</td>
+                                <td>1-2 hours (SOC feedback to process)</td>
+                                <td>Half day (significant rework needed)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Retirement process</strong></td>
+                                <td>15 minutes</td>
+                                <td>30 minutes (documentation + notification)</td>
+                                <td>1 hour (dependencies to investigate)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Backtest results</strong></td>
+                                <td>CSV export + screenshots</td>
+                                <td>Detection registry per search</td>
+                                <td>During backtest stage</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Monitoring daily volumes</strong></td>
+                                <td>Daily count log</td>
+                                <td>Detection registry per search</td>
+                                <td>Every day during monitoring</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Version change log</strong></td>
+                                <td>Template above (filled)</td>
+                                <td>Detection registry + inline SPL</td>
+                                <td>Every change</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Skipped search report</strong></td>
+                                <td>SPL output (daily)</td>
+                                <td>ES health dashboard or weekly report</td>
+                                <td>Daily automated check</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Runtime analysis</strong></td>
+                                <td>SPL output (weekly)</td>
+                                <td>ES health dashboard</td>
+                                <td>Weekly review</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Next Steps -->
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="tuning-noise.html" class="next-steps-link">Tuning, Noise Reduction & SOC Trust →</a>
+                        <a href="health-performance.html" class="next-steps-link">ES Health & Performance →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

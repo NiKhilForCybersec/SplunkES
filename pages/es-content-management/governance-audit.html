@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detection Ownership, Governance & Audit - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="governance-audit.html" class="nav-item nav-item-sub active">Governance & Audit</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">Detection Ownership, Governance & Audit</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Content Management</span>
+                <h1>Detection Ownership, Governance & Audit</h1>
+
+                <!-- ============================================== -->
+                <!-- HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES CONTENT MANAGEMENT</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This page defines who owns what, how decisions are recorded, and how to demonstrate detection program maturity to auditors and stakeholders. Every detection needs an owner. Every decision needs a record. Every audit needs evidence.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 CRITICAL: Unowned Detections Are Zombie Detections</div>
+                    <p><strong>A detection without an owner will not be tuned, will not be reviewed, and will not be maintained.</strong> It will either generate noise that the SOC ignores, or silently stop working. Both outcomes are worse than not having the detection at all — because you believe you have coverage when you don't.</p>
+                    <ul>
+                        <li>Every detection MUST have a named owner (person or team, not "everyone")</li>
+                        <li>Every detection decision MUST be documented (enable, disable, clone, custom, retire)</li>
+                        <li>Every detection MUST be reviewed at a defined cadence (quarterly minimum)</li>
+                    </ul>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> A detection registry exists (spreadsheet, wiki, or tool). <strong>Risk if wrong:</strong> No single source of truth for detection state. Create one immediately — even a shared Excel file is better than nothing.</li>
+                        <li><strong>Assumption:</strong> The SOC and Detection Engineering team have defined roles. <strong>Risk if wrong:</strong> Nobody knows who tunes, who triages, and who reviews.</li>
+                        <li><strong>Assumption:</strong> Your organization has compliance requirements (PCI DSS, SOX, or internal audit). <strong>Even if not:</strong> Governance practices protect you from operational failures, not just audit findings.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: THE DETECTION REGISTRY -->
+                <!-- ============================================== -->
+                <h2>The Detection Registry</h2>
+
+                <p>The detection registry is the single source of truth for every detection in the environment. If it's not in the registry, it doesn't officially exist. If it's in the registry without an owner, it's a risk.</p>
+
+                <h3>Required Registry Fields</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Description</th>
+                                <th>Example</th>
+                                <th>Why Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Detection ID</strong></td>
+                                <td>Unique identifier</td>
+                                <td>DET-2024-042</td>
+                                <td>Reference tracking across documents, tickets, and communications</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detection Name</strong></td>
+                                <td>Full name as it appears in Splunk ES</td>
+                                <td>CUSTOM - Brute Force - Retail Tuned</td>
+                                <td>Exact match for search operations</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Type</strong></td>
+                                <td>OOTB / Clone / Custom</td>
+                                <td>Clone</td>
+                                <td>Determines upgrade handling and maintenance burden</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status</strong></td>
+                                <td>Draft / Monitoring / Production / Disabled / Retired</td>
+                                <td>Production</td>
+                                <td>Lifecycle tracking. Prevents orphaned detections.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Owner</strong></td>
+                                <td>Named person or team responsible</td>
+                                <td>Detection Engineering — [Name]</td>
+                                <td>Accountability. Someone must tune, review, and maintain.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>MITRE ATT&CK</strong></td>
+                                <td>Technique ID(s)</td>
+                                <td>T1110.001</td>
+                                <td>Coverage mapping. Gap analysis. Stakeholder reporting.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data Source(s)</strong></td>
+                                <td>Indexes and sourcetypes used</td>
+                                <td>index=auth, sourcetype=azure:aad:signin</td>
+                                <td>Impact analysis when data sources change</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Severity</strong></td>
+                                <td>Informational / Low / Medium / High / Critical</td>
+                                <td>High</td>
+                                <td>SOC prioritization. SLA alignment.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cron Schedule</strong></td>
+                                <td>Cron expression</td>
+                                <td>*/15 * * * *</td>
+                                <td>Capacity planning. Concurrency management.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Last Reviewed</strong></td>
+                                <td>Date of last effectiveness review</td>
+                                <td>2024-01-15</td>
+                                <td>Ensures no detection goes stale. Audit evidence.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Next Review Due</strong></td>
+                                <td>Date of next scheduled review</td>
+                                <td>2024-04-15</td>
+                                <td>Proactive governance</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Version</strong></td>
+                                <td>Current version number</td>
+                                <td>1.3</td>
+                                <td>Change tracking</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Runbook Link</strong></td>
+                                <td>Link to triage runbook</td>
+                                <td>[URL]</td>
+                                <td>SOC reference. Audit evidence that triage process exists.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Decision Rationale</strong></td>
+                                <td>Why this detection exists in its current state</td>
+                                <td>"Cloned from OOTB. Threshold raised to 25 for retail. Original disabled."</td>
+                                <td>Audit trail. Knowledge transfer when staff changes.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>SPL: Auto-Generate Registry Baseline from ES</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Export All Correlation Searches for Registry Initialization</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Use this to bootstrap your detection registry from ES")`
+`comment("Export results to CSV, then add manual fields (owner, MITRE, runbook)")`
+
+| rest /services/saved/searches splunk_server=local
+| search action.correlationsearch.enabled=*
+| eval status = if(disabled=0, "Enabled", "Disabled")
+| eval type = case(
+    match(title, "^CUSTOM"), "Custom",
+    match(eai:acl.app, "^DA-ESS|^SA-|^Splunk"), "OOTB",
+    true(), "Unknown"
+)
+| eval last_modified = strftime(updated, "%Y-%m-%d")
+| table title, type, status, eai:acl.app, eai:acl.owner,
+    cron_schedule, action.correlationsearch.enabled,
+    action.notable.param.severity, last_modified, description
+| sort type, title
+| rename title AS "Detection Name",
+    type AS "Type",
+    status AS "Status",
+    eai:acl.app AS "App",
+    eai:acl.owner AS "Splunk Owner",
+    cron_schedule AS "Cron Schedule",
+    action.notable.param.severity AS "Severity",
+    last_modified AS "Last Modified"</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: OWNERSHIP MODEL -->
+                <!-- ============================================== -->
+                <h2>Ownership Model</h2>
+
+                <h3>RACI Matrix for Detection Operations</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Activity</th>
+                                <th>Detection Engineering</th>
+                                <th>SOC Analysts</th>
+                                <th>SOC Lead / Manager</th>
+                                <th>Splunk Admin</th>
+                                <th>Security Manager</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Create new detection</strong></td>
+                                <td style="color: var(--accent-green);"><strong>R, A</strong></td>
+                                <td>C</td>
+                                <td>I</td>
+                                <td>C (capacity)</td>
+                                <td>I</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Backtest & validate</strong></td>
+                                <td style="color: var(--accent-green);"><strong>R, A</strong></td>
+                                <td>C</td>
+                                <td>I</td>
+                                <td>—</td>
+                                <td>—</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Enable in production</strong></td>
+                                <td style="color: var(--accent-green);"><strong>R</strong></td>
+                                <td>I</td>
+                                <td style="color: var(--accent-green);"><strong>A</strong> (sign-off)</td>
+                                <td>I</td>
+                                <td>I</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Triage notables</strong></td>
+                                <td>C (escalations)</td>
+                                <td style="color: var(--accent-green);"><strong>R, A</strong></td>
+                                <td>I</td>
+                                <td>—</td>
+                                <td>—</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Provide FP feedback</strong></td>
+                                <td>I (receives)</td>
+                                <td style="color: var(--accent-green);"><strong>R</strong></td>
+                                <td style="color: var(--accent-green);"><strong>A</strong></td>
+                                <td>—</td>
+                                <td>—</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tune detection</strong></td>
+                                <td style="color: var(--accent-green);"><strong>R, A</strong></td>
+                                <td>C (feedback)</td>
+                                <td>I</td>
+                                <td>—</td>
+                                <td>—</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Emergency disable</strong></td>
+                                <td style="color: var(--accent-green);"><strong>R, A</strong></td>
+                                <td>I</td>
+                                <td>I</td>
+                                <td>C (if platform)</td>
+                                <td>I</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Quarterly review</strong></td>
+                                <td style="color: var(--accent-green);"><strong>R</strong></td>
+                                <td>C</td>
+                                <td style="color: var(--accent-green);"><strong>A</strong></td>
+                                <td>—</td>
+                                <td>I</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Platform health monitoring</strong></td>
+                                <td>R (detection impact)</td>
+                                <td>—</td>
+                                <td>I</td>
+                                <td style="color: var(--accent-green);"><strong>R, A</strong></td>
+                                <td>I</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Audit response</strong></td>
+                                <td style="color: var(--accent-green);"><strong>R</strong> (evidence)</td>
+                                <td>C</td>
+                                <td>C</td>
+                                <td>C</td>
+                                <td style="color: var(--accent-green);"><strong>A</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p><em>R = Responsible (does the work), A = Accountable (approves/owns outcome), C = Consulted, I = Informed</em></p>
+
+                <h3>Ownership Transfer Procedure</h3>
+                <p>When a detection owner leaves the team, changes roles, or when detections are transferred between teams:</p>
+                <ol>
+                    <li><strong>Before departure:</strong> Outgoing owner documents all detections they own with current status, known issues, and pending tuning actions.</li>
+                    <li><strong>Transfer meeting:</strong> Outgoing and incoming owner walk through each detection: logic, known FP patterns, tuning history, SOC feedback.</li>
+                    <li><strong>Registry update:</strong> Change owner field in registry for ALL transferred detections.</li>
+                    <li><strong>SOC notification:</strong> Inform SOC of new contact for detection questions.</li>
+                    <li><strong>Knowledge test:</strong> Incoming owner should be able to explain each detection's purpose, data sources, known limitations, and tuning history.</li>
+                </ol>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 If No Transfer Happens</div>
+                    <p>When an owner leaves without transferring, their detections become orphans. Flag ALL orphaned detections immediately. Assign temporary ownership to the team lead. Schedule a dedicated review session within 2 weeks to properly assign and validate each detection.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: QUARTERLY REVIEW -->
+                <!-- ============================================== -->
+                <h2>Quarterly Detection Review</h2>
+
+                <p>Every detection in production MUST be reviewed at least quarterly. This is not optional — it's how you prevent detection rot, catch broken searches, and maintain SOC trust.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    START["Quarterly Review<br/>Cycle Begins"] --> PULL["Pull full detection<br/>registry export"]
+    
+    PULL --> PER_DETECTION["For EACH production detection:"]
+    
+    PER_DETECTION --> Q1{"Still producing<br/>notables?"}
+    Q1 -->|"No notables in 90 days"| INVESTIGATE["Investigate:<br/>• Data source still active?<br/>• Search still running?<br/>• Logic still valid?"]
+    INVESTIGATE --> Q1B{"Fixable?"}
+    Q1B -->|"Yes"| FIX["Fix and re-enable"]
+    Q1B -->|"No"| RETIRE["Retire with<br/>documentation"]
+    
+    Q1 -->|"Yes, producing notables"| Q2{"FP rate<br/>acceptable?<br/>(< 30%)"}
+    Q2 -->|"No"| TUNE["Schedule tuning<br/>session"]
+    Q2 -->|"Yes"| Q3{"SOC feedback<br/>positive?"}
+    
+    Q3 -->|"SOC says 'junk'"| TUNE
+    Q3 -->|"SOC says 'useful'"| Q4{"Owner still<br/>assigned and<br/>active?"}
+    
+    Q4 -->|"No owner"| ASSIGN["Assign new owner<br/>immediately"]
+    Q4 -->|"Owner confirmed"| Q5{"Still maps to<br/>current threat<br/>landscape?"}
+    
+    Q5 -->|"Threat no longer relevant"| RETIRE
+    Q5 -->|"Still relevant"| PASS["✅ PASSES REVIEW<br/>Update 'Last Reviewed' date<br/>Set next review date"]
+    
+    FIX --> PASS
+    TUNE --> PASS
+    ASSIGN --> PASS
+    
+    style RETIRE fill:#6e7681,stroke:#484f58,color:#fff
+    style PASS fill:#238636,stroke:#2ea043,color:#fff
+    style TUNE fill:#d29922,stroke:#bb8009,color:#fff
+                    </div>
+                </div>
+
+                <h3>Quarterly Review Checklist (Per Detection)</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">✅</th>
+                                <th style="width: 55%;">Review Item</th>
+                                <th style="width: 40%;">Assessment</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>☐</td><td>Detection is still producing notables</td><td>Yes / No / Investigate</td></tr>
+                            <tr><td>☐</td><td>Volume is within expected range</td><td>Current: ___/day, Expected: ___/day</td></tr>
+                            <tr><td>☐</td><td>FP rate is acceptable (< 30%)</td><td>Estimated: ___% (sample of 20)</td></tr>
+                            <tr><td>☐</td><td>SOC confirms value (not "junk")</td><td>Feedback: _____</td></tr>
+                            <tr><td>☐</td><td>Owner is assigned and active</td><td>Owner: _____</td></tr>
+                            <tr><td>☐</td><td>Runbook exists and is current</td><td>Link: _____ | Last updated: _____</td></tr>
+                            <tr><td>☐</td><td>Data sources still active and healthy</td><td>Sources: _____</td></tr>
+                            <tr><td>☐</td><td>MITRE mapping still accurate</td><td>Technique: _____</td></tr>
+                            <tr><td>☐</td><td>No outstanding tuning tickets</td><td>Ticket(s): _____</td></tr>
+                            <tr><td>☐</td><td>Threat is still relevant to the environment</td><td>Assessment: _____</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Review Outcomes</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Outcome</th>
+                                <th>Action</th>
+                                <th>Documentation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>✅ Pass</strong></td>
+                                <td>Update "Last Reviewed" and "Next Review" dates in registry</td>
+                                <td>Record: "Reviewed [date] — passes all checks"</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>⚠️ Needs Tuning</strong></td>
+                                <td>Create tuning ticket. Set deadline (within 30 days). Schedule follow-up.</td>
+                                <td>Record: "Reviewed [date] — FP rate above threshold. Ticket [#] created."</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>⚠️ Needs Owner</strong></td>
+                                <td>Assign temporary owner immediately. Confirm permanent owner within 2 weeks.</td>
+                                <td>Record: "Reviewed [date] — no owner. Temp assigned to [name]."</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-red);"><strong>🔴 Broken</strong></td>
+                                <td>Disable immediately. Create fix ticket. Re-enable only after full lifecycle.</td>
+                                <td>Record: "Reviewed [date] — not functioning. Disabled. Ticket [#]."</td>
+                            </tr>
+                            <tr>
+                                <td><strong>⚫ Retire</strong></td>
+                                <td>Disable search. Update registry status to "Retired". Document reason.</td>
+                                <td>Record: "Retired [date] — [reason]. Data source decommissioned / threat no longer relevant."</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: AUDIT READINESS -->
+                <!-- ============================================== -->
+                <h2>Audit Readiness</h2>
+
+                <p>When an auditor asks about your detection capability, they are asking three questions: what do you monitor, how do you know it works, and what do you do when it finds something? Be ready with evidence for all three.</p>
+
+                <h3>Common Audit Questions & Where the Evidence Lives</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Audit Question</th>
+                                <th>What They're Really Asking</th>
+                                <th>Evidence Source</th>
+                                <th>Page Reference</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>"What threats do you detect?"</td>
+                                <td>Show me your detection inventory with MITRE mapping</td>
+                                <td>Detection registry (export)</td>
+                                <td>This page — Registry section</td>
+                            </tr>
+                            <tr>
+                                <td>"How do you know your detections work?"</td>
+                                <td>Show me testing evidence and operational metrics</td>
+                                <td>Backtest results, monitoring period logs, quarterly review records</td>
+                                <td><a href="correlation-lifecycle.html">Lifecycle</a></td>
+                            </tr>
+                            <tr>
+                                <td>"What happens when a detection fires?"</td>
+                                <td>Show me the triage process and response procedures</td>
+                                <td>Triage runbooks, SOC procedures, Incident Review workflow</td>
+                                <td><a href="../phase3-detection/index.html">Phase 3 Detection</a></td>
+                            </tr>
+                            <tr>
+                                <td>"Who is responsible for maintaining detections?"</td>
+                                <td>Show me ownership assignments and review cadence</td>
+                                <td>Detection registry (owner field), RACI matrix, review schedule</td>
+                                <td>This page — Ownership section</td>
+                            </tr>
+                            <tr>
+                                <td>"How do you handle false positives?"</td>
+                                <td>Show me your tuning process and metrics</td>
+                                <td>Tuning change log, before/after metrics, SOC feedback records</td>
+                                <td><a href="tuning-noise.html">Tuning & Noise</a></td>
+                            </tr>
+                            <tr>
+                                <td>"How do you control changes to detections?"</td>
+                                <td>Show me change management process and audit trail</td>
+                                <td>Change log, approval records, SOC notifications</td>
+                                <td><a href="change-management.html">Change Management</a></td>
+                            </tr>
+                            <tr>
+                                <td>"How do you monitor the monitoring system?"</td>
+                                <td>Show me platform health checks and gap detection</td>
+                                <td>Daily health check outputs, skipped search reports</td>
+                                <td><a href="health-performance.html">Health & Performance</a></td>
+                            </tr>
+                            <tr>
+                                <td>"What coverage gaps exist?"</td>
+                                <td>Show me what you DON'T detect and why</td>
+                                <td>MITRE coverage heatmap, disabled detection justifications, data source gaps</td>
+                                <td><a href="ootb-content.html">OOTB Content</a> + Registry</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>PCI DSS Alignment (Retail Focus)</h3>
+
+                <p>For retail environments subject to PCI DSS, specific detection and monitoring requirements apply. This is not an exhaustive PCI guide — it focuses on the detection engineering aspects.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>PCI DSS Requirement</th>
+                                <th>Detection Engineering Implication</th>
+                                <th>Evidence Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>10.4.1</strong> — Review audit logs at least daily</td>
+                                <td>Automated detections supplement manual review. Show that detections cover key log types.</td>
+                                <td>Detection registry filtered to PCI scope. Daily health check output.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>10.4.1.1</strong> — Automated mechanisms for audit log review</td>
+                                <td>Correlation searches ARE automated review mechanisms. Document them as such.</td>
+                                <td>List of correlation searches with scope, schedule, and alert type.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>10.4.2</strong> — Review logs of all system components periodically</td>
+                                <td>Detections must cover CDE (Cardholder Data Environment) systems, not just general infrastructure.</td>
+                                <td>Detection registry showing CDE-specific detections and their data sources.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>10.7</strong> — Failures of critical security controls are detected and reported</td>
+                                <td>You need detections FOR your detections: skipped search alerts, platform health monitoring.</td>
+                                <td>Skipped search alert configuration. Health check schedule. Escalation records.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>11.5</strong> — Intrusion detection/prevention techniques</td>
+                                <td>Correlation searches serve as IDS-equivalent detection. WAF detections align here.</td>
+                                <td>WAF detection inventory. Correlation search effectiveness metrics.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>12.10.5</strong> — Include alerts from security monitoring in incident response</td>
+                                <td>ES notables must feed into the incident response process. Show the flow.</td>
+                                <td>Incident Review workflow. Triage runbooks. Escalation procedures.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ PCI Scope Warning</div>
+                    <p>This table provides guidance for detection engineering alignment with PCI DSS. It is NOT a complete PCI compliance assessment. Work with your QSA (Qualified Security Assessor) to determine exact requirements for your CDE scope.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: GOVERNANCE MATURITY -->
+                <!-- ============================================== -->
+                <h2>Governance Maturity Model</h2>
+
+                <p>Use this model to assess where your detection program is today and what to work on next. Most organizations start at Level 1. The goal is to reach Level 3 within 6-12 months.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart LR
+    L1["<strong>Level 1: Reactive</strong><br/><br/>• Detections exist but no registry<br/>• No ownership assigned<br/>• No review cadence<br/>• Changes undocumented<br/>• SOC complains about noise"]
+    
+    L2["<strong>Level 2: Managed</strong><br/><br/>• Detection registry exists<br/>• Owners assigned<br/>• Change log maintained<br/>• SOC provides feedback<br/>• Reviews happen (irregular)"]
+    
+    L3["<strong>Level 3: Governed</strong><br/><br/>• Full lifecycle enforcement<br/>• Quarterly reviews on schedule<br/>• Metrics tracked and reported<br/>• Audit evidence on demand<br/>• SOC trusts detections"]
+    
+    L4["<strong>Level 4: Optimized</strong><br/><br/>• Continuous improvement<br/>• Automated health monitoring<br/>• Threat-intelligence-driven detections<br/>• Coverage gap analysis automated<br/>• Detection-as-code pipeline"]
+    
+    L1 -->|"Build registry<br/>Assign owners"| L2
+    L2 -->|"Enforce lifecycle<br/>Schedule reviews"| L3
+    L3 -->|"Automate monitoring<br/>Build CI/CD pipeline"| L4
+    
+    style L1 fill:#f85149,stroke:#da3633,color:#fff
+    style L2 fill:#d29922,stroke:#bb8009,color:#fff
+    style L3 fill:#238636,stroke:#2ea043,color:#fff
+    style L4 fill:#58a6ff,stroke:#388bfd,color:#fff
+                    </div>
+                </div>
+
+                <h3>Level Assessment Checklist</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Criterion</th>
+                                <th>Level 1</th>
+                                <th>Level 2</th>
+                                <th>Level 3</th>
+                                <th>Level 4</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Detection inventory</strong></td>
+                                <td>None or in someone's head</td>
+                                <td>Spreadsheet or wiki</td>
+                                <td>Maintained registry with all fields</td>
+                                <td>Auto-synced from Splunk + manual enrichment</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ownership</strong></td>
+                                <td>"Everyone" or unassigned</td>
+                                <td>Most detections have owners</td>
+                                <td>100% ownership, transfer process exists</td>
+                                <td>Automated ownership validation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Change control</strong></td>
+                                <td>None — changes happen ad hoc</td>
+                                <td>Change log exists, sometimes used</td>
+                                <td>All changes documented, classified, approved</td>
+                                <td>Git-based version control, CI/CD pipeline</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Reviews</strong></td>
+                                <td>Never or only after incidents</td>
+                                <td>Happens occasionally</td>
+                                <td>Quarterly on schedule, documented</td>
+                                <td>Continuous automated health + quarterly deep review</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Metrics</strong></td>
+                                <td>None</td>
+                                <td>Notable volume tracked</td>
+                                <td>FP rate, volume, MTTR per detection</td>
+                                <td>Automated dashboards with trend analysis</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Audit readiness</strong></td>
+                                <td>Scramble when asked</td>
+                                <td>Can produce evidence with effort</td>
+                                <td>Evidence available on demand</td>
+                                <td>Continuous compliance monitoring</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: REPORTING -->
+                <!-- ============================================== -->
+                <h2>Stakeholder Reporting</h2>
+
+                <h3>Monthly Detection Program Report (Template)</h3>
+                <p>This report demonstrates program health to management and satisfies audit evidence requirements:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Section</th>
+                                <th>Content</th>
+                                <th>Source</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Executive Summary</strong></td>
+                                <td>2-3 sentences: Total detections, key changes this month, any incidents</td>
+                                <td>Detection registry + change log</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detection Inventory</strong></td>
+                                <td>Total active, by type (OOTB/Clone/Custom), by status (Production/Monitoring/Disabled)</td>
+                                <td>Registry summary</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Changes This Month</strong></td>
+                                <td>New deployments, tuning changes, retirements, emergency stops</td>
+                                <td>Change log</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Platform Health</strong></td>
+                                <td>Skipped search count, search runtime trends, ingestion status</td>
+                                <td>Health check outputs</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Notable Volume Trends</strong></td>
+                                <td>Total notables, by severity, top 5 noisiest detections</td>
+                                <td>Notable index query</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Coverage Assessment</strong></td>
+                                <td>MITRE technique coverage percentage, gaps identified, plans to address</td>
+                                <td>Registry MITRE mapping</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Upcoming</strong></td>
+                                <td>Next deployments, planned tuning, review schedule, freeze windows</td>
+                                <td>Project plan / change calendar</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>SPL: MITRE Coverage Summary</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Detection Coverage by MITRE Tactic (from Registry Lookup)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Requires a lookup table of your registry with MITRE mapping")`
+`comment("Shows coverage gaps at the tactic level")`
+
+| inputlookup detection_registry.csv
+| where status="Production"
+| eval mitre_tactics = split(mitre_tactic, ",")
+| mvexpand mitre_tactics
+| stats dc(detection_name) AS detection_count,
+    values(detection_name) AS detections
+    BY mitre_tactics
+| rename mitre_tactics AS "MITRE Tactic"
+| eval coverage = case(
+    detection_count >= 5, "🟢 Strong",
+    detection_count >= 2, "🟡 Basic",
+    detection_count >= 1, "🟠 Minimal",
+    true(), "🔴 GAP"
+)
+| sort "MITRE Tactic"
+| table "MITRE Tactic", detection_count, coverage, detections</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>More than 30% of production detections have no assigned owner.</strong> Ownership crisis. Assign temp owners to all unowned detections within 1 week. Escalate to management.</li>
+                        <li><strong>Quarterly review is overdue by more than 30 days.</strong> Schedule emergency review session. If not possible, escalate to management for resource allocation.</li>
+                        <li><strong>An auditor asks for evidence you can't produce.</strong> Document the gap immediately. Create a remediation plan. Do NOT fabricate evidence.</li>
+                        <li><strong>Detection registry does not exist.</strong> Stop all other detection work. Build the registry FIRST. You cannot govern what you don't inventory.</li>
+                        <li><strong>Staff turnover leaves >50% of detections orphaned.</strong> Escalate immediately. Deprioritize new development. Focus entirely on stabilizing existing detections.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"The team owns all detections"</strong></td>
+                                <td>"Everyone" means nobody. No individual feels responsible for tuning or reviewing.</td>
+                                <td>Assign individual ownership. One name per detection. Team is the backup, not the primary.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"We'll build the registry later"</strong></td>
+                                <td>Without a registry, you can't prove what you have, who owns it, or when it was reviewed. Auditors will find this.</td>
+                                <td>Build it NOW. Start with the SPL export above. Add manual fields incrementally.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Counting detections = measuring security"</strong></td>
+                                <td>50 broken detections provide less security than 5 working ones. Count != capability.</td>
+                                <td>Measure effectiveness: FP rate, detection coverage, SOC response time, review compliance.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"We don't need reviews — the detections are working"</strong></td>
+                                <td>You don't know they're working unless you check. Data sources change, threats evolve, environments shift.</td>
+                                <td>Quarterly reviews. Non-negotiable. Even if everything looks fine, the review itself is the evidence.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Governance is bureaucracy"</strong></td>
+                                <td>Without governance, detections rot silently. You discover gaps during incidents or audits — both worst-case scenarios.</td>
+                                <td>Governance is protection. The overhead is minimal compared to the cost of a missed detection.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Build initial detection registry</strong></td>
+                                <td>4 hours (SPL export + manual enrichment)</td>
+                                <td>1-2 days (research owners, MITRE mapping)</td>
+                                <td>1 week (no existing documentation)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Quarterly review (full portfolio)</strong></td>
+                                <td>Half day (< 20 detections, all healthy)</td>
+                                <td>1-2 days (20-50 detections, some need tuning)</td>
+                                <td>3+ days (50+ detections, many issues)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ownership transfer (per person)</strong></td>
+                                <td>2 hours (good documentation exists)</td>
+                                <td>Half day (knowledge transfer meetings)</td>
+                                <td>1-2 days (no documentation, reverse-engineer)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Monthly stakeholder report</strong></td>
+                                <td>1 hour (template + queries)</td>
+                                <td>2-3 hours (analysis + writing)</td>
+                                <td>Half day (first time setup)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Audit evidence preparation</strong></td>
+                                <td>2 hours (evidence readily available)</td>
+                                <td>1 day (collect from multiple sources)</td>
+                                <td>1 week (evidence doesn't exist yet)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Detection registry (current state)</strong></td>
+                                <td>Spreadsheet or tool export</td>
+                                <td>Shared drive / wiki / governance tool</td>
+                                <td>Maintained continuously. Snapshot monthly.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Quarterly review records</strong></td>
+                                <td>Completed checklists per detection</td>
+                                <td>Registry or separate review log</td>
+                                <td>During quarterly review</td>
+                            </tr>
+                            <tr>
+                                <td><strong>RACI documentation</strong></td>
+                                <td>This page or separate document</td>
+                                <td>Team documentation</td>
+                                <td>Initial setup, update on team changes</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ownership transfer records</strong></td>
+                                <td>Meeting notes + registry updates</td>
+                                <td>Change log</td>
+                                <td>During any ownership change</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Monthly stakeholder reports</strong></td>
+                                <td>Report document</td>
+                                <td>Shared drive / email archive</td>
+                                <td>Monthly</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Summary -->
+                <div class="next-steps">
+                    <div class="next-steps-title">📚 ES Content Management — Complete</div>
+                    <div class="next-steps-links">
+                        <a href="ootb-content.html" class="next-steps-link">← Start: OOTB Content Reality</a>
+                        <a href="../phase4-automation/index.html" class="next-steps-link">Continue to Phase 4: Automation →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

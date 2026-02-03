@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESCU Overview & How It Fits the Work Plan - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                    <a href="escu-overview.html" class="nav-item nav-item-sub active">ESCU Overview</a>
+                    <a href="escu-operationalize.html" class="nav-item nav-item-sub">Operationalizing ESCU</a>
+                    <a href="escu-log-mapping.html" class="nav-item nav-item-sub">ESCU Log Mapping</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="../es-operations/notable-suppression.html" class="nav-item nav-item-sub">Notable Suppression</a>
+                    <a href="../es-operations/investigations-evidence.html" class="nav-item nav-item-sub">Investigations & Evidence</a>
+                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">ESCU Overview & How It Fits the Work Plan</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Content Management</span>
+                <h1>ESCU Overview & How It Fits the Work Plan</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES CONTENT MANAGEMENT</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> Explains what the Enterprise Security Content Update (ESCU) app is, what it contains, how it relates to ES's built-in OOTB content, its update cadence and risk model, and how to position it within the detection engineering work plan. This is the "understand it before you touch it" page.</p>
+                    <p><strong>Ownership:</strong> Detection Engineering (evaluation + operationalization decisions)</p>
+                    <p><strong>Preconditions:</strong> Familiarity with <a href="ootb-content.html">OOTB Content Reality</a> and the <a href="ootb-vs-custom.html">OOTB vs Custom Strategy</a>.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> ESCU is installed on your ES search heads. <strong>Verify:</strong> Run <code>| rest /services/apps/local | search title="*security_content*" OR title="*ESCU*" | table title, version, label</code>. If no results, ESCU is not installed.</li>
+                        <li><strong>Assumption:</strong> Your ES version is compatible with the installed ESCU version. <strong>Risk if wrong:</strong> ESCU content may reference data models or macros not present in your ES version, causing silent search failures.</li>
+                        <li><strong>Assumption:</strong> ESCU content is disabled by default after installation. <strong>Verify:</strong> Check Content Management for ESCU-provided searches — they should be disabled. If someone enabled them all, see the <a href="escu-operationalize.html">Operationalizing ESCU</a> page for triage.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT IS ESCU -->
+                <!-- ============================================== -->
+                <h2>What Is ESCU?</h2>
+
+                <p>The <strong>Enterprise Security Content Update (ESCU)</strong> — also known as the <strong>Splunk Security Content</strong> app or referenced as <strong>Splunk Threat Research Team (STRT)</strong> content — is Splunk's continuously updated detection content package. It is distinct from the OOTB content that ships with the ES app itself.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Attribute</th>
+                                <th>ES OOTB Content</th>
+                                <th>ESCU Content</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Where it comes from</strong></td>
+                                <td>Bundled inside the Enterprise Security app</td>
+                                <td>Separate app installed from Splunkbase (or automated deployment)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Update cadence</strong></td>
+                                <td>Updates only when ES itself is upgraded (major/minor releases)</td>
+                                <td>Updated frequently — typically every 1–4 weeks with new or revised detections</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Content focus</strong></td>
+                                <td>Broad baseline: generic brute force, access anomalies, network scans, data model-based patterns</td>
+                                <td>Threat-intelligence-driven: specific APT campaigns, CVE exploits, ransomware families, emerging TTPs</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Default state after install</strong></td>
+                                <td>Most OOTB searches are disabled by default</td>
+                                <td>All ESCU detections are disabled by default — must be explicitly enabled</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Quality & tuning</strong></td>
+                                <td>Generic — requires environmental tuning for any organization</td>
+                                <td>Research-quality — designed for lab validation. Often needs significant tuning for production use.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>MITRE ATT&CK mapping</strong></td>
+                                <td>Basic mapping on some searches</td>
+                                <td>Detailed MITRE mapping per detection with tactic, technique, and sub-technique</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Analytic Stories</strong></td>
+                                <td>Not organized into stories</td>
+                                <td>Grouped into "Analytic Stories" — collections of related detections targeting a specific threat (e.g., "BlackCat Ransomware", "Volt Typhoon")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Risk</strong></td>
+                                <td>Low risk (familiar, stable)</td>
+                                <td>Medium-High risk if enabled without lifecycle process — research-grade content in production</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT ESCU CONTAINS -->
+                <!-- ============================================== -->
+                <h2>What ESCU Contains</h2>
+
+                <h3>Content Types</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Content Type</th>
+                                <th>Description</th>
+                                <th>How to Use</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Analytic Stories</strong></td>
+                                <td>Collections of related detections, investigative searches, and context for a specific threat or attack campaign</td>
+                                <td>Browse stories to understand coverage for a threat. Don't enable all searches in a story blindly — evaluate each one.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detection Searches</strong></td>
+                                <td>Correlation searches (SPL) that identify specific attack patterns, TTPs, or suspicious behaviors</td>
+                                <td>The main content. Each must be evaluated individually before enablement. See <a href="escu-operationalize.html">Operationalizing ESCU</a>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Investigative Searches</strong></td>
+                                <td>SPL queries designed for post-detection investigation — context gathering, not alerting</td>
+                                <td>Use as part of triage runbooks and investigation checklists. These do NOT generate notables.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Baseline Searches</strong></td>
+                                <td>Searches that establish normal behavior baselines used by detection searches for anomaly comparison</td>
+                                <td>Must be run BEFORE the corresponding detection search works. Baseline generation takes time and compute.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Lookup Tables</strong></td>
+                                <td>Reference data used by ESCU detections (e.g., known malicious IPs, process hashes, threat indicators)</td>
+                                <td>Check freshness. Stale lookups = stale detections. Some are static; some are generated by baseline searches.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Macros</strong></td>
+                                <td>Reusable SPL fragments referenced by ESCU searches</td>
+                                <td>Review macro definitions before enabling searches that reference them. Macros may need environment-specific values.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>SPL: Inventory Your ESCU Installation</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Count ESCU Content by Type and Status</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Discover what ESCU content you have installed")`
+`comment("Adjust the app name filter if your ESCU app is named differently")`
+
+| rest /services/saved/searches splunk_server=local
+| search eai:acl.app="DA-ESS-ContentUpdate" OR eai:acl.app="SplunkEnterpriseSecuritySuite"
+| eval type = case(
+    isnotnull(action.correlationsearch.enabled), "Detection (Correlation)",
+    match(title, "(?i)baseline"), "Baseline",
+    match(title, "(?i)investigation|(?i)contextual"), "Investigative",
+    true(), "Other"
+)
+| eval status = if(disabled=0, "Enabled", "Disabled")
+| stats count BY type, status
+| sort type, status</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: List All ESCU Analytic Stories</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Browse available analytic stories to understand threat coverage")`
+
+| rest /services/saved/searches splunk_server=local
+| search eai:acl.app="DA-ESS-ContentUpdate"
+| where isnotnull(action.correlationsearch.enabled)
+| eval story = mvindex(split('action.correlationsearch.annotations{"analytic_story"}', ","), 0)
+| stats dc(title) AS detection_count, 
+    values(title) AS detections
+    BY story
+| sort - detection_count
+| head 30</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: HOW ESCU FITS THE WORK PLAN -->
+                <!-- ============================================== -->
+                <h2>How ESCU Fits the Work Plan</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    subgraph WORKPLAN["Detection Engineering Work Plan"]
+        direction TB
+        P1["Phase 1: Log Coverage<br/>Get data into Splunk"] --> P2["Phase 2: Data Quality<br/>Normalize to CIM"]
+        P2 --> P3["Phase 3: Detection<br/>Enable detections"]
+        P3 --> P4["Phase 4: Automation<br/>Playbooks + SOAR"]
+    end
+    
+    subgraph ESCU_ROLE["Where ESCU Fits"]
+        direction TB
+        E1["ESCU informs Phase 1:<br/>Shows what data sources<br/>you NEED for coverage"]
+        E2["ESCU depends on Phase 2:<br/>Detections assume CIM-<br/>compliant field names"]
+        E3["ESCU IS Phase 3 content:<br/>Pre-built detections to<br/>evaluate, clone, and tune"]
+        E4["ESCU feeds Phase 4:<br/>Detection + response<br/>action integration"]
+    end
+    
+    P1 -.->|"Gap analysis"| E1
+    P2 -.->|"Prerequisite"| E2
+    P3 -.->|"Content source"| E3
+    P4 -.->|"Response actions"| E4
+    
+    style WORKPLAN fill:#161b22,stroke:#30363d,color:#c9d1d9
+    style ESCU_ROLE fill:#161b22,stroke:#58a6ff,color:#c9d1d9
+                    </div>
+                </div>
+
+                <h3>ESCU at Each Phase</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Phase</th>
+                                <th>ESCU Role</th>
+                                <th>Practical Action</th>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Phase 1 — Log Coverage</strong></td>
+                                <td>ESCU detection requirements reveal which data sources you need but don't have</td>
+                                <td>Browse ESCU analytic stories relevant to your threat model. List required data sources per story. Compare against your current log coverage matrix. Gaps = Phase 1 onboarding priorities. See <a href="escu-log-mapping.html">ESCU Log Mapping</a>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Phase 2 — Data Quality</strong></td>
+                                <td>ESCU detections ASSUME CIM-compliant data. If your data isn't normalized, detections silently fail.</td>
+                                <td>Before evaluating any ESCU detection, verify the required data model is accelerated and the source data maps correctly to CIM fields. If not, fix data quality first — enabling the detection without proper CIM mapping is pointless.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Phase 3 — Detection</strong></td>
+                                <td>ESCU is a content library. It is NOT a "turn it on" solution. Each detection must go through your lifecycle.</td>
+                                <td>Evaluate → Clone → Tune → Backtest → Monitor → Enable. Same lifecycle as any other detection. See <a href="escu-operationalize.html">Operationalizing ESCU</a>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Phase 4 — Automation</strong></td>
+                                <td>ESCU detections can trigger adaptive response actions and SOAR playbooks</td>
+                                <td>Once a detection is in production and stable, add automated response actions as appropriate for your maturity level.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ESCU UPDATE MODEL -->
+                <!-- ============================================== -->
+                <h2>ESCU Update Model & Risk</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    UPDATE["ESCU Update Released<br/>(new/revised detections)"] --> Q1{"How does your<br/>org receive ESCU<br/>updates?"}
+    
+    Q1 -->|"Manual install<br/>from Splunkbase"| MANUAL["Manual Process:<br/>1. Download from Splunkbase<br/>2. Test in non-prod<br/>3. Deploy to prod SH<br/>4. Review new content"]
+    
+    Q1 -->|"Automated via<br/>deployment server<br/>or SHC deployer"| AUTO["Auto Process:<br/>⚠️ New content auto-deploys<br/>Existing clones unaffected<br/>New detections arrive disabled"]
+    
+    MANUAL --> REVIEW["REVIEW NEW CONTENT:<br/>What's new?<br/>What's changed?<br/>Impact on existing clones?"]
+    AUTO --> REVIEW
+    
+    REVIEW --> Q2{"Any changes to<br/>searches you've<br/>already cloned?"}
+    
+    Q2 -->|"Yes — OOTB<br/>parent updated"| EVAL["Evaluate the update:<br/>• Better logic? Port to clone<br/>• Breaking change? Test first<br/>• No value? Ignore update"]
+    
+    Q2 -->|"No — only<br/>new detections"| QUEUE["Queue new detections<br/>for evaluation sprint<br/>(see Operationalizing ESCU)"]
+    
+    Q2 -->|"Don't know —<br/>no tracking"| RISK["🔴 RISK: You can't<br/>manage what you<br/>don't track.<br/>Build a tracking process."]
+    
+    style UPDATE fill:#58a6ff,stroke:#388bfd,color:#fff
+    style RISK fill:#f85149,stroke:#da3633,color:#fff
+    style QUEUE fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <h3>ESCU Update Risk Matrix</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Risk</th>
+                                <th>Description</th>
+                                <th>Mitigation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: var(--accent-red);"><strong>ESCU update overwrites active OOTB searches</strong></td>
+                                <td>If you enabled an OOTB search directly (without cloning), the update may change its behavior or reset your modifications</td>
+                                <td><strong>Always clone.</strong> Never enable OOTB searches directly. Clones are in a separate namespace and unaffected by updates.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>New detections arrive that nobody evaluates</strong></td>
+                                <td>ESCU adds 5–20 new detections per update. Without a review process, they accumulate disabled and provide zero value.</td>
+                                <td>Schedule quarterly ESCU review sprints. Prioritize by analytic story relevance to your threat model.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>ESCU macros conflict with custom macros</strong></td>
+                                <td>ESCU defines macros that may overlap with macros you've created. Conflicts cause unexpected behavior.</td>
+                                <td>Review ESCU macro definitions after each update. Use the <code>CUSTOM -</code> prefix for your macros to avoid namespace collision.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>ESCU improves a detection you've cloned</strong></td>
+                                <td>Splunk's research team fixes an issue or improves logic in a detection you already cloned and tuned</td>
+                                <td>Monitor ESCU release notes. When a parent detection improves, evaluate porting the improvement to your clone. This is a positive risk — leverage the research team's work.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check ESCU App Version</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| rest /services/apps/local splunk_server=local
+| search title="DA-ESS-ContentUpdate" OR title="*security_content*" OR label="*ESCU*"
+| table title, label, version, updated
+| eval note = "Compare this version against Splunkbase to check for available updates"</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT ESCU IS NOT -->
+                <!-- ============================================== -->
+                <h2>What ESCU Is NOT</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Common Misconceptions</div>
+                    <ul>
+                        <li><strong>ESCU is NOT a "plug and play" detection solution.</strong> It is a research-grade content library. Detections are developed against lab environments and publicly available threat data. They require environmental tuning before production use.</li>
+                        <li><strong>ESCU does NOT replace your detection engineering program.</strong> It supplements it. You still need to evaluate, clone, tune, lifecycle, and govern every detection you enable.</li>
+                        <li><strong>ESCU detections do NOT automatically have notables configured.</strong> Many ESCU detection searches need the Notable adaptive response action added manually. See <a href="../es-operations/enablement-mechanics.html">Enablement Mechanics</a>.</li>
+                        <li><strong>ESCU coverage does NOT mean you're covered.</strong> Having 500 ESCU detections installed but disabled provides exactly zero detection capability. Only enabled, tuned, and monitored detections count.</li>
+                        <li><strong>Enabling all ESCU content is NOT a shortcut.</strong> Enabling hundreds of research-grade detections simultaneously will overwhelm the SOC, burn search concurrency, and destroy trust. It is the single most destructive thing you can do to a detection program.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>Someone has enabled all ESCU content at once.</strong> Disable everything immediately. Triage the SOC queue. This requires emergency cleanup — see <a href="change-management.html">Change Management — Emergency Stop</a>.</li>
+                        <li><strong>ESCU update was deployed to production without testing.</strong> Verify no searches were inadvertently enabled or changed. Check for macro conflicts. Review ESCU release notes.</li>
+                        <li><strong>You don't know which ESCU version is installed.</strong> Stop evaluation work. Run the version check SPL above. You need to know your baseline before making changes.</li>
+                        <li><strong>ESCU detections reference data sources you don't have.</strong> This is expected and normal — but don't enable those detections. Map requirements to your log coverage matrix first. See <a href="escu-log-mapping.html">ESCU Log Mapping</a>.</li>
+                        <li><strong>Management asks to "just enable the ransomware detections."</strong> Explain the lifecycle requirement. Offer a timeline for evaluated enablement. Do not skip the process under pressure.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Install ESCU and enable everything"</strong></td>
+                                <td>Hundreds of untested detections flood the SOC. Search concurrency is destroyed. SOC trust evaporates in hours.</td>
+                                <td>Install ESCU as a content library. Evaluate individually. Enable through lifecycle. Maximum 2-3 new detections per week.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"ESCU replaces the need for custom detections"</strong></td>
+                                <td>ESCU detections are generic. Your environment has unique systems, unique threats, and unique business context that ESCU can't know about.</td>
+                                <td>Use ESCU as a starting point. Clone and customize for your environment. Build custom detections for organization-specific risks.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"We'll keep up with every ESCU update"</strong></td>
+                                <td>ESCU updates frequently with dozens of new detections. Trying to evaluate everything burns out the team.</td>
+                                <td>Prioritize by threat model relevance. Review quarterly, not on every release. Focus on analytic stories that match your risk profile.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"ESCU detections are Splunk-approved, so they're production-ready"</strong></td>
+                                <td>ESCU detections are validated against lab data. Your data volumes, field names, user populations, and business patterns are different.</td>
+                                <td>Treat ESCU content the same as any OOTB content: evaluate, backtest, tune, monitor, then enable. No exceptions.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"We don't need ESCU — we build everything custom"</strong></td>
+                                <td>Ignoring ESCU means ignoring free research from Splunk's threat research team. You're duplicating effort for common TTPs.</td>
+                                <td>Use ESCU as a force multiplier. Let Splunk's research team handle common TTPs. Focus your custom work on unique organizational risks.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Install ESCU</strong></td>
+                                <td>15 minutes</td>
+                                <td>1 hour (including SHC deployment)</td>
+                                <td>Half day (compatibility issues)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Inventory installed ESCU content</strong></td>
+                                <td>30 minutes (run SPL queries)</td>
+                                <td>1-2 hours (catalog and categorize)</td>
+                                <td>Half day (large ESCU library + poor documentation)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Evaluate one analytic story</strong></td>
+                                <td>1-2 hours (small story, 3-5 detections)</td>
+                                <td>Half day (large story, 10+ detections)</td>
+                                <td>1-2 days (missing data sources, complex dependencies)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Quarterly ESCU review sprint</strong></td>
+                                <td>1 day (focused priorities)</td>
+                                <td>2-3 days (thorough review)</td>
+                                <td>1 week (large backlog, many new stories)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ESCU update deployment + validation</strong></td>
+                                <td>1 hour</td>
+                                <td>2-4 hours (test + deploy + verify)</td>
+                                <td>1 day (compatibility issues, macro conflicts)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>ESCU version installed</strong></td>
+                                <td>SPL output from version check</td>
+                                <td>Platform inventory / change log</td>
+                                <td>After install, after each update</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ESCU content inventory</strong></td>
+                                <td>SPL output: content by type and status</td>
+                                <td>Detection registry</td>
+                                <td>After install, after each update</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ESCU evaluation decisions</strong></td>
+                                <td>Per-story evaluation: enable/clone/skip + reasoning</td>
+                                <td>Detection registry / evaluation tracker</td>
+                                <td>During evaluation sprints</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ESCU update deployment record</strong></td>
+                                <td>Change log: version from/to, date, who deployed, impact assessment</td>
+                                <td>Change management records</td>
+                                <td>Each ESCU update</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ESCU-to-log-coverage gap analysis</strong></td>
+                                <td>Mapping of ESCU requirements vs available data sources</td>
+                                <td>Detection registry / log coverage matrix</td>
+                                <td>Quarterly during evaluation sprint</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="escu-operationalize.html" class="next-steps-link">Operationalizing ESCU Safely →</a>
+                        <a href="escu-log-mapping.html" class="next-steps-link">ESCU Log Mapping →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

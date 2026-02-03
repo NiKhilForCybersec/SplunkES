@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 5: Risk-Based Alerting | Splunk ES Detection Engineering</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+    </button>
+
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1><a href="../../index.html">Splunk ES</a></h1>
+            <span class="version">Detection Engineering</span>
+        </div>
+        <ul class="nav-tree">
+            <li><a href="../delivery-model/index.html">Delivery Model</a></li>
+            <li><a href="../planning/index.html">Planning & Scoping</a></li>
+            <li>
+                <span class="nav-section">Phase 1: Log Coverage</span>
+                <ul>
+                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
+                    <li><a href="../universal-onboarding/index.html">Universal Framework</a></li>
+                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
+                    <li><a href="../onboarding-primary/index.html">Primary Paths</a></li>
+                    <li><a href="../onboarding-alternate/index.html">Alternate Paths</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase2-data-quality/index.html">Phase 2: Data Quality</a></li>
+            <li><a href="../phase3-detection/index.html">Phase 3: Detection</a></li>
+            <li>
+                <span class="nav-section">Use Case Library</span>
+                <ul>
+                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS</a></li>
+                    <li><a href="../use-cases/mfa-auth.html">MFA & Authentication</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase4-automation/index.html">Phase 4: Automation</a></li>
+            <li><a href="../phase5-rba/index.html" class="active">Phase 5: RBA</a> <span class="badge badge-future">Future</span></li>
+            <li>
+                <span class="nav-section">Appendix</span>
+                <ul>
+                    <li><a href="../appendix/spl-library.html">SPL Library</a></li>
+                    <li><a href="../appendix/troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="../appendix/checklists.html">Checklists</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <nav class="breadcrumb">
+            <a href="../../index.html">Home</a>
+            <span class="separator">›</span>
+            <span class="current">Phase 5: RBA</span>
+        </nav>
+
+        <header class="page-header">
+            <div class="phase-indicator phase-5">Phase 5: Future</div>
+            <h1>Risk-Based Alerting (RBA)</h1>
+            <p class="page-subtitle">Future phase—aggregated risk scoring and behavioral analytics</p>
+        </header>
+
+        <!-- ============================================== -->
+        <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <div class="callout callout-info">
+                <div class="callout-title">📋 Page Status: HARDENED</div>
+                <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                <p>This page documents future state for reference only. No RBA changes should be made without organizational readiness assessment.</p>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <div class="callout callout-warning" style="margin-bottom: 2rem;">
+                <div class="callout-title">Out of Scope</div>
+                <p>Risk-Based Alerting is <strong>not in scope</strong> for the current detection engineering engagement. This page documents the RBA concept for future reference and planning purposes only.</p>
+            </div>
+
+            <h2>What is Risk-Based Alerting?</h2>
+            <p>Risk-Based Alerting (RBA) is an advanced ES methodology that shifts from individual alert investigation to aggregated risk scoring. Instead of generating notable events directly, correlation searches contribute risk scores to entities (users, hosts, IPs), and notable events are created only when accumulated risk exceeds thresholds.</p>
+
+            <div class="mermaid-wrapper">
+                <pre class="mermaid">
+flowchart LR
+    subgraph Classic["Classic ES (Current)"]
+        C1[Detection Fires] --> C2[Notable Created]
+        C2 --> C3[Analyst Investigates]
+    end
+
+    subgraph RBA["Risk-Based Alerting (Future)"]
+        R1[Detection Fires] --> R2[Risk Added to Entity]
+        R3[Detection Fires] --> R2
+        R4[Detection Fires] --> R2
+        R2 --> R5{Threshold<br/>Exceeded?}
+        R5 -->|Yes| R6[Risk Notable Created]
+        R5 -->|No| R7[Risk Accumulates]
+        R6 --> R8[Analyst Investigates]
+    end
+
+    style Classic fill:#21262d,stroke:#30363d
+    style RBA fill:#238636,stroke:#2ea043,opacity:0.5
+                </pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Why RBA is Out of Scope</h2>
+
+            <h3>Prerequisites Not Yet Met</h3>
+            <p>RBA requires mature foundational capabilities that must be established first:</p>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>RBA Prerequisite</th>
+                            <th>Current State</th>
+                            <th>Required Phase</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Complete Asset Inventory</td>
+                            <td>In progress</td>
+                            <td>Phase 1</td>
+                        </tr>
+                        <tr>
+                            <td>Identity Correlation</td>
+                            <td>Partial</td>
+                            <td>Phase 2</td>
+                        </tr>
+                        <tr>
+                            <td>Validated CIM Compliance</td>
+                            <td>Building</td>
+                            <td>Phase 2</td>
+                        </tr>
+                        <tr>
+                            <td>Tuned Classic Detections</td>
+                            <td>In development</td>
+                            <td>Phase 3</td>
+                        </tr>
+                        <tr>
+                            <td>Baseline False Positive Rates</td>
+                            <td>Not established</td>
+                            <td>Phase 3</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Organizational Readiness</h3>
+            <ul>
+                <li><strong>SOC Maturity:</strong> RBA requires analysts comfortable with risk-based investigation workflows, not alert-by-alert triage</li>
+                <li><strong>Detection Library:</strong> Need 50+ validated detections before meaningful risk aggregation</li>
+                <li><strong>Tuning Investment:</strong> Risk scores must be calibrated per detection, requiring months of baseline data</li>
+            </ul>
+
+            <div class="callout callout-info">
+                <div class="callout-title">Recommended Timeline</div>
+                <p>RBA implementation typically begins 12-18 months after initial ES deployment, once Phases 1-4 are mature and the organization has baseline data for risk calibration.</p>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>RBA Concepts Overview</h2>
+            <p>For planning purposes, here are the key RBA concepts that will be relevant in a future phase:</p>
+
+            <h3>Risk Factors</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Description</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Risk Object</td>
+                            <td>Entity receiving risk (user, system, other)</td>
+                            <td>jsmith, WORKSTATION01, 10.1.2.3</td>
+                        </tr>
+                        <tr>
+                            <td>Risk Score</td>
+                            <td>Numeric value added per detection</td>
+                            <td>25, 50, 75, 100</td>
+                        </tr>
+                        <tr>
+                            <td>Risk Message</td>
+                            <td>Description of risk contribution</td>
+                            <td>"Failed authentication from rare country"</td>
+                        </tr>
+                        <tr>
+                            <td>Threat Object</td>
+                            <td>Source of threat (attacker IP, malware hash)</td>
+                            <td>192.168.1.100, malware.exe</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Risk Notable Thresholds</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Example - Risk Threshold Configuration</span>
+                    <button class="copy-btn" data-copy="risk-threshold">Copy</button>
+                </div>
+                <pre><code id="risk-threshold"># Typical Risk Notable Thresholds
+# (These would need calibration for your environment)
+
+User Risk Notable:
+  24-hour threshold: 100 points
+  7-day threshold: 250 points
+
+System Risk Notable:
+  24-hour threshold: 75 points
+  7-day threshold: 200 points
+
+# Example accumulation:
+# User jsmith:
+#   - Failed VPN login (25 pts)
+#   - Login from new country (30 pts)
+#   - Access to sensitive share (20 pts)
+#   - Download large file (25 pts)
+#   Total: 100 pts → Risk Notable Created</code></pre>
+            </div>
+
+            <h3>RBA Benefits (Future State)</h3>
+            <ul>
+                <li><strong>Reduced Alert Volume:</strong> 80-90% reduction in notable events reported by mature RBA deployments</li>
+                <li><strong>Context-Rich Investigation:</strong> Risk notables include all contributing detections for holistic view</li>
+                <li><strong>Attack Chain Visibility:</strong> Correlates multiple tactics into single investigation</li>
+                <li><strong>Reduced False Positives:</strong> Single low-confidence detection doesn't alert; patterns do</li>
+            </ul>
+        </section>
+
+        <section class="content-section">
+            <h2>Preparing for Future RBA</h2>
+            <p>While RBA is out of scope, current work can prepare for future implementation:</p>
+
+            <h3>Phase 1-4 Preparation Actions</h3>
+            <ol>
+                <li><strong>Asset Inventory:</strong> Build comprehensive asset database with criticality ratings</li>
+                <li><strong>Identity Correlation:</strong> Ensure user field normalization across all data sources</li>
+                <li><strong>Detection Categorization:</strong> Tag all detections with MITRE ATT&CK techniques</li>
+                <li><strong>Baseline Documentation:</strong> Record detection volumes and false positive rates</li>
+                <li><strong>Risk-Aware Design:</strong> Design detections with eventual risk scoring in mind (even if not implemented)</li>
+            </ol>
+
+            <h3>Detection Design Consideration</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">SPL - Risk-Ready Detection Template</span>
+                    <button class="copy-btn" data-copy="risk-ready">Copy</button>
+                </div>
+                <pre><code id="risk-ready">| your detection logic here
+| eval risk_score=case(
+    severity="critical", 100,
+    severity="high", 75,
+    severity="medium", 50,
+    severity="low", 25
+)
+| eval risk_object=coalesce(user, src)
+| eval risk_object_type=case(
+    isnotnull(user), "user",
+    cidrmatch("10.0.0.0/8", src), "system",
+    true(), "other"
+)
+| eval threat_object=coalesce(src_ip, file_hash, domain)
+| eval mitre_technique="T1078"
+
+` For now, create notable event (classic ES)
+` In future RBA phase, this would contribute to risk index instead</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>RBA Resources</h2>
+            <p>For organizations planning future RBA implementation:</p>
+
+            <ul>
+                <li><a href="https://lantern.splunk.com/Security/Product_Tips/Enterprise_Security/Enabling_risk-based_alerting_(RBA)_in_Splunk_Enterprise_Security" target="_blank">Splunk Lantern: Enabling RBA in ES</a></li>
+                <li><a href="https://www.splunk.com/en_us/blog/security/risk-based-alerting-the-new-frontier-for-siem.html" target="_blank">Splunk Blog: Risk-Based Alerting - The New Frontier</a></li>
+                <li>Splunk ES Documentation: Risk Analysis Framework</li>
+            </ul>
+
+            <div class="callout callout-info">
+                <div class="callout-title">Future Engagement</div>
+                <p>When the organization is ready for RBA implementation (typically 12-18 months post Phase 3 completion), a separate engagement can be scoped for RBA deployment including risk calibration, threshold tuning, and SOC workflow updates.</p>
+            </div>
+        </section>
+
+        <section class="content-section next-steps">
+            <h2>Current Focus</h2>
+            <div class="next-steps-grid">
+                <a href="../phase3-detection/index.html" class="next-step-card">
+                    <span class="next-step-label">Current Phase</span>
+                    <span class="next-step-title">Phase 3: Classic Detection →</span>
+                </a>
+                <a href="../appendix/checklists.html" class="next-step-card">
+                    <span class="next-step-label">Reference</span>
+                    <span class="next-step-title">Project Checklists →</span>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

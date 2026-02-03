@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe Add-on Tuning & Field Fixes - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Data Layer & CIM ⚠️</div>
+                    <a href="how-es-uses-data.html" class="nav-item nav-item-sub">How ES Uses Data</a>
+                    <a href="cim-fundamentals.html" class="nav-item nav-item-sub">CIM Fundamentals for ES</a>
+                    <a href="data-models-deep-dive.html" class="nav-item nav-item-sub">Data Models Deep Dive</a>
+                    <a href="validating-es-data.html" class="nav-item nav-item-sub">Validating ES Data ⛔</a>
+                    <a href="missing-fields.html" class="nav-item nav-item-sub">Missing Fields After Add-ons</a>
+                    <a href="safe-addon-tuning.html" class="nav-item nav-item-sub active">Safe Add-on Tuning</a>
+                    <a href="safe-correlation-path.html" class="nav-item nav-item-sub">Data Model → Correlation</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="how-es-uses-data.html">ES Data Layer</a>
+                <span class="separator">/</span>
+                <span class="current">Safe Add-on Tuning & Field Fixes</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-2">⚠️ ES DATA LAYER — CRITICAL</span>
+                <h1>Safe Add-on Tuning & Field Fixes</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES DATA LAYER</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> Exact procedures for safely modifying Technology Add-ons to fix CIM field gaps. Covers how add-ons parse data, which files you can touch, which you cannot, how to test changes without breaking production, and how to roll back if something goes wrong. This is the "hands-on-keyboard" companion to <a href="missing-fields.html">Missing Fields After Add-ons</a>.</p>
+                    <p><strong>Ownership:</strong> Detection Engineering (changes) + Platform Engineering (deployment to production)</p>
+                    <p><strong>Preconditions:</strong> You've identified a specific missing CIM field, you know the vendor field that should map to it (from <a href="missing-fields.html">Missing Fields</a>), and you've chosen Fix 1, Fix 2, or Fix 2b as your approach.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Production Safety — Cardinal Rules</div>
+                    <ol>
+                        <li><strong>NEVER modify files in a TA's <code>default/</code> directory.</strong> Ever. For any reason. These are vendor-managed and overwritten on updates.</li>
+                        <li><strong>ALL changes go in the TA's <code>local/</code> directory.</strong> Create it if it doesn't exist.</li>
+                        <li><strong>Test in a non-production environment first</strong> if one is available. If no test environment exists, test with minimal, reversible changes.</li>
+                        <li><strong>Document every change</strong> before deploying: what, where, why, rollback plan.</li>
+                        <li><strong>One change at a time.</strong> Deploy. Validate. Then proceed to the next change.</li>
+                    </ol>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: HOW ADD-ONS PARSE DATA -->
+                <!-- ============================================== -->
+                <h2>How Add-ons Parse Data — Understanding the Configuration Files</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    subgraph TA["Technology Add-on Directory Structure"]
+        direction TB
+        ROOT["TA-vendor-name/"] --> DEFAULT["default/<br/>🔴 DO NOT MODIFY"]
+        ROOT --> LOCAL["local/<br/>🟢 YOUR CHANGES GO HERE"]
+        ROOT --> META["metadata/"]
+        ROOT --> README["README"]
+        
+        DEFAULT --> DP["props.conf<br/>(field extractions, aliases,<br/>calculated fields, sourcetype config)"]
+        DEFAULT --> DT["transforms.conf<br/>(regex extractions, lookups,<br/>field transforms)"]
+        DEFAULT --> DE["eventtypes.conf<br/>(event classification)"]
+        DEFAULT --> DG["tags.conf<br/>(data model tags)"]
+        
+        LOCAL --> LP["props.conf<br/>✅ Add aliases, EVAL fields"]
+        LOCAL --> LT["transforms.conf<br/>✅ Add new extractions"]
+        LOCAL --> LE["eventtypes.conf<br/>✅ Add missing eventtypes"]
+        LOCAL --> LG["tags.conf<br/>✅ Add missing tags"]
+    end
+    
+    style DEFAULT fill:#f85149,stroke:#da3633,color:#fff
+    style LOCAL fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Config File</th>
+                                <th>What It Controls</th>
+                                <th>Safe to Add In local/?</th>
+                                <th>What You'd Add</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>props.conf</code></td>
+                                <td>Per-sourcetype settings: field extractions, field aliases (FIELDALIAS), calculated fields (EVAL), index-time settings (TIME_FORMAT, LINE_BREAKER)</td>
+                                <td>✅ Yes — for FIELDALIAS and EVAL. <strong>⛔ NO for LINE_BREAKER, SHOULD_LINEMERGE, TIME_FORMAT</strong> (these are index-time and affect data ingestion).</td>
+                                <td>Field aliases, calculated fields</td>
+                            </tr>
+                            <tr>
+                                <td><code>transforms.conf</code></td>
+                                <td>Regex-based field extractions, lookup definitions, field transforms</td>
+                                <td>✅ Yes — for new REPORT or EXTRACT stanzas. Be cautious with lookups.</td>
+                                <td>New regex extractions for fields the TA missed</td>
+                            </tr>
+                            <tr>
+                                <td><code>eventtypes.conf</code></td>
+                                <td>Named event classifications (e.g., <code>pan_traffic</code> matches <code>sourcetype=pan:traffic action=allowed</code>)</td>
+                                <td>✅ Yes — to add new eventtypes for data model inclusion</td>
+                                <td>Eventtype definitions for sourcetypes missing from data models</td>
+                            </tr>
+                            <tr>
+                                <td><code>tags.conf</code></td>
+                                <td>Tags applied to eventtypes (e.g., <code>[eventtype=pan_traffic]</code> → <code>network = enabled</code>)</td>
+                                <td>✅ Yes — to add tags that make events visible to data models</td>
+                                <td>Tags like <code>authentication</code>, <code>network</code>, <code>communicate</code>, <code>web</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>Splunk's configuration precedence: <code>local/</code> overrides <code>default/</code> for the same stanza and key. This means your local/ changes take effect without modifying the vendor's default files. If a key exists in both default/ and local/ for the same stanza, local/ wins.</p>
+
+                <!-- ============================================== -->
+                <!-- SECTION: PROCEDURE — ADDING A FIELD ALIAS -->
+                <!-- ============================================== -->
+                <h2>Procedure: Adding a Field Alias (Fix 1)</h2>
+
+                <h3>When to Use</h3>
+                <p>The vendor field exists with the correct value — it just has the wrong name. You need to create a CIM alias.</p>
+
+                <h3>Step-by-Step</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Step</th>
+                                <th>Action</th>
+                                <th>Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1</strong></td>
+                                <td>Confirm vendor field exists and has correct values</td>
+                                <td><code>index=X sourcetype=Y | head 20 | table vendor_field</code> — verify it has the data you expect</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2</strong></td>
+                                <td>Check for existing alias conflicts</td>
+                                <td><code>| rest /services/configs/conf-props | search title="YOUR_SOURCETYPE" | table FIELDALIAS*</code> — make sure no other alias already maps to the same CIM field</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3</strong></td>
+                                <td>Create or edit <code>local/props.conf</code> in the TA directory</td>
+                                <td>Navigate to <code>$SPLUNK_HOME/etc/apps/TA-vendor-name/local/</code>. Create the directory and file if they don't exist.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4</strong></td>
+                                <td>Add the field alias under the correct stanza</td>
+                                <td>See configuration example below</td>
+                            </tr>
+                            <tr>
+                                <td><strong>5</strong></td>
+                                <td>Restart Splunk (or wait for config reload on SHC)</td>
+                                <td>On a search head cluster, deploy via the deployer. On standalone, restart splunkd or use <code>| debug refresh</code> for search-time changes.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>6</strong></td>
+                                <td>Validate the fix</td>
+                                <td><code>index=X sourcetype=Y | head 20 | table vendor_field, cim_field</code> — both should now have values. Then re-run <a href="validating-es-data.html">Gate 3 validation</a>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>7</strong></td>
+                                <td>Document the change</td>
+                                <td>Record in change management: what was added, which file, which TA, why, rollback plan.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Configuration: local/props.conf — Field Alias Example</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># TA-vendor-name/local/props.conf
+# 
+# Purpose: Add CIM field alias for missing 'src' field
+# Date: 2024-02-15
+# Changed by: [analyst name]
+# Reason: Validation Gate 3 failed — src field null. Vendor uses 'client_ip'.
+# Rollback: Delete this stanza. Restart Splunk.
+# Ticket: DET-1234
+
+[your_sourcetype_name]
+FIELDALIAS-cim_src = client_ip AS src</code></pre>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Field Alias Gotchas</div>
+                    <ul>
+                        <li><strong>Stanza name must match exactly:</strong> The stanza <code>[your_sourcetype_name]</code> must match the sourcetype exactly as it appears in Splunk (case-sensitive).</li>
+                        <li><strong>Alias name must be unique:</strong> The <code>-cim_src</code> suffix in <code>FIELDALIAS-cim_src</code> must be unique within that stanza across all config files (default + local).</li>
+                        <li><strong>Multiple aliases for same CIM field:</strong> If you need to alias from different vendor fields (one sourcetype uses "client_ip", another uses "sourceIP"), use different alias names for each stanza.</li>
+                        <li><strong>Alias doesn't overwrite:</strong> If the CIM field already has a value from another alias, adding a second alias for the same CIM field creates a multivalued field. This is usually not what you want.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: PROCEDURE — ADDING A CALCULATED FIELD -->
+                <!-- ============================================== -->
+                <h2>Procedure: Adding a Calculated Field (Fix 2)</h2>
+
+                <h3>When to Use</h3>
+                <p>The vendor field exists but the value needs transformation — e.g., "permit" needs to become "allowed", or a numeric protocol needs to become a text name.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Configuration: local/props.conf — Calculated Field Examples</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># TA-vendor-name/local/props.conf
+#
+# Purpose: Normalize vendor-specific values to CIM standard values
+# Date: 2024-02-15
+# Changed by: [analyst name]
+# Rollback: Delete these EVAL lines. Restart Splunk.
+
+[your_sourcetype_name]
+
+# Example 1: Normalize action values
+# Vendor uses: permit, deny, drop, reset
+# CIM expects: allowed, blocked
+EVAL-action = case(action="permit" OR action="allow", "allowed", action="deny" OR action="drop" OR action="reset", "blocked", 1=1, action)
+
+# Example 2: Normalize protocol numbers to text
+# Vendor logs: proto=6, proto=17, proto=1
+# CIM expects: transport=tcp, transport=udp, transport=icmp
+EVAL-transport = case(proto="6" OR proto=6, "tcp", proto="17" OR proto=17, "udp", proto="1" OR proto=1, "icmp", isnotnull(proto), "other")
+
+# Example 3: Derive app from Windows LogonType
+EVAL-app = case(LogonType="2", "Interactive", LogonType="3", "Network", LogonType="4", "Batch", LogonType="5", "Service", LogonType="7", "Unlock", LogonType="8", "NetworkCleartext", LogonType="9", "NewCredentials", LogonType="10", "RemoteInteractive", LogonType="11", "CachedInteractive", isnotnull(LogonType), "LogonType_".LogonType)
+
+# Example 4: Coalesce multiple possible source fields
+EVAL-src = coalesce(client_ip, true_client_ip, source_ip, src_ip)</code></pre>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Calculated Field Gotchas</div>
+                    <ul>
+                        <li><strong>EVAL-fieldname: the fieldname after the dash IS the output field.</strong> <code>EVAL-action</code> creates/overwrites the <code>action</code> field. If the TA's default/ already has an <code>EVAL-action</code>, your local/ version will override it completely.</li>
+                        <li><strong>Always include a catch-all in case():</strong> The <code>1=1, action</code> or <code>isnotnull(x), "other"</code> fallback prevents the field from becoming null for unexpected values.</li>
+                        <li><strong>Test with a variety of events:</strong> Your case() logic needs to handle all real-world values the vendor sends, not just the ones in the first 10 events you checked.</li>
+                        <li><strong>Performance consideration:</strong> Calculated fields run at search time for every event. Complex EVAL logic on high-volume sourcetypes adds search overhead. Keep it simple.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: PROCEDURE — ADDING EVENTTYPES + TAGS -->
+                <!-- ============================================== -->
+                <h2>Procedure: Adding Missing Eventtypes & Tags (Fix 2b)</h2>
+
+                <h3>When to Use</h3>
+                <p>CIM fields are mapped correctly, but events don't appear in the data model because the eventtype/tag chain is missing.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Configuration: local/eventtypes.conf — Add Event Classification</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># TA-vendor-name/local/eventtypes.conf
+#
+# Purpose: Classify events for data model inclusion
+# Date: 2024-02-15
+# Changed by: [analyst name]
+# Rollback: Delete these stanzas. Restart Splunk.
+
+# Example: Make a firewall sourcetype visible to Network_Traffic data model
+[custom_vendor_firewall_traffic]
+search = sourcetype="vendor:firewall:traffic"
+
+# Example: Make auth logs visible to Authentication data model
+[custom_vendor_auth_success]
+search = sourcetype="vendor:auth" result="Success"
+
+[custom_vendor_auth_failure]
+search = sourcetype="vendor:auth" result="Failure"</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Configuration: local/tags.conf — Assign Data Model Tags</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># TA-vendor-name/local/tags.conf
+#
+# Purpose: Tag events so data models include them
+# Date: 2024-02-15
+# Changed by: [analyst name]
+# Rollback: Delete these stanzas. Restart Splunk.
+
+# Network_Traffic requires BOTH 'network' AND 'communicate'
+[eventtype=custom_vendor_firewall_traffic]
+network = enabled
+communicate = enabled
+
+# Authentication requires 'authentication'
+[eventtype=custom_vendor_auth_success]
+authentication = enabled
+
+[eventtype=custom_vendor_auth_failure]
+authentication = enabled</code></pre>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Tag Precision Is Critical</div>
+                    <p>The eventtype search constraint determines WHICH events get tagged. If the constraint is too broad, you'll tag events that don't belong in the data model (causing false positives). If too narrow, you'll miss events.</p>
+                    <p><strong>Always verify after adding tags:</strong></p>
+                    <ul>
+                        <li><code>| tstats count from datamodel=X WHERE sourcetype=Y</code> — should show events now</li>
+                        <li>Spot-check: <code>index=X sourcetype=Y tag=authentication | head 5</code> — verify these are actually auth events</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: TESTING WITHOUT BREAKING -->
+                <!-- ============================================== -->
+                <h2>Testing Changes Without Breaking ES</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    START["You've written<br/>a local/ config change"] --> Q1{"Do you have a<br/>test/dev Splunk<br/>environment?"}
+    
+    Q1 -->|"YES"| TEST_ENV["Deploy to test first.<br/>Run validation checks.<br/>Verify no side effects.<br/>Then deploy to prod."]
+    
+    Q1 -->|"NO — prod only"| SAFE_TEST["Safe Production<br/>Testing Procedure"]
+    
+    SAFE_TEST --> ST1["1. Take a BEFORE snapshot<br/>Run validation SPL.<br/>Save results."]
+    ST1 --> ST2["2. Deploy ONE change only<br/>Field alias OR EVAL<br/>OR eventtype+tag.<br/>Not multiple at once."]
+    ST2 --> ST3["3. Wait for config reload<br/>(SHC: deployer push + bundle replication)<br/>(Standalone: splunkd restart)"]
+    ST3 --> ST4["4. Validate immediately<br/>Run the same validation SPL.<br/>Compare to before snapshot."]
+    ST4 --> Q2{"Results as<br/>expected?"}
+    
+    Q2 -->|"YES — field now<br/>populated, no<br/>side effects"| ST5["5. Document the change<br/>Update gap register.<br/>Record evidence."]
+    
+    Q2 -->|"NO — unexpected<br/>results or errors"| ROLLBACK["ROLLBACK immediately.<br/>Remove the local/ change.<br/>Restart. Verify restored."]
+    
+    style TEST_ENV fill:#238636,stroke:#2ea043,color:#fff
+    style ROLLBACK fill:#f85149,stroke:#da3633,color:#fff
+    style ST5 fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <h3>Pre-Change Snapshot (BEFORE)</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Capture Pre-Change Baseline</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Run this BEFORE making any change")`
+`comment("Captures current state for comparison")`
+
+| tstats count AS dm_events FROM datamodel=YOUR_DM
+    WHERE sourcetype=YOUR_SOURCETYPE earliest=-4h latest=now
+
+| appendcols [
+    index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-4h latest=now
+    | head 1000
+    | eval has_target_field = if(isnotnull(YOUR_CIM_FIELD) AND YOUR_CIM_FIELD!="", 1, 0)
+    | stats avg(has_target_field) AS field_pct
+    | eval field_pct = round(field_pct * 100, 1) . "%"
+]
+| eval snapshot = "BEFORE change at " . now()
+| table snapshot, dm_events, field_pct</code></pre>
+                </div>
+
+                <h3>Post-Change Validation (AFTER)</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Post-Change Validation Checklist</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Run this AFTER deploying the change and restarting/reloading")`
+
+`comment("CHECK 1: Target field is now populated")`
+index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-1h latest=now
+| head 20
+| table YOUR_CIM_FIELD
+| eval check1 = if(isnotnull(YOUR_CIM_FIELD), "✅ Field populated", "❌ Still null")
+
+`comment("CHECK 2: Data model now sees the events (if you added tags)")`
+| tstats count FROM datamodel=YOUR_DM WHERE sourcetype=YOUR_SOURCETYPE earliest=-1h latest=now
+
+`comment("CHECK 3: No other fields were broken")`
+index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-1h latest=now
+| head 20
+| table src, dest, user, action, YOUR_CIM_FIELD
+`comment("Verify all previously working fields still work")`
+
+`comment("CHECK 4: No new errors in internal logs")`
+index=_internal sourcetype=splunkd log_level=ERROR earliest=-30m
+| search "props" OR "transforms" OR "field" OR "alias"
+| head 10</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT NOT TO MODIFY -->
+                <!-- ============================================== -->
+                <h2>What NOT to Modify — Explicit List</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>🔴 Do Not Touch</th>
+                                <th>File</th>
+                                <th>Why</th>
+                                <th>What Breaks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Any file in default/</strong></td>
+                                <td>TA-vendor/default/*</td>
+                                <td>Overwritten on TA update. Changes silently lost.</td>
+                                <td>Your fix disappears. Production regresses. May not be noticed for weeks.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>LINE_BREAKER</strong></td>
+                                <td>props.conf</td>
+                                <td>Controls how raw data is split into events at INDEX TIME</td>
+                                <td>Changes how events are segmented. Can cause event merging or splitting. Affects ALL future data. Cannot be undone for already-indexed data.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SHOULD_LINEMERGE</strong></td>
+                                <td>props.conf</td>
+                                <td>Controls whether Splunk merges adjacent lines into single events at INDEX TIME</td>
+                                <td>Same as LINE_BREAKER — affects event boundaries permanently.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>TIME_FORMAT / TIME_PREFIX</strong></td>
+                                <td>props.conf</td>
+                                <td>Controls timestamp parsing at INDEX TIME</td>
+                                <td>Wrong timestamps on all new events. Searches by time become unreliable. Cannot be fixed retroactively.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>TRANSFORMS-* (index-time)</strong></td>
+                                <td>props.conf + transforms.conf</td>
+                                <td>Index-time field extractions write to TSIDX</td>
+                                <td>Wrong fields permanently embedded in index. Requires re-indexing to fix.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model definitions</strong></td>
+                                <td>Splunk_SA_CIM/default/data_models/</td>
+                                <td>Managed by the CIM add-on. Defines data model schemas.</td>
+                                <td>Breaking schema breaks all tstats queries, all correlation searches, all ES dashboards.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Existing eventtype/tag DELETION</strong></td>
+                                <td>eventtypes.conf / tags.conf</td>
+                                <td>Other searches, dashboards, and data model population may depend on them</td>
+                                <td>Removing an eventtype or tag can make existing data invisible to data models. Correlation searches silently fail.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK STRATEGY -->
+                <!-- ============================================== -->
+                <h2>Rollback Strategy</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Scenario</th>
+                                <th>Rollback Steps</th>
+                                <th>Time to Recover</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Field alias causes unexpected behavior</strong></td>
+                                <td>1. Navigate to TA <code>local/props.conf</code><br/>2. Delete the FIELDALIAS line<br/>3. Restart splunkd (or deploy via SHC deployer)<br/>4. Verify field is back to previous state</td>
+                                <td>5-15 minutes</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Calculated field (EVAL) produces wrong values</strong></td>
+                                <td>1. Delete the EVAL line from <code>local/props.conf</code><br/>2. Restart<br/>3. Verify. The default/ EVAL (if one exists) will take effect again. If no default exists, the field returns to its pre-EVAL state.</td>
+                                <td>5-15 minutes</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Eventtype/tag causes wrong events in data model</strong></td>
+                                <td>1. Delete the eventtype stanza from <code>local/eventtypes.conf</code><br/>2. Delete the corresponding tag stanza from <code>local/tags.conf</code><br/>3. Restart<br/>4. Verify: <code>| tstats count from datamodel=X WHERE sourcetype=Y</code> — should return to pre-change state<br/>5. Note: Acceleration may need time to catch up and exclude the previously-tagged events.</td>
+                                <td>5-30 minutes (plus acceleration catch-up)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Multiple changes deployed simultaneously and something is wrong</strong></td>
+                                <td>1. Remove ALL local/ changes from this session<br/>2. Restart<br/>3. Verify everything is back to pre-change state<br/>4. Re-deploy changes one at a time, validating after each</td>
+                                <td>15-60 minutes (depending on number of changes)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: TA UPGRADE SAFETY -->
+                <!-- ============================================== -->
+                <h2>TA Upgrade Safety — Protecting Your Local Changes</h2>
+
+                <p>When a TA is upgraded, <code>default/</code> files are replaced with the new version. Your <code>local/</code> files are preserved. However, you must verify that your local/ customizations still work correctly with the new default/ behavior.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Step</th>
+                                <th>Action</th>
+                                <th>Why</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Before upgrade</strong></td>
+                                <td>1. List all local/ customizations: <code>find $SPLUNK_HOME/etc/apps/TA-vendor/local/ -type f</code><br/>2. Copy the list to your change documentation<br/>3. Run pre-change baseline validation SPL</td>
+                                <td>Know exactly what you've customized so you can verify post-upgrade</td>
+                            </tr>
+                            <tr>
+                                <td><strong>After upgrade</strong></td>
+                                <td>1. Check if new default/ includes fixes for any of your local/ workarounds<br/>2. Run post-change validation for ALL affected sourcetypes<br/>3. If new default/ conflicts with local/, resolve (usually by removing your local/ workaround if the vendor fixed it)</td>
+                                <td>New TA version may fix issues you worked around, or may introduce new conflicts</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>Your change causes errors in <code>index=_internal</code>.</strong> Revert immediately. Configuration syntax errors can cascade and affect other sourcetypes or apps.</li>
+                        <li><strong>Your change fixes one field but breaks another.</strong> Revert. Investigate the interaction. There may be a conflicting alias or EVAL in default/ that you're inadvertently overriding.</li>
+                        <li><strong>You need to modify index-time settings.</strong> STOP. These changes affect data ingestion and are irreversible. Escalate to Platform Engineering / Splunk admin.</li>
+                        <li><strong>You're unsure which stanza to use.</strong> Wrong stanza = change has no effect (best case) or applies to wrong sourcetype (worst case). Verify the exact sourcetype name: <code>| metadata type=sourcetypes index=YOUR_INDEX | table sourcetype</code></li>
+                        <li><strong>More than 3 local/ changes are needed for a single sourcetype.</strong> This suggests the TA is fundamentally inadequate. Evaluate whether a different TA, a custom TA, or a different approach is warranted.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>"I'll batch all my fixes into one deployment"</strong></td><td>If something breaks, you don't know which change caused it. Rollback is all-or-nothing.</td><td>One change per deployment cycle. Validate after each. Then deploy the next.</td></tr>
+                            <tr><td><strong>"I'll skip the rollback plan — this is simple"</strong></td><td>Simple changes can have unexpected interactions. Without a rollback plan, you're scrambling under pressure.</td><td>Write the rollback step BEFORE deploying. It takes 30 seconds. It saves hours of stress.</td></tr>
+                            <tr><td><strong>"I tested on 5 events, looks good — deploy"</strong></td><td>5 events may not cover all value variations. The 6th event variant may hit an unhandled case in your EVAL.</td><td>Test against at least 100-1000 events, covering the full range of event subtypes for that sourcetype.</td></tr>
+                            <tr><td><strong>"I don't need to document this — it's obvious"</strong></td><td>In 6 months, nobody (including you) will remember why this local/ file exists. During a TA upgrade, it becomes a mystery.</td><td>Comment every change in the config file: who, when, why, ticket number, rollback plan.</td></tr>
+                            <tr><td><strong>"The change works — no need to re-validate the data model"</strong></td><td>The field may be populated but the data model may not reflect it yet (acceleration needs to catch up). Or the tag chain may still be incomplete.</td><td>After any field fix, re-run the full <a href="validating-es-data.html">5-gate validation</a> for the affected data model and sourcetype.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Typical Effort & Timeline</h2>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr><th>Task</th><th>Best Case</th><th>Common Case</th><th>Blocked Case</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Add 1 field alias + validate</strong></td><td>15 minutes</td><td>30 minutes</td><td>1 hour (conflicts found)</td></tr>
+                            <tr><td><strong>Add 1 calculated field + validate</strong></td><td>20 minutes</td><td>45 minutes</td><td>2 hours (complex logic, many value variants)</td></tr>
+                            <tr><td><strong>Add eventtype + tags + validate</strong></td><td>20 minutes</td><td>45 minutes</td><td>1.5 hours (precise constraint needed)</td></tr>
+                            <tr><td><strong>Full fix cycle for 1 sourcetype (3-5 field gaps)</strong></td><td>1-2 hours</td><td>Half day</td><td>1-2 days (many gaps, complex derivations)</td></tr>
+                            <tr><td><strong>Rollback a single change</strong></td><td>5 minutes</td><td>15 minutes</td><td>30 minutes (SHC deployment needed)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Evidence to Capture</h2>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr><th>Evidence</th><th>Format</th><th>Where to Store</th><th>When</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Pre-change baseline</strong></td><td>SPL output: DM event count, field population % before change</td><td>Change management record</td><td>BEFORE deploying any change</td></tr>
+                            <tr><td><strong>Change record</strong></td><td>What was changed, which file, which TA, full config snippet, reason, ticket</td><td>Change management system</td><td>For each change, before deployment</td></tr>
+                            <tr><td><strong>Post-change validation</strong></td><td>SPL output: DM event count, field population % after change</td><td>Change management record</td><td>Immediately after deployment</td></tr>
+                            <tr><td><strong>Local/ directory inventory</strong></td><td>File listing: all local/ customizations per TA with purpose summary</td><td>Platform documentation</td><td>Updated with each change. Reviewed before TA upgrades.</td></tr>
+                            <tr><td><strong>Rollback confirmation (if needed)</strong></td><td>SPL output confirming state returned to pre-change baseline</td><td>Change management record</td><td>After any rollback</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="safe-correlation-path.html" class="next-steps-link">Data Model → Correlation (Safe Path) →</a>
+                        <a href="validating-es-data.html" class="next-steps-link">← Re-run Validation After Fixes</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

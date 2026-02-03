@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handling Missing Fields After Add-ons - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Data Layer & CIM ⚠️</div>
+                    <a href="how-es-uses-data.html" class="nav-item nav-item-sub">How ES Uses Data</a>
+                    <a href="cim-fundamentals.html" class="nav-item nav-item-sub">CIM Fundamentals for ES</a>
+                    <a href="data-models-deep-dive.html" class="nav-item nav-item-sub">Data Models Deep Dive</a>
+                    <a href="validating-es-data.html" class="nav-item nav-item-sub">Validating ES Data ⛔</a>
+                    <a href="missing-fields.html" class="nav-item nav-item-sub active">Missing Fields After Add-ons</a>
+                    <a href="safe-addon-tuning.html" class="nav-item nav-item-sub">Safe Add-on Tuning</a>
+                    <a href="safe-correlation-path.html" class="nav-item nav-item-sub">Data Model → Correlation</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="how-es-uses-data.html">ES Data Layer</a>
+                <span class="separator">/</span>
+                <span class="current">Missing Fields After Add-ons</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-2">⚠️ ES DATA LAYER — CRITICAL</span>
+                <h1>Handling Missing Fields After Add-ons</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES DATA LAYER</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> You installed the Technology Add-on. You ran the <a href="validating-es-data.html">validation checks</a>. Some CIM fields are still missing or null. This page explains why that happens, how to identify exactly what's missing and where, and provides a decision framework for choosing the right fix — ranked from safest to most risky.</p>
+                    <p><strong>Ownership:</strong> Detection Engineering</p>
+                    <p><strong>Preconditions:</strong> You've completed <a href="validating-es-data.html">Validating ES Data</a> and have identified specific missing fields. You know which data model and which sourcetype has the gap.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> The correct TA for your data source is installed and enabled on search heads. <strong>Verify first:</strong> <code>| rest /services/apps/local | search title="TA-*" OR title="Splunk_TA_*" | table title, version, disabled</code>. If the TA is missing, install it before trying any field fixes.</li>
+                        <li><strong>Assumption:</strong> The TA is the correct version for your data format. <strong>Reality:</strong> Source devices get firmware updates that change log formats. A TA that worked 6 months ago may not parse today's logs correctly.</li>
+                        <li><strong>Assumption:</strong> You will NOT modify default/ files. All fixes go in local/ directories. This is a hard rule for production safety.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHY ADD-ONS DON'T POPULATE ALL FIELDS -->
+                <!-- ============================================== -->
+                <h2>Why Add-ons Often Do NOT Populate All CIM Fields</h2>
+
+                <p>This is the most common surprise for detection engineers. You install the vendor TA, you see data flowing, you assume CIM is handled. Then validation reveals half the fields are null. Here's why:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Reason</th>
+                                <th>Explanation</th>
+                                <th>How Common</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>TA doesn't cover all CIM fields</strong></td>
+                                <td>The TA vendor mapped the most common fields but not every CIM field. CIM has dozens of fields per model; TAs often map 5-10.</td>
+                                <td>Very common</td>
+                                <td>TA maps <code>src</code> and <code>dest</code> but not <code>bytes_in</code>, <code>bytes_out</code>, or <code>transport</code> for Network_Traffic.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Source device doesn't log the data</strong></td>
+                                <td>The CIM field exists in the spec, but the source device simply doesn't include that information in its logs.</td>
+                                <td>Common</td>
+                                <td>A basic firewall logs src/dest/port but not <code>app</code> (only NGFW does application identification).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Log format variant not handled</strong></td>
+                                <td>The TA was built for one version of the device's log format. Your device sends a slightly different variant (different firmware, different syslog template, different severity level).</td>
+                                <td>Common</td>
+                                <td>Palo Alto TA handles TRAFFIC logs perfectly but misses THREAT log field mappings because the format differs.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>TA is community-developed (not Splunk-supported)</strong></td>
+                                <td>Community TAs are often built for a specific use case and may not aim for full CIM compliance.</td>
+                                <td>Common for niche sources</td>
+                                <td>A community TA for a specialty WAF or cloud service may extract key fields but skip CIM aliases entirely.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Eventtypes / tags are incomplete</strong></td>
+                                <td>The TA maps fields but doesn't create eventtypes or assign all required tags. Fields exist but the data model can't see them.</td>
+                                <td>Moderately common</td>
+                                <td>TA creates field alias for <code>src</code> but no eventtype/tag for <code>network</code> + <code>communicate</code>. Network_Traffic model is empty.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>TA version mismatch with CIM version</strong></td>
+                                <td>The TA was built for an older CIM version. Newer CIM fields don't exist in the TA.</td>
+                                <td>After CIM or ES upgrades</td>
+                                <td>CIM v5 added a new field. TA built for CIM v4 doesn't include it. Field appears null after ES upgrade.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>TA installed on wrong tier</strong></td>
+                                <td>TA is on the indexers (for index-time extractions) but not on the search heads (where search-time field aliases are needed for CIM), or vice versa.</td>
+                                <td>Common in distributed deployments</td>
+                                <td>TA on indexers extracts <code>srcip</code> at index time. But the field alias <code>srcip AS src</code> is in props.conf that's only on the SH — which only works if the TA is also on the SH.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: IDENTIFYING WHAT'S MISSING -->
+                <!-- ============================================== -->
+                <h2>How to Identify Exactly What's Missing</h2>
+
+                <h3>Step 1: Identify the gap from validation</h3>
+                <p>Your <a href="validating-es-data.html">Gate 3 validation</a> showed a specific CIM field at 0% or low population for a specific sourcetype. You have: the field name, the sourcetype, and the data model.</p>
+
+                <h3>Step 2: Check if the raw data contains the information</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Inspect Raw Events to Find the Vendor Field</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only")`
+`comment("Shows raw events so you can see what field names the device actually uses")`
+`comment("Replace INDEX and SOURCETYPE with your values")`
+
+index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-1h latest=now
+| head 5
+| table _raw
+
+`comment("Also check what fields Splunk DID extract:")`
+
+index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-1h latest=now
+| head 5
+| fieldsummary
+| where count > 0
+| table field, count, distinct_count, values
+| sort field</code></pre>
+                </div>
+
+                <h3>Step 3: Map vendor field to CIM field</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Find the Vendor Field That Should Map to the Missing CIM Field</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Example: CIM field 'action' is missing.")`
+`comment("Look at raw events for the vendor's equivalent:")`
+
+index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-1h latest=now
+| head 20
+| table action, result, outcome, status, event_outcome, disposition, Activity
+
+`comment("One of those vendor fields probably has the data you need.")`
+`comment("If 'result' has values like 'Success' and 'Failure', that's your mapping:")`
+`comment("  action → derived from result")`</code></pre>
+                </div>
+
+                <h3>Step 4: Check if the TA has an incomplete mapping</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Inspect TA's Current Field Aliases and Calculated Fields</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Shows what the TA currently maps for your sourcetype")`
+
+| rest /services/configs/conf-props splunk_server=local
+| search title="YOUR_SOURCETYPE" OR title="source::*YOUR_SOURCE*"
+| table title, FIELDALIAS*, EVAL-*, LOOKUP*
+| transpose</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: THE FIX DECISION TREE -->
+                <!-- ============================================== -->
+                <h2>The Fix Decision Tree</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    START["CIM field X is missing<br/>for sourcetype Y"] --> Q1{"Does the raw event<br/>contain the information<br/>in ANY field?"}
+    
+    Q1 -->|"YES — vendor field<br/>has the data"| Q2{"Is it a simple<br/>rename? (vendor field<br/>→ CIM field)"}
+    
+    Q2 -->|"YES — direct rename"| FIX1["✅ FIX 1: FIELD ALIAS<br/>Safest. Add in local/props.conf:<br/>FIELDALIAS-cim_x = vendor_field AS cim_field<br/>Risk: LOW"]
+    
+    Q2 -->|"NO — needs<br/>transformation"| Q3{"Does the value need<br/>normalization?<br/>(e.g., 'permit' → 'allowed')"}
+    
+    Q3 -->|"YES — value mapping"| FIX2["✅ FIX 2: CALCULATED FIELD<br/>Add in local/props.conf:<br/>EVAL-action = case(status='permit','allowed',<br/>status='deny','blocked')<br/>Risk: LOW-MEDIUM"]
+    
+    Q3 -->|"NO — complex logic"| FIX3["🟡 FIX 3: SEARCH-TIME EVAL<br/>Handle in the correlation search SPL:<br/>| eval cim_field = coalesce(field1, field2)<br/>Risk: MEDIUM (per-search, not global)"]
+    
+    Q1 -->|"NO — data doesn't<br/>exist in the event"| Q4{"Can the source<br/>device be configured<br/>to include it?"}
+    
+    Q4 -->|"YES"| SOURCE_FIX["Fix at source:<br/>Enable verbose logging,<br/>change syslog template,<br/>add field to output.<br/>Then re-validate."]
+    
+    Q4 -->|"NO — device<br/>can't log this"| Q5{"Is the field REQUIRED<br/>for your detection?"}
+    
+    Q5 -->|"YES"| FIX4["🔴 FIX 4: ACCEPT GAP<br/>Document: 'Field X unavailable<br/>from source Y. Detection Z<br/>cannot use this source.'<br/>Risk: Documented risk acceptance."]
+    
+    Q5 -->|"NO — nice to have"| SKIP["Skip. Document as<br/>known limitation.<br/>Detection works without it."]
+    
+    style FIX1 fill:#238636,stroke:#2ea043,color:#fff
+    style FIX2 fill:#238636,stroke:#2ea043,color:#fff
+    style FIX3 fill:#d29922,stroke:#bb8009,color:#fff
+    style FIX4 fill:#f85149,stroke:#da3633,color:#fff
+    style SKIP fill:#6e7681,stroke:#484f58,color:#fff
+    style SOURCE_FIX fill:#58a6ff,stroke:#388bfd,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FIX APPROACHES RANKED -->
+                <!-- ============================================== -->
+                <h2>Fix Approaches — Ranked from Safest to Most Risky</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fix</th>
+                                <th>Mechanism</th>
+                                <th>Where</th>
+                                <th>Production Risk</th>
+                                <th>Survives TA Upgrades?</th>
+                                <th>Affects Data Model?</th>
+                                <th>When to Use</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>Fix 1: Field Alias</strong></td>
+                                <td><code>FIELDALIAS-name = vendor_field AS cim_field</code></td>
+                                <td>TA <code>local/props.conf</code></td>
+                                <td>🟢 Very Low</td>
+                                <td>✅ Yes (local/ survives)</td>
+                                <td>✅ Yes — CIM field becomes available to data model</td>
+                                <td>Vendor field exists with the right value, just wrong name</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>Fix 2: Calculated Field</strong></td>
+                                <td><code>EVAL-cim_field = case(...)</code></td>
+                                <td>TA <code>local/props.conf</code></td>
+                                <td>🟢 Low (if eval logic is simple and tested)</td>
+                                <td>✅ Yes</td>
+                                <td>✅ Yes</td>
+                                <td>Value exists but needs transformation (normalize values, combine fields)</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>Fix 2b: Add Missing Tags</strong></td>
+                                <td>Add eventtype + tag in <code>local/eventtypes.conf</code> + <code>local/tags.conf</code></td>
+                                <td>TA <code>local/</code></td>
+                                <td>🟢 Low (if eventtype constraint is specific)</td>
+                                <td>✅ Yes</td>
+                                <td>✅ Yes — makes events visible to data model</td>
+                                <td>CIM fields are mapped but events don't appear in data model (missing tags)</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>Fix 3: Search-time Eval</strong></td>
+                                <td><code>| eval cim_field = ...</code> inside correlation search SPL</td>
+                                <td>In each correlation search that needs it</td>
+                                <td>🟡 Medium (must be added per search; doesn't fix dashboards or other searches)</td>
+                                <td>N/A (lives in search, not TA)</td>
+                                <td>❌ No — only works in the specific search</td>
+                                <td>Complex derivation, or you can't modify the TA, or fix is temporary while waiting for TA update</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-red);"><strong>Fix 4: Accept Gap</strong></td>
+                                <td>Document that the field is unavailable. Accept the detection limitation.</td>
+                                <td>Risk register / detection registry</td>
+                                <td>🔴 N/A — no change to system</td>
+                                <td>N/A</td>
+                                <td>❌ No</td>
+                                <td>Data doesn't exist in the source. Cannot be fixed technically. Must accept and document.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: SAFE VS DANGEROUS -->
+                <!-- ============================================== -->
+                <h2>What Is Safe vs Dangerous to Change</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    subgraph SAFE["🟢 SAFE — Low Risk to Production"]
+        S1["Add field alias<br/>in local/props.conf"]
+        S2["Add calculated field<br/>(EVAL) in local/props.conf"]
+        S3["Add eventtype<br/>in local/eventtypes.conf"]
+        S4["Add tag<br/>in local/tags.conf"]
+        S5["Modify your own<br/>CUSTOM- correlation search SPL"]
+    end
+    
+    subgraph CAUTION["🟡 CAUTION — Test Thoroughly"]
+        C1["Add new regex extraction<br/>in local/transforms.conf<br/>(complex regex can be fragile)"]
+        C2["Modify search-time lookup<br/>in local/transforms.conf"]
+        C3["Change existing EVAL logic<br/>in local/props.conf<br/>(overrides default)"]
+    end
+    
+    subgraph DANGER["🔴 DANGER — Do Not Do In Production"]
+        D1["Edit ANY file in<br/>default/ directory"]
+        D2["Change index-time<br/>transforms (LINE_BREAKER,<br/>SHOULD_LINEMERGE, etc.)"]
+        D3["Modify data model<br/>definitions"]
+        D4["Disable or change<br/>data model acceleration"]
+        D5["Delete or rename<br/>existing eventtypes/tags"]
+    end
+    
+    style SAFE fill:#161b22,stroke:#238636,color:#c9d1d9
+    style CAUTION fill:#161b22,stroke:#d29922,color:#c9d1d9
+    style DANGER fill:#161b22,stroke:#f85149,color:#c9d1d9
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: COMMON MISSING FIELDS BY SOURCE -->
+                <!-- ============================================== -->
+                <h2>Common Missing Fields by Source Type</h2>
+
+                <p>These are the most frequently missing CIM fields encountered in enterprise environments, with the typical fix.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Missing CIM Field</th>
+                                <th>Why</th>
+                                <th>Typical Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Windows Security (4624/4625)</strong></td>
+                                <td><code>app</code></td>
+                                <td>Windows logs don't have an "app" field. LogonType is the closest equivalent.</td>
+                                <td>EVAL-app: Map LogonType to app names (2→Interactive, 3→Network, 10→RemoteInteractive)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Windows Security (4624/4625)</strong></td>
+                                <td><code>authentication_method</code></td>
+                                <td>Not directly present. AuthenticationPackageName is the closest.</td>
+                                <td>FIELDALIAS: <code>AuthenticationPackageName AS authentication_method</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Azure AD Sign-In</strong></td>
+                                <td><code>src</code></td>
+                                <td>Field is named <code>ipAddress</code> or <code>ClientIP</code> in Azure AD logs.</td>
+                                <td>FIELDALIAS: <code>ipAddress AS src</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Azure AD Sign-In</strong></td>
+                                <td><code>action</code></td>
+                                <td>Azure uses "Status.errorCode" — 0=success, non-zero=failure.</td>
+                                <td>EVAL-action: <code>if(errorCode=0 OR errorCode="0", "success", "failure")</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Palo Alto Firewall</strong></td>
+                                <td><code>action</code> (value mismatch)</td>
+                                <td>Palo Alto uses "allow"/"deny" but CIM expects "allowed"/"blocked".</td>
+                                <td>EVAL-action: <code>case(action="allow","allowed", action="deny","blocked", 1=1,action)</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Generic Syslog (Firewall)</strong></td>
+                                <td><code>transport</code></td>
+                                <td>Device logs protocol as a number (6=TCP, 17=UDP). CIM expects text.</td>
+                                <td>EVAL-transport: <code>case(proto=6,"tcp", proto=17,"udp", proto=1,"icmp")</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>WAF (Akamai, Cloudflare)</strong></td>
+                                <td><code>src</code></td>
+                                <td>WAF logs may use "client_ip", "true_client_ip", or "X-Forwarded-For".</td>
+                                <td>FIELDALIAS: <code>true_client_ip AS src</code> or use EVAL with coalesce</td>
+                            </tr>
+                            <tr>
+                                <td><strong>WAF (Akamai, Cloudflare)</strong></td>
+                                <td><code>url</code></td>
+                                <td>Field may be "request_uri", "cs-uri-stem", "path", "uri".</td>
+                                <td>FIELDALIAS: <code>request_uri AS url</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>O365 / Cloud Audit</strong></td>
+                                <td><code>user</code></td>
+                                <td>Field may be "UserId", "UserPrincipalName", "userPrincipalName" (case-sensitive).</td>
+                                <td>FIELDALIAS: <code>UserId AS user</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>VPC Flow Logs (AWS/Azure)</strong></td>
+                                <td><code>bytes_in</code> / <code>bytes_out</code></td>
+                                <td>Flow logs have "bytes" (total) but not split in/out. Direction must be inferred.</td>
+                                <td>EVAL: Derive based on traffic direction field, or accept total bytes only.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Any source</strong></td>
+                                <td><code>tag</code> (missing entirely)</td>
+                                <td>TA never created eventtypes.conf or tags.conf. Fields are mapped but data model is empty.</td>
+                                <td>Create eventtypes.conf + tags.conf in local/ with correct constraints and tags. See <a href="safe-addon-tuning.html">Safe Add-on Tuning</a>.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: THE GAP REGISTER -->
+                <!-- ============================================== -->
+                <h2>Maintaining a Field Gap Register</h2>
+
+                <p>Every missing field should be tracked, even if you don't fix it immediately. This register becomes your roadmap for CIM improvement and your evidence for audit.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Template: CIM Field Gap Register</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>## CIM Field Gap Register
+
+| Sourcetype | Data Model | CIM Field | Status | Vendor Field | Fix Type | Fix Detail | Detections Impacted | Priority | Date Found | Date Fixed |
+|------------|-----------|-----------|--------|-------------|----------|------------|-------------------|----------|-----------|-----------|
+| WinEventLog:Security | Authentication | app | Gap | LogonType | EVAL | Map LogonType to app name | Per-app auth analysis | Medium | 2024-02-01 | — |
+| pan:traffic | Network_Traffic | action | Value mismatch | action | EVAL | allow→allowed, deny→blocked | All FW detections | High | 2024-02-01 | 2024-02-02 |
+| akamai:waf | Web | src | Wrong field | true_client_ip | FIELDALIAS | true_client_ip AS src | All WAF detections | Critical | 2024-02-01 | 2024-02-01 |
+| aws:cloudtrail | Authentication | dest | Unavailable | N/A | Accept | CloudTrail doesn't log dest | Lateral movement | Low | 2024-02-01 | Accepted |</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>REQUIRED CIM fields (action, user, src) are missing and the vendor field also doesn't exist in the raw event.</strong> This means the data source itself doesn't provide the information. You can't fix it with a field alias. Escalate to the data source team to enable verbose logging, or accept the gap and document it.</li>
+                        <li><strong>The TA's default/props.conf has incorrect extractions.</strong> Do NOT modify default/. Report the issue to the TA vendor (Splunk or community). Apply a workaround in local/ while waiting for a fix.</li>
+                        <li><strong>A field fix requires index-time changes (LINE_BREAKER, SHOULD_LINEMERGE, TRANSFORMS for index-time extraction).</strong> Index-time changes affect live data ingestion and are irreversible for already-indexed data. Escalate to Splunk admin. Do not attempt without platform engineering approval.</li>
+                        <li><strong>More than 5 CIM fields are missing for a single sourcetype.</strong> This suggests the TA is fundamentally inadequate for CIM compliance. Consider: Is this the right TA? Is there a better one? Do you need to build custom extractions?</li>
+                        <li><strong>Someone proposes fixing a field gap by modifying the data model definition.</strong> Never do this. Data models are managed by the CIM add-on. Changing them breaks upgrades and can affect all users of that model.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"I'll just add all possible field aliases at once"</strong></td>
+                                <td>Adding aliases that map to nonexistent vendor fields does nothing but clutter. Adding aliases that conflict with existing ones can break extractions.</td>
+                                <td>Add one alias at a time. Verify the vendor field exists first. Test. Then add the next.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"I'll fix it in default/ so it's consistent"</strong></td>
+                                <td>Next TA update overwrites default/. Your fix disappears. Production breaks silently.</td>
+                                <td>ALWAYS use local/. Add a comment in the file noting what you changed and why.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"The TA should handle everything — I won't customize"</strong></td>
+                                <td>TAs are starting points, not complete solutions. Waiting for perfect TAs means waiting forever. Meanwhile detections don't work.</td>
+                                <td>Accept that local/ customizations are normal and expected. Document them. Review them during upgrades.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"I'll fix the field in every correlation search's SPL"</strong></td>
+                                <td>If 10 searches need the same field, you maintain 10 copies of the fix. One gets missed on the next update.</td>
+                                <td>Fix at the TA level (alias or EVAL) so it applies globally. Search-time eval in SPL is a last resort for complex cases only.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"I found a gap, but nobody asked me to fix it — I'll leave it"</strong></td>
+                                <td>Every undocumented gap is a silent detection failure waiting to happen.</td>
+                                <td>Log it in the gap register immediately. Even if you can't fix it now, documenting it makes it visible and trackable.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Identify the vendor field for a missing CIM field</strong></td><td>5 minutes (obvious field name)</td><td>15-30 minutes (need to inspect raw events)</td><td>1 hour (field is nested in JSON, requires extraction)</td></tr>
+                            <tr><td><strong>Add a field alias (Fix 1)</strong></td><td>5 minutes</td><td>15 minutes (with testing)</td><td>30 minutes (need to check for conflicts)</td></tr>
+                            <tr><td><strong>Add a calculated field (Fix 2)</strong></td><td>15 minutes</td><td>30 minutes (with testing)</td><td>1-2 hours (complex value mapping logic)</td></tr>
+                            <tr><td><strong>Add missing eventtypes + tags (Fix 2b)</strong></td><td>15 minutes</td><td>30 minutes</td><td>1 hour (need to define precise eventtype constraint)</td></tr>
+                            <tr><td><strong>Full gap assessment for 1 sourcetype (all fields)</strong></td><td>30 minutes</td><td>1-2 hours</td><td>Half day (many gaps, complex data)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>CIM Field Gap Register</strong></td><td>Table: sourcetype, field, status, fix type, impacted detections</td><td>Detection registry / data quality tracker</td><td>Ongoing — updated as gaps found and fixed</td></tr>
+                            <tr><td><strong>Before/after field population comparison</strong></td><td>SPL output: field population % before fix and after fix</td><td>Change management record</td><td>Before and after applying any fix</td></tr>
+                            <tr><td><strong>Fix details (what was changed, where, why)</strong></td><td>Change record: file path, stanza, change, reason, rollback plan</td><td>Change management system</td><td>Before deploying any fix to production</td></tr>
+                            <tr><td><strong>Accepted gap documentation</strong></td><td>Risk acceptance: field, source, why unavailable, impact, accepted by</td><td>Risk register</td><td>When Fix 4 (accept gap) is chosen</td></tr>
+                            <tr><td><strong>TA local/ directory listing</strong></td><td>Screenshot or listing of all local/ customizations per TA</td><td>Platform documentation</td><td>After each change, and before any TA upgrade</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="safe-addon-tuning.html" class="next-steps-link">Safe Add-on Tuning & Field Fixes →</a>
+                        <a href="safe-correlation-path.html" class="next-steps-link">Data Model → Correlation (Safe Path) →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

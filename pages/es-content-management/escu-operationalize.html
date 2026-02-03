@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operationalizing ESCU Safely - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                    <a href="escu-overview.html" class="nav-item nav-item-sub">ESCU Overview</a>
+                    <a href="escu-operationalize.html" class="nav-item nav-item-sub active">Operationalizing ESCU</a>
+                    <a href="escu-log-mapping.html" class="nav-item nav-item-sub">ESCU Log Mapping</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="../es-operations/notable-suppression.html" class="nav-item nav-item-sub">Notable Suppression</a>
+                    <a href="../es-operations/investigations-evidence.html" class="nav-item nav-item-sub">Investigations & Evidence</a>
+                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">Operationalizing ESCU Safely</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Content Management</span>
+                <h1>Operationalizing ESCU Safely</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES CONTENT MANAGEMENT</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> The complete pipeline for safely taking ESCU content from "installed and disabled" to "running in production." Covers the five-stage ESCU operationalization pipeline: Evaluate → Clone → Tune → Enable → Update Management. Each stage has explicit pass/fail criteria.</p>
+                    <p><strong>Ownership:</strong> Detection Engineering (execution) + SOC Lead (production sign-off)</p>
+                    <p><strong>Preconditions:</strong> ESCU is installed. You've read <a href="escu-overview.html">ESCU Overview</a>. You know your current log coverage and data quality status.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> Your detection lifecycle process is established. <strong>Risk if wrong:</strong> ESCU content bypasses governance. See <a href="correlation-lifecycle.html">Correlation Search Lifecycle</a>.</li>
+                        <li><strong>Assumption:</strong> You have capacity for additional correlation searches (concurrency headroom). <strong>Verify:</strong> Run the concurrency check from <a href="health-performance.html">Health & Performance</a>. Each new search consumes a slot.</li>
+                        <li><strong>Assumption:</strong> Data model acceleration is current for the data models ESCU detections reference. <strong>Verify:</strong> Run the DM acceleration check. If a data model isn't accelerated, tstats-based ESCU detections won't work.</li>
+                        <li><strong>Assumption:</strong> The SOC has bandwidth to absorb new detections (not already drowning in noise). <strong>Risk if wrong:</strong> Adding detections to an overwhelmed SOC makes everything worse.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: THE ESCU PIPELINE -->
+                <!-- ============================================== -->
+                <h2>The ESCU Operationalization Pipeline</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    ESCU["ESCU Content Library<br/>(installed, all disabled)"] --> S1["STAGE 1: EVALUATE<br/>Is this detection relevant?<br/>Do we have the data?<br/>Is the logic sound?"]
+    
+    S1 -->|"PASS: Relevant +<br/>data exists +<br/>logic is valid"| S2["STAGE 2: CLONE<br/>Clone from OOTB<br/>Add CUSTOM prefix<br/>Add version header"]
+    
+    S1 -->|"SKIP: No data,<br/>not relevant, or<br/>logic unsuitable"| SKIP["SKIP — Document why<br/>Add to 'evaluated but<br/>skipped' registry"]
+    
+    S2 --> S3["STAGE 3: TUNE<br/>Adjust thresholds<br/>Add environment filters<br/>Backtest on real data"]
+    
+    S3 -->|"Backtest shows<br/>acceptable FP rate"| S4["STAGE 4: ENABLE<br/>Monitoring-only first<br/>Then production<br/>(standard lifecycle)"]
+    
+    S3 -->|"Backtest shows<br/>unacceptable noise"| S3B["Return to TUNE<br/>or SKIP if<br/>unfixable"]
+    S3B -->|"Retry"| S3
+    S3B -->|"Give up"| SKIP
+    
+    S4 --> S5["STAGE 5: UPDATE MGMT<br/>Track ESCU updates<br/>Port improvements<br/>to your clones"]
+    
+    S5 -->|"Next ESCU update"| S1_AGAIN["Re-evaluate new content<br/>(repeat pipeline)"]
+    
+    style S1 fill:#58a6ff,stroke:#388bfd,color:#fff
+    style S2 fill:#58a6ff,stroke:#388bfd,color:#fff
+    style S3 fill:#d29922,stroke:#bb8009,color:#fff
+    style S4 fill:#238636,stroke:#2ea043,color:#fff
+    style S5 fill:#238636,stroke:#2ea043,color:#fff
+    style SKIP fill:#6e7681,stroke:#484f58,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- STAGE 1: EVALUATE -->
+                <!-- ============================================== -->
+                <h2>Stage 1: Evaluate</h2>
+
+                <p>Evaluation determines which ESCU detections are worth pursuing. Most ESCU detections will be skipped — and that's expected. A typical environment can use perhaps 10-20% of ESCU content.</p>
+
+                <h3>Per-Detection Evaluation Checklist</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>✅</th>
+                                <th>Evaluation Criterion</th>
+                                <th>How to Check</th>
+                                <th>Pass / Skip</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>1. Threat relevance</strong></td>
+                                <td>Does this detection address a threat in your threat model? Is the targeted technique relevant to your industry (retail, manufacturing)?</td>
+                                <td>Pass: Relevant to threat model. Skip: Targets threats you don't face (e.g., ICS/SCADA if you're cloud-only).</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>2. Data source availability</strong></td>
+                                <td>Read the SPL. What index/sourcetype/data model does it query? Do you have that data in Splunk?</td>
+                                <td>Pass: Data exists and is CIM-mapped. Skip: Data doesn't exist (flag as Phase 1 gap).</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>3. Data model acceleration</strong></td>
+                                <td>If the search uses <code>| tstats</code>, is the referenced data model accelerated?</td>
+                                <td>Pass: DM accelerated and current. Skip: DM not accelerated (enable acceleration first, then return).</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>4. SPL logic review</strong></td>
+                                <td>Read the SPL. Do you understand what it does? Are the field names correct for your data? Are thresholds reasonable?</td>
+                                <td>Pass: Logic is sound and understandable. Skip: Logic is broken, overly complex, or references fields you don't have.</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>5. Existing coverage check</strong></td>
+                                <td>Do you already have a detection covering this technique? Is the ESCU version better?</td>
+                                <td>Pass: No existing coverage OR ESCU version is better. Skip: Existing detection already covers this adequately.</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>6. Dependencies</strong></td>
+                                <td>Does this detection require baseline searches, specific lookups, or macros? Are those present and functional?</td>
+                                <td>Pass: All dependencies met. Skip: Missing critical dependencies (or plan to address them).</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>7. Resource impact</strong></td>
+                                <td>What's the expected search cost? Complex joins, wide time ranges, or high-cardinality fields = expensive.</td>
+                                <td>Pass: Resource cost is acceptable. Skip: Search is too expensive for current capacity.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Evaluation Decision Outcomes</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Outcome</th>
+                                <th>Criteria</th>
+                                <th>Next Action</th>
+                                <th>Registry Entry</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>✅ Proceed to Clone</strong></td>
+                                <td>All 7 checks pass</td>
+                                <td>Move to Stage 2</td>
+                                <td>Status: "Evaluating — Approved for clone"</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>⏸️ Defer — Data Gap</strong></td>
+                                <td>Detection is relevant but required data doesn't exist</td>
+                                <td>Add data source to Phase 1 backlog. Re-evaluate when data is onboarded.</td>
+                                <td>Status: "Deferred — Awaiting [data source]"</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>⏸️ Defer — Acceleration Gap</strong></td>
+                                <td>Data exists but data model is not accelerated</td>
+                                <td>Request DM acceleration from Splunk admin. Re-evaluate when acceleration is complete.</td>
+                                <td>Status: "Deferred — Awaiting DM acceleration"</td>
+                            </tr>
+                            <tr>
+                                <td><strong>⏭️ Skip — Not Relevant</strong></td>
+                                <td>Threat not in scope, or existing coverage is adequate</td>
+                                <td>Document reasoning. No further action needed.</td>
+                                <td>Status: "Skipped — [reason]"</td>
+                            </tr>
+                            <tr>
+                                <td><strong>⏭️ Skip — Logic Unsuitable</strong></td>
+                                <td>SPL logic is fundamentally flawed or incompatible with your environment</td>
+                                <td>If the concept is good, consider building a custom detection from scratch.</td>
+                                <td>Status: "Skipped — Logic unsuitable. Custom build considered."</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Quick Data Source Check for an ESCU Detection</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Replace INDEX and SOURCETYPE with what the ESCU detection needs")`
+`comment("Confirms data exists and is recent enough to detect on")`
+
+index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-24h
+| stats count AS event_count,
+    earliest(_time) AS first_event,
+    latest(_time) AS last_event
+| eval first_event = strftime(first_event, "%Y-%m-%d %H:%M"),
+    last_event = strftime(last_event, "%Y-%m-%d %H:%M")
+| eval status = case(
+    event_count = 0, "🔴 NO DATA — cannot use this detection",
+    event_count < 100, "🟡 LOW VOLUME — detection may not have enough data to be effective",
+    true(), "🟢 Data exists and is active"
+)
+| table event_count, first_event, last_event, status</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- STAGE 2: CLONE -->
+                <!-- ============================================== -->
+                <h2>Stage 2: Clone</h2>
+
+                <p>The clone stage is identical to the standard OOTB clone procedure. See <a href="../es-operations/enablement-mechanics.html">Enablement Mechanics — Cloning</a> for the full step-by-step. Key ESCU-specific additions:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Clone Step</th>
+                                <th>ESCU-Specific Guidance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Naming convention</strong></td>
+                                <td><code>CUSTOM - [ESCU Story] - [Detection Name] - [Org] Tuned</code><br/>Example: <code>CUSTOM - Ransomware - Wevtutil USN Journal Deletion - Retail Tuned</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Version header</strong></td>
+                                <td>Include ESCU source version: <code>`comment("Cloned from ESCU v4.18.0 — Ransomware Story")`</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>OOTB original</strong></td>
+                                <td>Leave the ESCU original DISABLED. It was already disabled — just confirm it stays that way.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Macro dependencies</strong></td>
+                                <td>If the ESCU detection uses ESCU-specific macros, verify the macros exist and resolve correctly. Consider inlining the macro content into your clone to avoid dependency on ESCU updates changing macro definitions.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Baseline searches</strong></td>
+                                <td>If the detection requires a baseline search (generates a lookup that the detection references), ensure the baseline is enabled and has run at least once. Check lookup freshness.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- STAGE 3: TUNE -->
+                <!-- ============================================== -->
+                <h2>Stage 3: Tune</h2>
+
+                <p>ESCU detections are written for generic environments. Your environment is not generic. Tuning adapts the detection to your data volumes, user behavior, and business patterns.</p>
+
+                <h3>Common ESCU Tuning Requirements</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tuning Category</th>
+                                <th>What to Look For</th>
+                                <th>Typical Adjustment</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Thresholds</strong></td>
+                                <td>ESCU uses generic thresholds (e.g., "5 failed logins") that may be too low for your volume</td>
+                                <td>Backtest to find your actual data distribution. Set threshold at p95 or p99.</td>
+                                <td>ESCU: >5 failures → Retail: >25 failures (high-volume POS environment)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Index/Sourcetype filters</strong></td>
+                                <td>ESCU uses generic index references or data model searches that may match unintended data</td>
+                                <td>Add explicit index and sourcetype filters to narrow scope</td>
+                                <td>Add <code>index=windows sourcetype=WinEventLog:Security</code> to endpoint detections</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Environment exclusions</strong></td>
+                                <td>Known benign patterns: vuln scanners, monitoring tools, scheduled tasks, service accounts</td>
+                                <td>Add <code>NOT</code> clauses for known-good entities. Use lookup tables, not hard-coded IPs.</td>
+                                <td><code>NOT [| inputlookup known_scanners.csv | fields src_ip]</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Schedule adjustment</strong></td>
+                                <td>ESCU default schedule may conflict with your concurrency or may be too frequent for your needs</td>
+                                <td>Adjust cron to fit your scheduling strategy. Maintain lookback > cron + buffer.</td>
+                                <td>ESCU: every 5 min → Your env: every 15 min (sufficient for medium-severity detection)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Field name alignment</strong></td>
+                                <td>ESCU assumes standard CIM fields. Your TAs may extract to slightly different names.</td>
+                                <td>Verify field names in your data match what the SPL references. Adjust if needed.</td>
+                                <td>ESCU references <code>process_name</code> but your TA extracts <code>process</code> → rename or update SPL</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Backtest Procedure for ESCU Clones</h3>
+                <ol>
+                    <li><strong>Copy the cloned SPL</strong> to the Splunk search bar</li>
+                    <li><strong>Set time range to 7 days</strong> (use the same lookback the production search will use, repeated over 7 days of history)</li>
+                    <li><strong>Run the search</strong> and review results</li>
+                    <li><strong>Assess volume:</strong> How many results per day? If > 50/day at medium severity → threshold needs raising</li>
+                    <li><strong>Assess accuracy:</strong> Sample 20 results. What percentage are true positive? If FP rate > 30% → logic needs tuning</li>
+                    <li><strong>Iterate:</strong> Adjust thresholds, add filters, re-run. Repeat until FP rate < 30% and daily volume < 20</li>
+                    <li><strong>Document:</strong> Record backtest results (dates, volume, FP rate, changes made) in the detection registry</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- STAGE 4: ENABLE -->
+                <!-- ============================================== -->
+                <h2>Stage 4: Enable</h2>
+
+                <p>Enablement follows the standard <a href="correlation-lifecycle.html">Correlation Search Lifecycle</a>. No ESCU-specific exceptions. The clone goes through:</p>
+                <ol>
+                    <li><strong>Monitoring-Only (7-14 days):</strong> Search runs, generates notables, but SOC is informed these are monitoring-only. Volume and FP rate are tracked.</li>
+                    <li><strong>Production (with sign-off):</strong> SOC Lead approves. SOC notified per <a href="change-management.html">Change Management</a> pre-deployment notification.</li>
+                </ol>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ ESCU Enablement Rate Limit</div>
+                    <p><strong>Maximum 2-3 new ESCU-sourced detections per week.</strong> Each new detection adds load to the SOC and search concurrency. Even well-tuned detections have an adjustment period. Spacing out deployments lets the SOC adapt and lets you measure the impact of each addition.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- STAGE 5: UPDATE MANAGEMENT -->
+                <!-- ============================================== -->
+                <h2>Stage 5: Update Management</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    UPDATE["New ESCU version<br/>released"] --> NOTES["Read ESCU<br/>release notes"]
+    
+    NOTES --> Q1{"Any changes to<br/>detections you've<br/>cloned?"}
+    
+    Q1 -->|"Yes"| COMPARE["Compare ESCU changes<br/>against your clone:<br/>• Logic improvements?<br/>• Threshold changes?<br/>• Field updates?<br/>• Bug fixes?"]
+    
+    COMPARE --> Q2{"Is the ESCU<br/>change better<br/>than your version?"}
+    
+    Q2 -->|"Yes — improvement"| PORT["Port the improvement<br/>to your clone:<br/>1. Update SPL<br/>2. Update version header<br/>3. Backtest<br/>4. Deploy through lifecycle"]
+    
+    Q2 -->|"No — your tuning<br/>is better"| IGNORE["Document: 'ESCU change<br/>reviewed, current clone<br/>is superior because [reason]'"]
+    
+    Q1 -->|"No changes<br/>to cloned detections"| Q3{"Any interesting<br/>NEW detections?"}
+    
+    Q3 -->|"Yes"| EVAL["Queue for next<br/>evaluation sprint<br/>(Stage 1)"]
+    
+    Q3 -->|"No"| DONE["No action needed<br/>Document review date"]
+    
+    PORT --> DONE
+    IGNORE --> DONE
+    EVAL --> DONE
+    
+    style UPDATE fill:#58a6ff,stroke:#388bfd,color:#fff
+    style PORT fill:#d29922,stroke:#bb8009,color:#fff
+    style DONE fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <h3>ESCU Update Review Checklist</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>✅</th>
+                                <th>Review Step</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>☐</td><td>1. Read release notes</td><td>Identify new detections, modified detections, deprecated content, and new analytic stories</td></tr>
+                            <tr><td>☐</td><td>2. Cross-reference against clone registry</td><td>For each modified ESCU detection, check if you have a clone. Flag for comparison.</td></tr>
+                            <tr><td>☐</td><td>3. Compare modified detections</td><td>Diff the ESCU update against your clone. Decide: port improvement, ignore, or merge.</td></tr>
+                            <tr><td>☐</td><td>4. Review new analytic stories</td><td>Do any new stories address threats in your threat model? Queue relevant ones for evaluation.</td></tr>
+                            <tr><td>☐</td><td>5. Check macro changes</td><td>Were any macros modified? Do your clones reference those macros? If yes, verify they still work.</td></tr>
+                            <tr><td>☐</td><td>6. Test in non-production</td><td>If porting changes, test the updated clone before deploying to production.</td></tr>
+                            <tr><td>☐</td><td>7. Document the review</td><td>Record: ESCU version reviewed, date, actions taken, next review date.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVALUATION SPRINT MODEL -->
+                <!-- ============================================== -->
+                <h2>The ESCU Evaluation Sprint</h2>
+
+                <p>Rather than evaluating ESCU content continuously (which burns out the team), use a quarterly sprint model:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Sprint Phase</th>
+                                <th>Duration</th>
+                                <th>Activities</th>
+                                <th>Output</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Prioritize</strong></td>
+                                <td>Half day</td>
+                                <td>Review new ESCU content since last sprint. Rank analytic stories by threat model relevance. Select top 3-5 stories to evaluate.</td>
+                                <td>Prioritized evaluation backlog</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Evaluate</strong></td>
+                                <td>1-2 days</td>
+                                <td>Run per-detection evaluation checklist for each detection in selected stories. Document pass/defer/skip for each.</td>
+                                <td>Evaluation decisions in registry</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Clone & Tune</strong></td>
+                                <td>2-3 days</td>
+                                <td>Clone approved detections. Tune for environment. Backtest. Iterate until FP < 30%.</td>
+                                <td>Tuned clones ready for lifecycle</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Enable</strong></td>
+                                <td>Ongoing (2-3/week)</td>
+                                <td>Deploy tuned clones through monitoring → production lifecycle. Stagger over 2-4 weeks.</td>
+                                <td>New production detections</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Report</strong></td>
+                                <td>Half day</td>
+                                <td>Summarize sprint: stories evaluated, detections deployed, coverage gaps identified, Phase 1 data requests.</td>
+                                <td>Sprint summary for stakeholders</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FAILURE MODES -->
+                <!-- ============================================== -->
+                <h2>Failure Modes</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Failure Mode</th>
+                                <th>Symptom</th>
+                                <th>Root Cause</th>
+                                <th>Impact</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>ESCU detection uses non-existent data model field</strong></td>
+                                <td>Search returns zero results despite data existing</td>
+                                <td>ESCU detection references a CIM field your TA doesn't extract, or a DM field not present in your ES version</td>
+                                <td>Silent failure — detection appears active but detects nothing</td>
+                                <td>Run the SPL manually. Check each field against your actual data. Map the field or rewrite the SPL.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Baseline search never ran</strong></td>
+                                <td>Detection always returns zero or fires for everything (no baseline to compare against)</td>
+                                <td>Baseline search dependency wasn't identified during evaluation</td>
+                                <td>Anomaly-based detection has no baseline — either dead or flooding</td>
+                                <td>Identify and enable baseline search. Wait for it to complete (may take hours/days). Then test detection.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ESCU update breaks an active clone</strong></td>
+                                <td>After ESCU update, macro referenced by clone now resolves differently</td>
+                                <td>ESCU update changed a macro your clone depends on</td>
+                                <td>Clone behavior changes without any change to the clone itself</td>
+                                <td>Inline macros into clones to eliminate dependency. Or pin macro definitions in your own app.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Too many detections evaluated, none deployed</strong></td>
+                                <td>Evaluation tracker shows 50+ "Approved for clone" with none in production</td>
+                                <td>All effort spent evaluating, no time allocated for clone/tune/enable</td>
+                                <td>ESCU provides zero value. Wasted effort.</td>
+                                <td>Limit evaluation scope. For every detection evaluated, allocate time to clone, tune, and enable it. Quality over quantity.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ESCU becomes a "checkbox" exercise</strong></td>
+                                <td>"We have ESCU installed" reported to management, but no content is operationalized</td>
+                                <td>No resources allocated, no sprint model, no ownership</td>
+                                <td>False sense of coverage. ESCU provides zero detection value.</td>
+                                <td>Assign ESCU operationalization as a specific work item with measurable outcomes (X detections evaluated, Y deployed per quarter).</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: VALIDATION SPL -->
+                <!-- ============================================== -->
+                <h2>Validation SPL & Expected Output</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: ESCU Operationalization Status Summary</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Shows how much of your ESCU content is actually operationalized")`
+`comment("Requires your detection registry to track ESCU-sourced detections")`
+
+| rest /services/saved/searches splunk_server=local
+| search eai:acl.app="DA-ESS-ContentUpdate" OR eai:acl.app="SplunkEnterpriseSecuritySuite"
+| where isnotnull(action.correlationsearch.enabled)
+| eval origin = if(match(title, "^CUSTOM"), "Custom Clone", "ESCU Original")
+| eval state = case(
+    disabled=1 AND origin="ESCU Original", "ESCU Disabled (Expected)",
+    disabled=0 AND origin="ESCU Original", "⚠️ ESCU Enabled Directly (Should be cloned)",
+    disabled=1 AND origin="Custom Clone", "Clone Disabled",
+    disabled=0 AND origin="Custom Clone", "✅ Clone Active"
+)
+| stats count BY state
+| sort state</code></pre>
+                </div>
+
+                <p><strong>Healthy output:</strong> Most entries are "ESCU Disabled (Expected)." Some "✅ Clone Active." Zero "⚠️ ESCU Enabled Directly."</p>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK -->
+                <!-- ============================================== -->
+                <h2>Rollback Steps</h2>
+
+                <ol>
+                    <li><strong>ESCU clone not performing as expected:</strong> Disable the clone. Return to Stage 3 (Tune). Backtest again with adjusted parameters.</li>
+                    <li><strong>ESCU update caused issues:</strong> Roll back the ESCU app to the previous version. Verify all clones still function. Report the issue.</li>
+                    <li><strong>Entire evaluation sprint produced poor-quality detections:</strong> Disable all detections from the sprint. Review evaluation criteria — the bar may need raising. Re-evaluate with stricter thresholds.</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>More than 5 ESCU detections enabled in a single week.</strong> Rate limit exceeded. SOC can't absorb that many new alert types simultaneously. Stagger further deployments.</li>
+                        <li><strong>ESCU update changed macro behavior affecting active clones.</strong> Immediately test all clones that reference ESCU macros. Disable affected clones until verified.</li>
+                        <li><strong>Evaluation sprint has been "in progress" for more than 4 weeks without deployments.</strong> Evaluation paralysis. Cut scope. Deploy what's ready. Ship 3 good detections rather than evaluating 30.</li>
+                        <li><strong>ESCU is being presented to auditors as "coverage" but no detections are in production.</strong> This is misleading. Escalate to Security Manager to set correct expectations.</li>
+                        <li><strong>Someone enabled ESCU detections directly (not cloned).</strong> Disable and clone them properly. Those detections are vulnerable to being overwritten by the next ESCU update.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Enable the whole Analytic Story"</strong></td>
+                                <td>Analytic stories contain 5-20+ detections. Enabling all at once creates a noise storm. Some may require data you don't have.</td>
+                                <td>Evaluate each detection within a story individually. Deploy the viable ones one at a time.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Skip the backtest — ESCU already validated it"</strong></td>
+                                <td>ESCU validated against their lab data. Your data volumes, naming conventions, and user patterns are different.</td>
+                                <td>Always backtest against your production data. Every time. No exceptions.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Just enable it — we'll tune if it's noisy"</strong></td>
+                                <td>Reactive tuning means the SOC gets hit with noise first. SOC trust is damaged first, tuning happens second.</td>
+                                <td>Tune BEFORE enabling. Monitoring-only period catches noise before the SOC sees it.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"We evaluated ESCU last year, we're done"</strong></td>
+                                <td>ESCU updates continuously. New threats emerge. Last year's evaluation is stale.</td>
+                                <td>Quarterly evaluation sprints. Each sprint reviews new content since the last sprint.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Track ESCU evaluations in my head"</strong></td>
+                                <td>When you leave, all evaluation knowledge leaves with you. Auditors can't query your memory.</td>
+                                <td>Every evaluation decision goes in the detection registry with reasoning, date, and evaluator.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Evaluate one ESCU detection</strong></td>
+                                <td>15 minutes (obvious skip)</td>
+                                <td>30-60 minutes (full checklist)</td>
+                                <td>2 hours (complex dependencies)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Clone + tune one ESCU detection</strong></td>
+                                <td>1 hour</td>
+                                <td>2-4 hours</td>
+                                <td>1 day (significant tuning needed)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Full evaluation sprint (1 analytic story)</strong></td>
+                                <td>Half day (small story, 3-5 detections)</td>
+                                <td>1-2 days (medium story, 5-10 detections)</td>
+                                <td>3+ days (large story with dependencies)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ESCU update review</strong></td>
+                                <td>1 hour (no impact to clones)</td>
+                                <td>2-4 hours (some clones need comparison)</td>
+                                <td>1 day (macro changes affecting active clones)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ESCU-to-production for one detection (full pipeline)</strong></td>
+                                <td>3 days (evaluate + clone + tune + monitor-only start)</td>
+                                <td>2-3 weeks (including monitoring period)</td>
+                                <td>1+ month (data gaps, complex tuning)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Per-detection evaluation decision</strong></td>
+                                <td>Checklist results + pass/defer/skip + reasoning</td>
+                                <td>Detection registry</td>
+                                <td>During evaluation sprint</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Backtest results</strong></td>
+                                <td>Date range, volume, FP rate, tuning iterations, final parameters</td>
+                                <td>Detection registry</td>
+                                <td>During tune stage</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ESCU update review log</strong></td>
+                                <td>Version reviewed, date, changes identified, actions taken</td>
+                                <td>Change log</td>
+                                <td>After each ESCU update</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Sprint summary report</strong></td>
+                                <td>Stories evaluated, detections deployed, gaps identified</td>
+                                <td>Quarterly governance report</td>
+                                <td>End of each evaluation sprint</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ESCU-to-log coverage gap list</strong></td>
+                                <td>Required data sources not available, linked to Phase 1 backlog items</td>
+                                <td>Log coverage matrix + Phase 1 backlog</td>
+                                <td>During evaluation (ongoing)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="escu-log-mapping.html" class="next-steps-link">Mapping Missing Logs → ESCU Content Requirements →</a>
+                        <a href="escu-overview.html" class="next-steps-link">← Back to ESCU Overview</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

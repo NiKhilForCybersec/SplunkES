@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tuning, Noise Reduction & SOC Trust - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="tuning-noise.html" class="nav-item nav-item-sub active">Tuning & Noise Reduction</a>
+                    <a href="change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">Tuning, Noise Reduction & SOC Trust</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Content Management</span>
+                <h1>Tuning, Noise Reduction & SOC Trust</h1>
+
+                <!-- ============================================== -->
+                <!-- HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES CONTENT MANAGEMENT</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This page covers the systematic approach to reducing false positives while preserving detection coverage, specifically calibrated for retail environments where noise sources are amplified.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 CRITICAL: Noise Is Not an Inconvenience — It Is a Security Failure</div>
+                    <p><strong>When analysts stop trusting alerts, they stop investigating them. When they stop investigating, attacks succeed.</strong></p>
+                    <ul>
+                        <li>A SOC that ignores 80% of alerts is a SOC that will ignore a real attack</li>
+                        <li>Alert fatigue is the #1 reason real breaches are missed in environments with detection capability</li>
+                        <li>The goal is NOT zero false positives — the goal is a FP rate low enough that analysts investigate every alert</li>
+                        <li>Target: <strong><30% false positive rate per detection</strong>. If higher, the detection needs tuning before production.</li>
+                    </ul>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> You have access to notable event data to analyze noise. <strong>Verify:</strong> Run <code>`notable` | stats count BY search_name</code>.</li>
+                        <li><strong>Assumption:</strong> SOC provides feedback on alert quality. <strong>Risk if wrong:</strong> Without SOC input, you're tuning blind.</li>
+                        <li><strong>Assumption:</strong> Data quality issues have been addressed in Phase 2. <strong>Risk if wrong:</strong> Tuning bad data doesn't fix bad data. Fix the source first.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHY NOISE DESTROYS SOC TRUST -->
+                <!-- ============================================== -->
+                <h2>Why Noise Destroys SOC Trust</h2>
+
+                <p>SOC trust is not a feeling — it's a measurable behavior. When trust is high, analysts investigate alerts promptly and thoroughly. When trust is low, they don't. The transition from trust to distrust happens fast and is extremely hard to reverse.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    START["New detection<br/>deployed to production"] --> Q1{"False positive<br/>rate?"}
+    
+    Q1 -->|"< 30% FP"| TRUST["✅ SOC TRUSTS ALERT<br/>Analysts investigate promptly<br/>Mean time to respond: minutes"]
+    
+    Q1 -->|"30-60% FP"| ERODE["⚠️ TRUST ERODING<br/>Analysts start skimming<br/>Investigation quality drops"]
+    
+    Q1 -->|"> 60% FP"| DISTRUST["🔴 SOC DISTRUSTS ALERT<br/>Analysts ignore or auto-close<br/>Real attacks slip through"]
+    
+    TRUST --> MAINTAIN["Regular tuning<br/>keeps FP rate low"]
+    MAINTAIN --> TRUST
+    
+    ERODE --> FIX{"Tuning applied<br/>within 1 week?"}
+    FIX -->|"Yes"| TRUST
+    FIX -->|"No"| DISTRUST
+    
+    DISTRUST --> DAMAGE["DAMAGE DONE:<br/>• SOC labels detection 'junk'<br/>• Reputation spreads to other detections<br/>• Re-enabling requires rebuild of trust"]
+    
+    DAMAGE --> REBUILD["TRUST REBUILD:<br/>1. Disable noisy detection<br/>2. Fix root cause offline<br/>3. Re-deploy through full lifecycle<br/>4. SOC reviews results before enabling<br/>Timeline: 4-8 weeks minimum"]
+    
+    style TRUST fill:#238636,stroke:#2ea043,color:#fff
+    style ERODE fill:#d29922,stroke:#bb8009,color:#fff
+    style DISTRUST fill:#f85149,stroke:#da3633,color:#fff
+    style DAMAGE fill:#f85149,stroke:#da3633,color:#fff
+                    </div>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 The Trust Asymmetry</div>
+                    <p><strong>It takes weeks to build SOC trust in a detection. It takes one bad day to destroy it.</strong></p>
+                    <p>One alert storm during a busy Monday morning can permanently poison the SOC's perception of your detections. Rebuild time: 4-8 weeks minimum, if they'll even give you another chance. This is why monitoring-only mode exists — use it.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: RETAIL NOISE SOURCES -->
+                <!-- ============================================== -->
+                <h2>Common Noise Sources in Retail</h2>
+
+                <p>Retail environments have unique noise amplifiers that don't exist in corporate/government environments. Every detection must account for these.</p>
+
+                <h3>Promotional Days & Sales Events</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Event</th>
+                                <th>Impact on Detection</th>
+                                <th>Volume Multiplier</th>
+                                <th>Typical Detections Affected</th>
+                                <th>Mitigation Strategy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Black Friday</strong></td>
+                                <td>Web traffic spikes 20-50x. Auth volume spikes 10-20x. API calls spike 15-30x.</td>
+                                <td>20-50x normal</td>
+                                <td>ALL volume-based detections, HTTP anomaly, brute force, API abuse</td>
+                                <td>Dynamic thresholds or scheduled threshold overrides. Do NOT deploy new detections during this window.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Weekly flyer promotions</strong></td>
+                                <td>2-5x traffic spike on Thursday-Saturday. Regular weekly pattern.</td>
+                                <td>2-5x normal</td>
+                                <td>HTTP volume anomaly, bot detection, API rate detection</td>
+                                <td>Use day-of-week baselines. Don't compare Friday to Monday.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Loyalty program events</strong></td>
+                                <td>Point multiplier events drive massive login activity from mobile app</td>
+                                <td>3-10x auth volume</td>
+                                <td>Brute force, failed login, account lockout</td>
+                                <td>Mobile app user-agent exclusions. Separate service account from user detections.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Flash sales / app-only deals</strong></td>
+                                <td>Burst traffic patterns that look like DDoS</td>
+                                <td>5-15x in minutes</td>
+                                <td>DDoS detection, WAF rate-limit triggers</td>
+                                <td>Pre-schedule threshold increases. Coordinate with marketing calendar.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Mobile App Behavior</h3>
+                <ul>
+                    <li><strong>Token refresh storms:</strong> When the app pushes an update, millions of devices re-authenticate within hours. This looks like a massive brute force event.</li>
+                    <li><strong>Background heartbeat:</strong> Mobile apps send periodic health checks that generate auth events even when the user isn't active.</li>
+                    <li><strong>Offline queue flush:</strong> When a device comes back online, it flushes queued events in burst. Timestamps may be out of order.</li>
+                    <li><strong>Geo-diversity:</strong> Mobile users authenticate from everywhere. "Impossible travel" detections must account for mobile app auth happening from the user's phone location, not the corporate network.</li>
+                </ul>
+
+                <h3>Legitimate Bots</h3>
+                <ul>
+                    <li><strong>Googlebot, Bingbot, price comparison bots:</strong> Generate significant HTTP traffic that WAF detections may flag as scanning or scraping.</li>
+                    <li><strong>CDN health checks:</strong> Akamai, Cloudflare, and other CDN healthchecks generate repetitive HTTP patterns.</li>
+                    <li><strong>API integration partners:</strong> Suppliers, logistics partners, and third-party integrations make automated API calls at regular intervals.</li>
+                    <li><strong>Monitoring services:</strong> Uptime monitoring, synthetic testing, and performance monitoring generate auth events and HTTP requests.</li>
+                </ul>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Do NOT Hard-Code Bot Exclusions</div>
+                    <p>Attackers spoof bot user-agents. Instead of blanket exclusions based on user-agent strings, use verified bot IP ranges from official sources (e.g., Google's published IP ranges) and maintain these in lookup tables that can be updated without modifying search logic.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: TUNING HIERARCHY -->
+                <!-- ============================================== -->
+                <h2>The Tuning Hierarchy</h2>
+
+                <p>Not all tuning is equal. Fixing the root cause of noise is always better than masking symptoms. Apply tuning in this order — always start at Level 1 and work down.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    L1["🏗️ LEVEL 1: DATA QUALITY<br/><br/>Fix the data, not the detection.<br/>Missing fields, bad parsing, CIM gaps.<br/><br/>Impact: Fixes ALL detections using this data.<br/>Effort: Medium-High<br/>Risk: Low"]
+    
+    L2["🧠 LEVEL 2: DETECTION LOGIC<br/><br/>Improve the SPL to be more precise.<br/>Better field selection, smarter conditions.<br/><br/>Impact: Fixes this detection permanently.<br/>Effort: Medium<br/>Risk: Low-Medium"]
+    
+    L3["🎚️ LEVEL 3: THRESHOLDS<br/><br/>Adjust count, timespan, or percentage triggers.<br/>Based on actual environment data.<br/><br/>Impact: Reduces noise for this detection.<br/>Effort: Low<br/>Risk: Medium (too high = miss attacks)"]
+    
+    L4["⏱️ LEVEL 4: THROTTLE<br/><br/>Reduce alert volume per entity per time window.<br/>Events still match, just fewer notables.<br/><br/>Impact: Reduces duplicate notables.<br/>Effort: Low<br/>Risk: Low"]
+    
+    L1 -->|"Still noisy?"| L2
+    L2 -->|"Still noisy?"| L3
+    L3 -->|"Still noisy?"| L4
+    L4 -->|"STILL noisy?"| DECISION{"Detection may<br/>be fundamentally<br/>wrong for this<br/>environment"}
+    
+    DECISION -->|"Rewrite"| CUSTOM["Rewrite as custom<br/>detection with<br/>retail-aware logic"]
+    DECISION -->|"Retire"| RETIRE["Disable and document.<br/>Not suitable for<br/>this environment."]
+    
+    style L1 fill:#21262d,stroke:#58a6ff,color:#e6edf3
+    style L2 fill:#21262d,stroke:#a371f7,color:#e6edf3
+    style L3 fill:#21262d,stroke:#d29922,color:#e6edf3
+    style L4 fill:#21262d,stroke:#3fb950,color:#e6edf3
+    style CUSTOM fill:#58a6ff,stroke:#388bfd,color:#fff
+    style RETIRE fill:#6e7681,stroke:#484f58,color:#fff
+                    </div>
+                </div>
+
+                <h3>Level 1: Data Quality Tuning</h3>
+                <p>Before touching any detection, verify the data feeding it is correct. Most "noisy detections" are actually "bad data" problems.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data Issue</th>
+                                <th>Detection Impact</th>
+                                <th>Example in Retail</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Missing <code>user</code> field</strong></td>
+                                <td>Auth detections trigger on NULL user, grouping all unknowns together</td>
+                                <td>POS systems logging auth without user extraction</td>
+                                <td>Fix field extraction at props.conf / transforms.conf level</td>
+                            </tr>
+                            <tr>
+                                <td><strong><code>src</code> field shows proxy IP</strong></td>
+                                <td>All traffic appears from one IP. Brute force fires constantly for proxy IP.</td>
+                                <td>Store traffic routed through regional proxy</td>
+                                <td>Extract X-Forwarded-For or original client IP</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Mixed success/failure in one sourcetype</strong></td>
+                                <td>Detection can't distinguish auth success from failure</td>
+                                <td>Custom app logging both outcomes in same event format</td>
+                                <td>Create field extraction for action=success vs action=failure</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Timestamp parsing wrong</strong></td>
+                                <td>Events appear at wrong time. Lookback windows miss them.</td>
+                                <td>Store systems in different timezone logging UTC but parsed as local</td>
+                                <td>Fix TIME_FORMAT and TZ in props.conf</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Level 2: Detection Logic Tuning</h3>
+                <p>If data is clean but the detection is still noisy, the logic needs improvement.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Logic Issue</th>
+                                <th>Example</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Too broad field matching</strong></td>
+                                <td>Detection matches on <code>src=*</code> instead of specific network ranges</td>
+                                <td>Narrow to <code>src IN (internal_ranges)</code> or use lookup for scope</td>
+                            </tr>
+                            <tr>
+                                <td><strong>No distinction between user types</strong></td>
+                                <td>Service accounts and human users evaluated by same logic</td>
+                                <td>Add <code>WHERE NOT user IN (service_account_lookup)</code> for human-focused detections</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Missing negative conditions</strong></td>
+                                <td>Detection fires for password resets (legitimate) along with actual brute force</td>
+                                <td>Add <code>WHERE action!="password_reset"</code> to exclude known patterns</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Single-event logic for multi-event patterns</strong></td>
+                                <td>Fires on every single failed login instead of clustering</td>
+                                <td>Use <code>stats count BY src, user | where count > threshold</code> to require pattern</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Level 3: Threshold Tuning</h3>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Threshold Tuning is NOT the First Step</div>
+                    <p>Changing thresholds is the most common tuning action but should NOT be the first. If data quality or logic is the root cause, adjusting thresholds just masks the real problem. Fix Levels 1-2 first.</p>
+                </div>
+
+                <p>When threshold tuning is appropriate, use environment data to set values:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Determine Appropriate Threshold for Failed Login Detection</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Calculates the natural distribution of failed logins per user")`
+`comment("Use this to set thresholds that catch outliers, not normal users")`
+
+| tstats count FROM datamodel=Authentication
+  WHERE Authentication.action="failure"
+  BY Authentication.user _time span=1h
+| stats avg(count) AS avg_failures,
+    stdev(count) AS stdev_failures,
+    max(count) AS max_failures,
+    perc95(count) AS p95_failures,
+    perc99(count) AS p99_failures
+    BY Authentication.user
+| stats avg(avg_failures) AS global_avg,
+    avg(p95_failures) AS global_p95,
+    avg(p99_failures) AS global_p99,
+    max(max_failures) AS absolute_max
+| eval recommended_threshold = round(global_p99 * 1.5, 0)
+| eval conservative_threshold = round(global_p95 * 2, 0)
+| table global_avg, global_p95, global_p99, absolute_max, 
+    recommended_threshold, conservative_threshold</code></pre>
+                </div>
+
+                <h3>Level 4: Throttle Tuning</h3>
+                <p>Throttling is the safest noise reduction mechanism. See <a href="correlation-lifecycle.html">Correlation Search Lifecycle</a> for throttle configuration details.</p>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT NOT TO TUNE FIRST -->
+                <!-- ============================================== -->
+                <h2>What NOT to Tune First</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tempting First Action</th>
+                                <th>Why It's Wrong</th>
+                                <th>Correct First Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Just increase the threshold"</strong></td>
+                                <td>If the FPs are from bad data (e.g., proxy IP), raising the threshold still includes the bad data. The threshold will never be high enough.</td>
+                                <td>Check data quality first. Is the <code>src</code> field correct? Is the <code>user</code> field populated?</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Add an allowlist for these IPs"</strong></td>
+                                <td>Allowlists are permanent blind spots. If the "safe" IP gets compromised, you'll never detect it.</td>
+                                <td>Understand WHY those IPs are triggering. Fix the detection logic to distinguish legitimate vs malicious patterns.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Suppress the noisy alerts"</strong></td>
+                                <td>Suppression hides the problem. The detection still fires, consumes resources, and generates hidden notables. You've just made the problem invisible.</td>
+                                <td>Fix the root cause. If you can't fix it now, suppress temporarily but create a ticket to fix properly.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Disable the detection"</strong></td>
+                                <td>You now have a detection gap. Whatever threat it was designed to catch is now unmonitored.</td>
+                                <td>Tune before disabling. Only disable if the detection is fundamentally unfit for your environment.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Tuning Anti-Patterns</h2>
+
+                <h3>Hard Allowlists</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Hard Allowlists Are Permanent Blind Spots</div>
+                    <p>A hard allowlist (e.g., <code>WHERE src NOT IN ("10.1.1.1", "10.2.2.2")</code>) means those IPs will NEVER trigger the detection, regardless of what they do. If an attacker compromises one of those systems, you are permanently blind to attacks from that source.</p>
+                    <p><strong>Instead:</strong></p>
+                    <ul>
+                        <li>Use lookup tables instead of hardcoded IPs so allowlists can be updated without modifying search logic</li>
+                        <li>Add expiration dates to allowlist entries. Review quarterly.</li>
+                        <li>Use "adjusted threshold" instead of "exempt" — e.g., known scanners trigger at 100x instead of 10x, not at never</li>
+                        <li>Document every allowlist entry with: who added it, why, and when to review</li>
+                    </ul>
+                </div>
+
+                <h3>Blind Suppression</h3>
+                <p>Notable suppression rules that suppress by field value (e.g., suppress all notables where <code>user=svc_account</code>) create invisible gaps:</p>
+                <ul>
+                    <li>The detection still runs and consumes resources</li>
+                    <li>Notables are created but hidden — they exist in the index but not in Incident Review</li>
+                    <li>If the service account is compromised, the attack notables are suppressed</li>
+                    <li>Suppression rules accumulate over time and nobody audits them</li>
+                </ul>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Audit All Notable Suppression Rules</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("List all active notable suppressions")`
+`comment("Review quarterly — stale suppressions are blind spots")`
+
+| rest /services/saved/searches splunk_server=local
+| search action.notable.param.suppress=1
+| table title, action.notable.param.suppress_fields, 
+    action.notable.param.suppress_period, updated
+| sort - updated</code></pre>
+                </div>
+
+                <h3>Over-Throttling</h3>
+                <p>Throttling is safe, but excessive throttling can hide attack patterns:</p>
+                <ul>
+                    <li><strong>Throttle window too long (>24h):</strong> A sustained multi-day attack generates only one notable per day. SOC sees one alert for a week-long attack.</li>
+                    <li><strong>Throttle key too broad (just <code>src</code>):</strong> An attacker hitting 50 different users from one IP generates only one notable. All 50 compromised accounts hidden.</li>
+                    <li><strong>Fix:</strong> Use compound throttle keys (<code>src</code> + <code>user</code>) and keep windows under 4 hours for most detections.</li>
+                </ul>
+
+                <!-- ============================================== -->
+                <!-- SECTION: KPIs -->
+                <!-- ============================================== -->
+                <h2>KPIs to Measure Tuning Success</h2>
+
+                <p>If you can't measure it, you can't improve it. Track these KPIs per detection and across the entire detection portfolio.</p>
+
+                <h3>Per-Detection KPIs</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>KPI</th>
+                                <th>Target</th>
+                                <th>Danger Zone</th>
+                                <th>How to Measure</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>False Positive Rate</strong></td>
+                                <td>&lt; 30%</td>
+                                <td>&gt; 60% → disable and fix</td>
+                                <td>SOC classification of notables (TP/FP/Benign) or sample review</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Daily Notable Volume</strong></td>
+                                <td>&lt; 10 per detection</td>
+                                <td>&gt; 50 per detection → review immediately</td>
+                                <td><code>`notable` | stats count BY search_name | timechart span=1d</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Mean Time to Triage (MTTT)</strong></td>
+                                <td>&lt; 30 minutes</td>
+                                <td>&gt; 4 hours → SOC may be ignoring</td>
+                                <td>Time from notable creation to first status change in Incident Review</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Notable Close Rate</strong></td>
+                                <td>&gt; 90% within SLA</td>
+                                <td>&lt; 70% → alerts piling up</td>
+                                <td>Track status transitions in notable audit</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tuning Cycle Count</strong></td>
+                                <td>&lt; 3 tuning cycles to stable</td>
+                                <td>&gt; 5 cycles → consider rewrite</td>
+                                <td>Count versions in change log</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Portfolio KPIs</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>KPI</th>
+                                <th>Target</th>
+                                <th>Danger Zone</th>
+                                <th>How to Measure</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Total Daily Notable Volume</strong></td>
+                                <td>&lt; 100 across all detections</td>
+                                <td>&gt; 200 → SOC capacity exceeded</td>
+                                <td><code>`notable` | stats count | timechart span=1d</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detections with 0 Notables (30d)</strong></td>
+                                <td>&lt; 20% of active detections</td>
+                                <td>&gt; 50% → detections may be broken</td>
+                                <td>Cross-reference enabled searches with notable output</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SOC Satisfaction Score</strong></td>
+                                <td>Quarterly check-in: positive feedback</td>
+                                <td>SOC complaining about noise</td>
+                                <td>Direct conversation with SOC team lead</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Active Suppression Count</strong></td>
+                                <td>&lt; 10 active suppressions</td>
+                                <td>&gt; 25 → suppressions masking real problems</td>
+                                <td>Audit suppression rules query above</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>SPL: Weekly Tuning Health Dashboard Query</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Detection Portfolio Health Summary</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Weekly health check for all active detections")`
+`comment("Identifies noisy detections and quiet detections")`
+
+`notable`
+| stats count AS notable_count,
+    dc(src) AS unique_sources,
+    dc(user) AS unique_users
+    BY search_name
+| eval daily_avg = round(notable_count / 7, 1)
+| eval health = case(
+    daily_avg > 50, "🔴 CRITICAL — Noise",
+    daily_avg > 20, "🟡 WARNING — Review",
+    daily_avg > 0.1, "🟢 Healthy",
+    daily_avg > 0, "⚪ Low Volume",
+    true(), "⚫ Not Firing"
+)
+| eval action_needed = case(
+    daily_avg > 50, "Disable immediately. Tune offline.",
+    daily_avg > 20, "Review this week. Tune thresholds.",
+    daily_avg > 0.1, "No action needed.",
+    daily_avg > 0, "Verify detection is still relevant.",
+    true(), "Check if data source exists. May be broken."
+)
+| sort - daily_avg
+| table search_name, notable_count, daily_avg, health, 
+    unique_sources, unique_users, action_needed</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>Total notable volume exceeds 200/day.</strong> SOC cannot keep up. Disable the noisiest detections first, then tune offline.</li>
+                        <li><strong>SOC stops investigating ES alerts entirely.</strong> This is an emergency. Disable all non-critical detections. Rebuild trust starting with 3-5 high-quality detections.</li>
+                        <li><strong>A single detection generates >100 notables/day.</strong> Disable it immediately. This is an alert storm, not a detection.</li>
+                        <li><strong>Tuning a detection requires >3 iterations with no improvement.</strong> The detection may be fundamentally unsuitable. Escalate for rewrite decision.</li>
+                        <li><strong>Marketing or business team schedules an event you weren't told about.</strong> Escalate to establish a coordination process. Unannounced promo events cause false positive spikes.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Initial noise assessment (all detections)</strong></td>
+                                <td>2 hours</td>
+                                <td>4 hours</td>
+                                <td>1 day (many noisy detections)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tune one detection (data quality root cause)</strong></td>
+                                <td>2 hours</td>
+                                <td>1-2 days (Phase 2 fix needed)</td>
+                                <td>1 week (requires data source changes)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tune one detection (threshold adjustment)</strong></td>
+                                <td>30 minutes + 1 week monitoring</td>
+                                <td>2 hours + 2 weeks monitoring</td>
+                                <td>Multiple iterations over weeks</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Build allowlist lookup</strong></td>
+                                <td>1 hour</td>
+                                <td>2-4 hours (research + validate entries)</td>
+                                <td>1 day (unclear what to exclude)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SOC trust rebuild after alert storm</strong></td>
+                                <td>2 weeks (if caught fast)</td>
+                                <td>4-6 weeks</td>
+                                <td>8+ weeks (severe distrust)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Before/after tuning metrics</strong></td>
+                                <td>Notable count before change vs after (1-week comparison)</td>
+                                <td>Detection registry per search</td>
+                                <td>Before and after every tuning change</td>
+                            </tr>
+                            <tr>
+                                <td><strong>FP rate assessment</strong></td>
+                                <td>Sample of 20+ notables classified as TP/FP</td>
+                                <td>Detection registry per search</td>
+                                <td>Monthly or after each tuning cycle</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SOC feedback</strong></td>
+                                <td>Email, Slack message, or meeting notes from SOC</td>
+                                <td>Detection registry</td>
+                                <td>After every SOC interaction about alert quality</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Allowlist documentation</strong></td>
+                                <td>What was excluded, why, when to review, who approved</td>
+                                <td>Lookup table documentation + detection registry</td>
+                                <td>When creating any exclusion</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Weekly portfolio health report</strong></td>
+                                <td>SPL output from portfolio health query</td>
+                                <td>Weekly status report or dashboard</td>
+                                <td>Every Monday</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Next Steps -->
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="change-management.html" class="next-steps-link">ES Change Management & Rollback →</a>
+                        <a href="governance-audit.html" class="next-steps-link">Detection Governance & Audit →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

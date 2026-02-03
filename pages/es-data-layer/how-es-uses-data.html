@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Splunk ES Uses Data - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Data Layer & CIM ⚠️</div>
+                    <a href="how-es-uses-data.html" class="nav-item nav-item-sub active">How ES Uses Data</a>
+                    <a href="cim-fundamentals.html" class="nav-item nav-item-sub">CIM Fundamentals for ES</a>
+                    <a href="data-models-deep-dive.html" class="nav-item nav-item-sub">Data Models Deep Dive</a>
+                    <a href="validating-es-data.html" class="nav-item nav-item-sub">Validating ES Data ⛔</a>
+                    <a href="missing-fields.html" class="nav-item nav-item-sub">Missing Fields After Add-ons</a>
+                    <a href="safe-addon-tuning.html" class="nav-item nav-item-sub">Safe Add-on Tuning</a>
+                    <a href="safe-correlation-path.html" class="nav-item nav-item-sub">Data Model → Correlation</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="../es-content-management/tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="../es-content-management/health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="../es-content-management/governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                    <a href="../es-content-management/escu-overview.html" class="nav-item nav-item-sub">ESCU Overview</a>
+                    <a href="../es-content-management/escu-operationalize.html" class="nav-item nav-item-sub">Operationalizing ESCU</a>
+                    <a href="../es-content-management/escu-log-mapping.html" class="nav-item nav-item-sub">ESCU Log Mapping</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="../es-operations/notable-suppression.html" class="nav-item nav-item-sub">Notable Suppression</a>
+                    <a href="../es-operations/investigations-evidence.html" class="nav-item nav-item-sub">Investigations & Evidence</a>
+                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase2-data-quality/index.html">Phase 2: Data Quality</a>
+                <span class="separator">/</span>
+                <span class="current">How Splunk ES Uses Data</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-2">⚠️ ES DATA LAYER — CRITICAL</span>
+                <h1>How Splunk ES Uses Data</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES DATA LAYER</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> Explains the complete data pipeline inside Splunk ES — from raw event ingestion through CIM normalization, data model acceleration, correlation search execution, to notable event creation. This is the foundation you must understand before touching any detection content. If you don't understand this page, do not proceed to enabling detections.</p>
+                    <p><strong>Ownership:</strong> Detection Engineering (understanding) + Platform Engineering (infrastructure)</p>
+                    <p><strong>Preconditions:</strong> Basic familiarity with Splunk concepts (indexes, sourcetypes, search). No ES-specific knowledge required — this page builds it.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Why This Matters — Production Safety</div>
+                    <p>Splunk ES is not a standalone detection tool — it is a <strong>data-dependent framework</strong>. Every correlation search, every dashboard, every notable event depends on data flowing correctly through a multi-layered pipeline. When data is wrong at any layer, ES produces one of three outcomes: <strong>silent failures</strong> (detections return nothing), <strong>false positives</strong> (detections fire on bad data), or <strong>platform instability</strong> (broken searches consume resources). Understanding this pipeline is not optional — it is the difference between a working SOC and a broken one.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> Splunk ES is installed and operational on your search heads. <strong>Verify:</strong> Navigate to <code>Enterprise Security</code> app. If it doesn't load, ES is not installed or you don't have the role.</li>
+                        <li><strong>Assumption:</strong> At least some data is flowing into Splunk. <strong>Verify:</strong> <code>| tstats count WHERE index=* BY index | sort -count | head 10</code> — you should see indexes with data.</li>
+                        <li><strong>Assumption:</strong> You do NOT have perfect CIM compliance. <strong>This is the expected state.</strong> Most environments have partial compliance. This section teaches you how to assess, fix, and work within that reality.</li>
+                        <li><strong>Assumption:</strong> Breaking production is not acceptable. <strong>This section is designed for zero-risk assessment.</strong> All validation queries are read-only. No configuration changes until later pages.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: THE ES DATA PIPELINE -->
+                <!-- ============================================== -->
+                <h2>The ES Data Pipeline — End to End</h2>
+
+                <p>ES consumes data through six distinct layers. A failure at any layer breaks everything downstream. Understanding where you are in this pipeline is the first step to diagnosing any ES issue.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    subgraph L1["LAYER 1 — Raw Events"]
+        direction LR
+        SRC["Data Sources<br/>(Firewall, AD, WAF,<br/>Endpoint, Cloud)"] --> IDX["Splunk Indexes<br/>(index=windows,<br/>index=network, etc.)"]
+    end
+    
+    subgraph L2["LAYER 2 — Field Extraction"]
+        direction LR
+        TA["Technology Add-ons (TAs)<br/>props.conf / transforms.conf<br/>Field extractions at<br/>search time or index time"] --> FIELDS["Extracted Fields<br/>(src_ip, dest_ip, user,<br/>action, app, etc.)"]
+    end
+    
+    subgraph L3["LAYER 3 — CIM Normalization"]
+        direction LR
+        FIELDS2["TA-Extracted Fields"] --> CIM["CIM Field Mapping<br/>(field aliases, calculated<br/>fields, eventtypes, tags)"]
+        CIM --> NORM["Normalized Fields<br/>(CIM-compliant: src, dest,<br/>user, action, app)"]
+    end
+    
+    subgraph L4["LAYER 4 — Data Model Acceleration"]
+        direction LR
+        DM["Data Models<br/>(Authentication,<br/>Network_Traffic, Web,<br/>Endpoint, etc.)"] --> ACCEL["Accelerated TSIDX<br/>(Pre-computed summaries<br/>for fast tstats queries)"]
+    end
+    
+    subgraph L5["LAYER 5 — Correlation Searches"]
+        direction LR
+        CORR["Correlation Searches<br/>(SPL using | tstats<br/>against data models<br/>or direct index queries)"] --> EVAL["Results Evaluation<br/>(threshold checks,<br/>statistical analysis,<br/>pattern matching)"]
+    end
+    
+    subgraph L6["LAYER 6 — Notable Events"]
+        direction LR
+        NOTABLE["Notable Events<br/>(written to notable index)<br/>Visible in Incident Review"] --> SOC["SOC Triage<br/>(Analyst works<br/>the notable)"]
+    end
+    
+    L1 --> L2
+    L2 --> L3
+    L3 --> L4
+    L4 --> L5
+    L5 --> L6
+    
+    style L1 fill:#161b22,stroke:#30363d,color:#c9d1d9
+    style L2 fill:#161b22,stroke:#58a6ff,color:#c9d1d9
+    style L3 fill:#161b22,stroke:#d29922,color:#c9d1d9
+    style L4 fill:#161b22,stroke:#f85149,color:#c9d1d9
+    style L5 fill:#161b22,stroke:#238636,color:#c9d1d9
+    style L6 fill:#161b22,stroke:#a371f7,color:#c9d1d9
+                    </div>
+                </div>
+
+                <h3>What Each Layer Does — And Where It Breaks</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Layer</th>
+                                <th>What It Does</th>
+                                <th>Common Failure</th>
+                                <th>Symptom When Broken</th>
+                                <th>Who Fixes It</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>L1 — Raw Events</strong></td>
+                                <td>Data arrives in Splunk indexes from forwarders, syslog, HEC, or API pulls</td>
+                                <td>Data stops flowing. Index doesn't exist. Forwarder misconfigured. Source system changed format.</td>
+                                <td>Zero events. Searches against the index return nothing. Detections fire zero results.</td>
+                                <td>Platform Engineering / Infrastructure</td>
+                            </tr>
+                            <tr>
+                                <td><strong>L2 — Field Extraction</strong></td>
+                                <td>TAs parse raw events and extract named fields (src_ip, user, action, etc.) using props.conf and transforms.conf</td>
+                                <td>TA not installed. Wrong TA version. Source format changed and TA's regex no longer matches. TA installed but not on search heads.</td>
+                                <td>Raw events exist but fields are missing. <code>| fields src_ip</code> returns null. Detections that filter on fields find nothing.</td>
+                                <td>Detection Engineering / Platform Engineering</td>
+                            </tr>
+                            <tr>
+                                <td><strong>L3 — CIM Normalization</strong></td>
+                                <td>TAs map vendor-specific fields to CIM standard names using field aliases, calculated fields, eventtypes, and tags</td>
+                                <td>TA doesn't map all CIM fields. CIM field alias points to wrong vendor field. Eventtype tag missing (data doesn't appear in data model). Partial CIM compliance.</td>
+                                <td>Data model queries return zero or incomplete results. Some CIM fields are null even though vendor fields exist. Events are invisible to data model-based correlation searches.</td>
+                                <td>Detection Engineering</td>
+                            </tr>
+                            <tr>
+                                <td><strong>L4 — Data Model Acceleration</strong></td>
+                                <td>Splunk pre-computes data model summaries (TSIDX files) so that <code>| tstats</code> queries run in seconds instead of minutes</td>
+                                <td>Data model acceleration disabled. Acceleration backlog (not caught up). Acceleration failed (permissions, disk space). Search head cluster (SHC) not replicating acceleration.</td>
+                                <td><code>| tstats</code> returns zero results even though <code>| search</code> on the same data works. Correlation searches that depend on tstats silently fail.</td>
+                                <td>Platform Engineering / Splunk Admin</td>
+                            </tr>
+                            <tr>
+                                <td><strong>L5 — Correlation Searches</strong></td>
+                                <td>Scheduled SPL searches run on a cron, query data models or raw indexes, evaluate conditions, and trigger notable events</td>
+                                <td>Search skipped (concurrency limit). Search errors (SPL syntax, missing macro). Threshold too low (noise) or too high (misses events). Notable action not configured.</td>
+                                <td>No notables appear. Or too many notables appear. Search scheduler shows skips or errors. SOC has no alerts or is flooded.</td>
+                                <td>Detection Engineering</td>
+                            </tr>
+                            <tr>
+                                <td><strong>L6 — Notable Events</strong></td>
+                                <td>Correlation search results are written to the notable index as notable events, visible in Incident Review</td>
+                                <td>Notable action not configured on the search. Suppression hiding events. KV store failure. Permissions issue.</td>
+                                <td>Correlation search runs and returns results, but nothing appears in Incident Review.</td>
+                                <td>Detection Engineering / Splunk Admin</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: RAW EVENTS VS NORMALIZED FIELDS -->
+                <!-- ============================================== -->
+                <h2>Raw Events vs Normalized Fields — The Core Concept</h2>
+
+                <p>This distinction is fundamental. Every piece of ES functionality depends on understanding the difference between what a device sends and what ES expects to find.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart LR
+    subgraph RAW["What the Device Sends (Raw)"]
+        R1["Palo Alto:<br/>srcip=10.1.2.3"]
+        R2["Windows:<br/>IpAddress=10.1.2.3"]
+        R3["AWS:<br/>sourceIPAddress=10.1.2.3"]
+    end
+    
+    subgraph TA_WORK["What the TA Does"]
+        TA["Technology Add-on<br/>Field Alias / Extraction<br/>Maps vendor field → CIM field"]
+    end
+    
+    subgraph CIM_RESULT["What ES Expects (CIM)"]
+        C1["src = 10.1.2.3<br/>(CIM standard field)"]
+    end
+    
+    R1 --> TA
+    R2 --> TA
+    R3 --> TA
+    TA --> C1
+    
+    style RAW fill:#161b22,stroke:#f85149,color:#c9d1d9
+    style TA_WORK fill:#161b22,stroke:#d29922,color:#c9d1d9
+    style CIM_RESULT fill:#161b22,stroke:#238636,color:#c9d1d9
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Concept</th>
+                                <th>What It Is</th>
+                                <th>Example</th>
+                                <th>How ES Uses It</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Raw event</strong></td>
+                                <td>The original log line exactly as the source device sent it, stored in <code>_raw</code></td>
+                                <td><code>Feb 15 14:30:01 fw01 TRAFFIC,allow,srcip=10.1.2.3,dstip=192.168.1.5,srcport=54321,dstport=443,proto=tcp</code></td>
+                                <td>ES does NOT directly consume raw text. Raw events are the source material that must be parsed into fields.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Extracted field</strong></td>
+                                <td>A named field extracted from the raw event by a TA's props.conf/transforms.conf regex or automatic key-value extraction</td>
+                                <td><code>srcip=10.1.2.3</code>, <code>dstip=192.168.1.5</code>, <code>dstport=443</code></td>
+                                <td>These are vendor-specific. ES doesn't know what "srcip" means. It needs CIM field names.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CIM-normalized field</strong></td>
+                                <td>A standard field name defined by the Common Information Model, mapped from the vendor field via a TA's field alias or calculated field</td>
+                                <td><code>src=10.1.2.3</code>, <code>dest=192.168.1.5</code>, <code>dest_port=443</code>, <code>transport=tcp</code></td>
+                                <td><strong>This is what ES actually consumes.</strong> Data models are built on CIM fields. Correlation searches query data models. If a CIM field is null, the detection is blind.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model field</strong></td>
+                                <td>A field defined in a data model (e.g., <code>Network_Traffic.All_Traffic.src</code>) that maps to the CIM field</td>
+                                <td><code>All_Traffic.src</code>, <code>All_Traffic.dest</code>, <code>All_Traffic.dest_port</code></td>
+                                <td><code>| tstats</code> queries reference these data model field paths. If the CIM field is populated AND the data model is accelerated, tstats finds the data.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 The Critical Chain of Dependencies</div>
+                    <p><strong>Raw event exists</strong> → TA extracts vendor field → TA maps vendor field to CIM field → Eventtype + tag includes event in data model → Data model acceleration indexes the CIM field → <code>| tstats</code> query finds the data → Correlation search evaluates results → Notable event is created.</p>
+                    <p><strong>If ANY link in this chain is broken, the detection silently fails.</strong> There is no error message. The correlation search runs, finds zero results, and moves on. The SOC sees nothing. You think you have coverage. You don't.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT MAKES DATA VISIBLE TO ES -->
+                <!-- ============================================== -->
+                <h2>What Makes Data Visible to ES</h2>
+
+                <p>Data doesn't automatically appear in ES dashboards and data models just because it's in a Splunk index. Four conditions must ALL be true:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Condition</th>
+                                <th>How to Check</th>
+                                <th>What Happens If Missing</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1</strong></td>
+                                <td><strong>Data exists in a Splunk index</strong></td>
+                                <td><code>index=YOUR_INDEX sourcetype=YOUR_ST earliest=-1h | stats count</code></td>
+                                <td>No data at all. Nothing downstream works.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2</strong></td>
+                                <td><strong>A TA extracts CIM-compliant fields</strong></td>
+                                <td><code>index=YOUR_INDEX sourcetype=YOUR_ST | head 10 | table src, dest, user, action</code> — fields should have values, not be null</td>
+                                <td>Raw data exists but CIM fields are empty. Data model doesn't see the data.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3</strong></td>
+                                <td><strong>Events are tagged with the correct eventtype/tag for the data model</strong></td>
+                                <td><code>index=YOUR_INDEX sourcetype=YOUR_ST | head 10 | table eventtype, tag</code> — should show relevant tags (e.g., <code>authentication</code>, <code>network</code>, <code>communicate</code>)</td>
+                                <td>CIM fields are populated but events have no tags. The data model's constraint (which uses tags) doesn't match. Events are invisible to the data model.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4</strong></td>
+                                <td><strong>The data model is accelerated</strong></td>
+                                <td><code>| rest /services/datamodel/model | search title="Authentication" | table title, acceleration</code> — should show <code>acceleration=1</code></td>
+                                <td>Events are correctly tagged and CIM-mapped, but <code>| tstats</code> can't find them because acceleration is off or behind. Correlation searches using tstats return zero.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Quick Layer-by-Layer Health Check (Safe — Read Only)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Replace YOUR_INDEX and YOUR_SOURCETYPE with actual values")`
+`comment("This query checks all four conditions for a single data source")`
+`comment("SAFE: Read-only query. Does not modify anything.")`
+
+index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-4h latest=now
+| head 1000
+| eval has_src = if(isnotnull(src), 1, 0),
+    has_dest = if(isnotnull(dest), 1, 0),
+    has_user = if(isnotnull(user), 1, 0),
+    has_action = if(isnotnull(action), 1, 0),
+    has_eventtype = if(isnotnull(eventtype), 1, 0),
+    has_tag = if(isnotnull(tag), 1, 0)
+| stats count AS total_events,
+    sum(has_src) AS src_populated,
+    sum(has_dest) AS dest_populated,
+    sum(has_user) AS user_populated,
+    sum(has_action) AS action_populated,
+    sum(has_eventtype) AS eventtype_count,
+    sum(has_tag) AS tag_count
+| eval L1_data = if(total_events > 0, "✅ L1 PASS — Data exists", "❌ L1 FAIL — No data"),
+    L2_fields = case(
+        src_populated > 0 AND dest_populated > 0, "✅ L2 PASS — Core fields populated",
+        src_populated > 0 OR dest_populated > 0, "🟡 L2 PARTIAL — Some core fields populated",
+        true(), "❌ L2 FAIL — No CIM fields extracted"
+    ),
+    L3_tags = if(tag_count > 0, "✅ L3 PASS — Tags present", "❌ L3 FAIL — No tags (data model won't see this data)")
+| table L1_data, L2_fields, L3_tags, total_events, src_populated, dest_populated, user_populated, action_populated, tag_count</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: HOW CORRELATION SEARCHES CONSUME DATA -->
+                <!-- ============================================== -->
+                <h2>How Correlation Searches Consume Data</h2>
+
+                <p>There are two fundamentally different ways a correlation search can query data. Understanding the difference is essential because they have different prerequisites and different failure modes.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Attribute</th>
+                                <th><code>| tstats</code> (Data Model–Based)</th>
+                                <th><code>| search</code> (Raw Event–Based)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>What it queries</strong></td>
+                                <td>Pre-computed TSIDX summaries from accelerated data models</td>
+                                <td>Raw events directly from Splunk indexes</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Speed</strong></td>
+                                <td>Very fast (seconds) — queries pre-indexed summaries</td>
+                                <td>Slower — must scan and parse raw events</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Prerequisites</strong></td>
+                                <td>All 4 conditions must be true: data exists + CIM fields + tags + DM acceleration</td>
+                                <td>Only condition 1: data exists in the index. Fields can be extracted at search time.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Failure mode</strong></td>
+                                <td><strong>Silent failure.</strong> Returns zero results with no error. Looks like "no events matched" when actually the data model chain is broken.</td>
+                                <td>More visible failures. If data exists, you'll at least see events (even if field parsing is wrong).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Resource cost</strong></td>
+                                <td>Low — uses acceleration summaries (one scheduled search slot)</td>
+                                <td>Higher — scans raw data (more I/O, more CPU, longer run time)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Field availability</strong></td>
+                                <td>Only fields in the data model are available. Can't reference arbitrary fields.</td>
+                                <td>All fields in the raw event are available (if extracted).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Most OOTB/ESCU content uses</strong></td>
+                                <td>✅ Yes — majority of ES and ESCU detections use tstats</td>
+                                <td>Some custom detections and older OOTB searches use direct search</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 The #1 Silent Failure in ES</div>
+                    <p><strong>A <code>| tstats</code> correlation search returns zero results, and you assume there are no matching events.</strong></p>
+                    <p>In reality, the events exist in the raw index, but one of these is broken: CIM field mapping (Layer 3), tag assignment (Layer 3), or data model acceleration (Layer 4). The search runs, finds nothing in the pre-computed summaries, and reports "0 results." There is no warning. The SOC sees no alerts. You believe you have coverage. You don't.</p>
+                    <p><strong>This is why <a href="validating-es-data.html">Validating ES Data</a> is a hard gate before enabling any detection.</strong></p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT NOT TO TOUCH -->
+                <!-- ============================================== -->
+                <h2>What NOT to Touch in Production</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>🔴 Never Touch</th>
+                                <th>Why</th>
+                                <th>What Breaks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Data model definitions in <code>default/</code> folders</strong></td>
+                                <td>These are managed by Splunk. Editing them breaks upgrades and will be overwritten.</td>
+                                <td>Data model structure breaks. All tstats queries against it fail. Every detection that uses that data model dies.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CIM add-on <code>default/</code> files</strong></td>
+                                <td>The Splunk CIM add-on defines the data model schemas. Editing default files breaks upgrades.</td>
+                                <td>CIM field definitions change. Data model constraints break. Acceleration may fail.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>TA <code>default/</code> props.conf or transforms.conf</strong></td>
+                                <td>TA vendor files. Edits are overwritten on update. Will also break CIM mapping if done incorrectly.</td>
+                                <td>Field extractions break. CIM mapping breaks. Data model sees null fields. Detections die silently.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model acceleration settings on shared search heads</strong></td>
+                                <td>Changing acceleration affects all users and all searches. Disabling acceleration kills all tstats-based detections.</td>
+                                <td>Every correlation search using tstats against that model returns zero results. Mass detection failure.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Index-time transforms on live data pipelines</strong></td>
+                                <td>Index-time changes affect data at write time. Bad changes corrupt data permanently. Unlike search-time changes, there is no undo — you must re-index.</td>
+                                <td>Indexed data is permanently corrupted. Can't fix retroactively. May require full data re-ingestion.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>🟢 Safe to Modify (With Process)</th>
+                                <th>How</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>TA <code>local/</code> props.conf — field aliases</strong></td>
+                                <td>Add new field aliases to map vendor fields to CIM fields that the TA missed</td>
+                                <td>See <a href="safe-addon-tuning.html">Safe Add-on Tuning</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong>TA <code>local/</code> props.conf — calculated fields</strong></td>
+                                <td>Add calculated fields to derive CIM fields from existing vendor fields</td>
+                                <td>See <a href="safe-addon-tuning.html">Safe Add-on Tuning</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong>TA <code>local/</code> eventtypes.conf + tags.conf</strong></td>
+                                <td>Add missing eventtypes and tags so data is visible to data models</td>
+                                <td>See <a href="missing-fields.html">Missing Fields After Add-ons</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Custom correlation searches (your own clones)</strong></td>
+                                <td>Modify SPL, thresholds, schedules in searches you created with <code>CUSTOM -</code> prefix</td>
+                                <td>See <a href="../es-operations/enablement-mechanics.html">Enablement Mechanics</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHERE MISTAKES USUALLY HAPPEN -->
+                <!-- ============================================== -->
+                <h2>Where Mistakes Usually Happen</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    subgraph MISTAKES["Common Mistake Points in the ES Data Pipeline"]
+        M1["🔴 MISTAKE 1<br/>TA not installed on<br/>search heads<br/>(installed on indexers<br/>but not SH)"]
+        M2["🔴 MISTAKE 2<br/>CIM fields partially<br/>mapped (src works,<br/>user is null)"]
+        M3["🔴 MISTAKE 3<br/>Events have CIM fields<br/>but NO tags<br/>(invisible to data model)"]
+        M4["🔴 MISTAKE 4<br/>Data model acceleration<br/>disabled or stale<br/>(tstats returns 0)"]
+        M5["🔴 MISTAKE 5<br/>Correlation search enabled<br/>without verifying<br/>data model population"]
+    end
+    
+    M1 -->|"Impact"| I1["Fields not extracted<br/>on search heads.<br/>Dashboard shows blanks.<br/>Detections blind."]
+    
+    M2 -->|"Impact"| I2["Some detections work<br/>(those using src).<br/>Others silently fail<br/>(those needing user)."]
+    
+    M3 -->|"Impact"| I3["Data appears to be<br/>CIM-compliant in ad-hoc<br/>search, but data model<br/>returns 0 events."]
+    
+    M4 -->|"Impact"| I4["| tstats returns 0.<br/>| search returns data.<br/>Correlation searches<br/>all silently fail."]
+    
+    M5 -->|"Impact"| I5["Search runs on schedule.<br/>Returns 0 results.<br/>SOC sees no notables.<br/>Everyone thinks it's<br/>working. It isn't."]
+    
+    style M3 fill:#f85149,stroke:#da3633,color:#fff
+    style M4 fill:#f85149,stroke:#da3633,color:#fff
+    style M5 fill:#f85149,stroke:#da3633,color:#fff
+                    </div>
+                </div>
+
+                <p><strong>Mistake #3 (missing tags) is the most insidious.</strong> An analyst might run <code>index=auth user=jsmith | stats count</code> and see results, concluding the data is fine. But without the correct eventtype/tag, the Authentication data model doesn't include those events. A tstats-based correlation search sees nothing. The gap is invisible unless you specifically test data model population.</p>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>A data model shows zero events for a data source that has data in the raw index.</strong> This means the CIM chain (fields → tags → data model) is broken. Do NOT enable detections against this data model until the chain is fixed and validated.</li>
+                        <li><strong>Data model acceleration is disabled and nobody knows why.</strong> This may be intentional (performance issue) or accidental. Escalate to Splunk admin to understand the reason before re-enabling.</li>
+                        <li><strong>Someone modified default/ files in a TA or the CIM add-on.</strong> Assess impact immediately. Check if field extractions and CIM mappings are still working. Plan to revert and move changes to local/ folders.</li>
+                        <li><strong>Multiple correlation searches return zero results simultaneously.</strong> This is likely a data model acceleration failure, not a detection logic problem. Check Layer 4 first.</li>
+                        <li><strong>An ES or TA upgrade is planned without a validation plan.</strong> Any upgrade can change field extractions, CIM mappings, or data model definitions. Require a post-upgrade validation check (see <a href="validating-es-data.html">Validating ES Data</a>).</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"I can see events in search, so ES can too"</strong></td>
+                                <td>Ad-hoc search queries raw events. ES primarily queries data models. Data visible in search may be invisible to data models if CIM mapping or tags are broken.</td>
+                                <td>Always validate at the data model level, not just the raw index. Use <code>| tstats count from datamodel=X</code> to confirm ES visibility.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"The TA is installed, so CIM is handled"</strong></td>
+                                <td>TAs vary widely in CIM coverage. Many TAs extract vendor fields but do NOT map all CIM fields or apply all required tags. Installation ≠ compliance.</td>
+                                <td>After installing any TA, explicitly validate CIM field population and tag assignment for every sourcetype. See <a href="cim-fundamentals.html">CIM Fundamentals</a>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Data model acceleration is an admin thing — I don't need to check it"</strong></td>
+                                <td>If acceleration is broken, every tstats-based detection fails. This is a detection engineering concern, not just an admin concern.</td>
+                                <td>Include data model acceleration checks in your pre-detection-enablement validation. Make it part of the lifecycle.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"I'll fix the data layer later — let me enable detections first"</strong></td>
+                                <td>Enabling detections against broken data creates false confidence. You believe you have coverage. Auditors believe you have coverage. You don't.</td>
+                                <td>Data validation is a hard gate. <strong>Fix data first, then enable detections.</strong> No exceptions.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"I'll edit the TA's default/props.conf to fix the field"</strong></td>
+                                <td>Next TA update will overwrite your fix. You'll lose the change and may not notice until a detection silently fails weeks later.</td>
+                                <td>Always make changes in the TA's <code>local/</code> directory. Local files survive upgrades. See <a href="safe-addon-tuning.html">Safe Add-on Tuning</a>.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Understand the ES data pipeline (this page)</strong></td>
+                                <td>1 hour reading</td>
+                                <td>2-3 hours with hands-on SPL validation</td>
+                                <td>Half day if concepts are new</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Run layer-by-layer health check per data source</strong></td>
+                                <td>15 minutes per source</td>
+                                <td>30 minutes per source</td>
+                                <td>1 hour per source (troubleshooting needed)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Diagnose a "detection returns zero results" issue</strong></td>
+                                <td>15 minutes (obvious — wrong layer)</td>
+                                <td>1-2 hours (multiple layers to check)</td>
+                                <td>Half day (subtle CIM/tag issue)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Full ES data layer audit (all sources, all models)</strong></td>
+                                <td>1 day (small environment, few sources)</td>
+                                <td>3-5 days (medium environment)</td>
+                                <td>1-2 weeks (large environment, many gaps)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Layer-by-layer health check results per data source</strong></td>
+                                <td>SPL output table: L1 status, L2 status, L3 status for each index/sourcetype</td>
+                                <td>Data quality tracker / detection registry</td>
+                                <td>Before enabling any detection. After any TA or ES upgrade.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model acceleration status</strong></td>
+                                <td>SPL output: data model name, acceleration on/off, last acceleration time</td>
+                                <td>Platform health report</td>
+                                <td>Weekly check. After any ES upgrade.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CIM field population report</strong></td>
+                                <td>SPL output: per-sourcetype, per-CIM-field population percentage</td>
+                                <td>Data quality tracker</td>
+                                <td>After TA installation. After TA upgrade. During quarterly audit.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Known data gaps and accepted risks</strong></td>
+                                <td>Registry entry: what's missing, why, compensating control (if any), accepted by whom</td>
+                                <td>Detection registry / risk register</td>
+                                <td>When a gap is identified and a decision is made to accept it</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Change log for any TA modifications</strong></td>
+                                <td>What was changed, where (app/local/filename), why, tested by, rollback plan</td>
+                                <td>Change management system</td>
+                                <td>Before deploying any TA change</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="cim-fundamentals.html" class="next-steps-link">CIM Fundamentals for ES →</a>
+                        <a href="data-models-deep-dive.html" class="next-steps-link">Data Models Deep Dive →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

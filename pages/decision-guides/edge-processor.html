@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edge Processor Decision Guide - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                    <a href="../decision-guides/edge-processor.html" class="nav-item nav-item-sub active">Edge Processor</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="../es-content-management/tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="../es-content-management/health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="../es-content-management/governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                    <a href="../es-content-management/escu-overview.html" class="nav-item nav-item-sub">ESCU Overview</a>
+                    <a href="../es-content-management/escu-operationalize.html" class="nav-item nav-item-sub">Operationalizing ESCU</a>
+                    <a href="../es-content-management/escu-log-mapping.html" class="nav-item nav-item-sub">ESCU Log Mapping</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="../es-operations/notable-suppression.html" class="nav-item nav-item-sub">Notable Suppression</a>
+                    <a href="../es-operations/investigations-evidence.html" class="nav-item nav-item-sub">Investigations & Evidence</a>
+                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../decision-guides/index.html">Decision Guides</a>
+                <span class="separator">/</span>
+                <span class="current">Edge Processor Decision Guide</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-1">🎯 Phase 1 — Decision Guide</span>
+                <h1>Edge Processor Decision Guide</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — DECISION GUIDE</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> Decide when to use the Splunk Edge Processor versus a traditional Heavy Forwarder or Universal Forwarder architecture. Covers data routing, filtering, masking, and transformation at the edge — with a focus on how these decisions impact detection engineering (data availability, CIM compliance, search performance).</p>
+                    <p><strong>Ownership:</strong> Platform Engineering (architecture decisions) + Detection Engineering (data requirements input)</p>
+                    <p><strong>Preconditions:</strong> Familiarity with <a href="../phase1-log-coverage/index.html">Phase 1 — Log Coverage</a> and the <a href="../universal-onboarding/index.html">Universal Onboarding Framework</a>.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> You're evaluating Edge Processor for a Splunk Cloud or Splunk Enterprise deployment. <strong>Note:</strong> Edge Processor is a Splunk Cloud-native feature. On-prem availability depends on your Splunk version and licensing.</li>
+                        <li><strong>Assumption:</strong> Your environment processes enough data volume to benefit from edge-side processing. <strong>Threshold:</strong> Edge Processor adds the most value at >100 GB/day where filtering, routing, or masking at the edge reduces indexing cost or improves data quality.</li>
+                        <li><strong>Assumption:</strong> Edge Processor is generally available for your Splunk Cloud stack. <strong>Verify:</strong> Check with your Splunk account team or Splunk Cloud admin. Feature availability varies by stack type and contract.</li>
+                        <li><strong>Assumption:</strong> Detection Engineering has defined data requirements. <strong>Risk if wrong:</strong> Edge filtering decisions made without DE input may drop data needed for detections.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT IS EDGE PROCESSOR -->
+                <!-- ============================================== -->
+                <h2>What Is the Edge Processor?</h2>
+
+                <p>The <strong>Splunk Edge Processor</strong> is a data processing layer that sits between your data sources and the Splunk indexing tier. It receives data from Universal Forwarders (or direct sources like syslog/HEC), applies transformations (filtering, routing, masking, field extraction) at the edge, and forwards the processed data to Splunk Cloud (or other destinations).</p>
+
+                <p>Think of it as a cloud-managed Heavy Forwarder — but with a UI-driven pipeline builder instead of props/transforms configuration files.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Capability</th>
+                                <th>Universal Forwarder (UF)</th>
+                                <th>Heavy Forwarder (HF)</th>
+                                <th>Edge Processor (EP)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Data collection</strong></td>
+                                <td>✅ Collects from local sources (files, scripts, WMI)</td>
+                                <td>✅ Collects from local + network sources (syslog, HEC, dbconnect)</td>
+                                <td>✅ Receives from UFs, syslog, HEC, and other sources</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data filtering</strong></td>
+                                <td>❌ Minimal (can blacklist by sourcetype/path)</td>
+                                <td>✅ Full — props.conf, transforms.conf, SEDCMD</td>
+                                <td>✅ Full — UI-based SPL2 pipeline rules</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data routing</strong></td>
+                                <td>❌ Routes to configured indexers only</td>
+                                <td>✅ Can route to different indexes/destinations based on content</td>
+                                <td>✅ Route to Splunk Cloud, S3, other destinations based on content</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data masking</strong></td>
+                                <td>❌ No</td>
+                                <td>✅ Via SEDCMD and transforms</td>
+                                <td>✅ Via pipeline rules (regex-based masking)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Field extraction</strong></td>
+                                <td>❌ No (happens at search time)</td>
+                                <td>✅ Index-time extractions via props/transforms</td>
+                                <td>✅ Extract and transform fields before indexing</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Management</strong></td>
+                                <td>Deployment server / CLI</td>
+                                <td>Deployment server / CLI / conf files</td>
+                                <td>Cloud-hosted UI with visual pipeline builder</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Resource footprint</strong></td>
+                                <td>Light (< 256 MB RAM)</td>
+                                <td>Heavy (dedicated server, 8-32+ GB RAM)</td>
+                                <td>Medium (container-based, scales horizontally)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Configuration complexity</strong></td>
+                                <td>Low</td>
+                                <td>High (props/transforms expertise required)</td>
+                                <td>Medium (UI-driven, SPL2-based pipelines)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: DECISION TREE -->
+                <!-- ============================================== -->
+                <h2>When to Use Edge Processor — Decision Tree</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    START["Data Architecture<br/>Decision Point"] --> Q1{"Do you need to<br/>filter, route, mask,<br/>or transform data<br/>before indexing?"}
+    
+    Q1 -->|"No — raw data<br/>goes straight to<br/>indexing tier"| UF["Use Universal Forwarder<br/>→ Indexer (standard path)<br/>No edge processing needed"]
+    
+    Q1 -->|"Yes"| Q2{"Is your destination<br/>Splunk Cloud?"}
+    
+    Q2 -->|"Yes — Splunk Cloud"| Q3{"Is Edge Processor<br/>available on<br/>your stack?"}
+    Q3 -->|"Yes"| EP_REC["✅ EDGE PROCESSOR<br/>RECOMMENDED<br/>Cloud-native, UI-managed,<br/>scales horizontally"]
+    Q3 -->|"No / Unsure"| HF_REC["Use Heavy Forwarder<br/>(traditional approach)<br/>or check with Splunk"]
+    
+    Q2 -->|"No — On-Prem<br/>Enterprise"| Q4{"Do you need to<br/>route data to<br/>MULTIPLE destinations<br/>(Splunk + S3 + other)?"}
+    
+    Q4 -->|"Yes — multi-<br/>destination routing"| EP_MAYBE["Consider Edge Processor<br/>if available on-prem,<br/>otherwise Heavy Forwarder<br/>with custom routing"]
+    
+    Q4 -->|"No — single<br/>destination (Splunk)"| Q5{"How complex is<br/>the transformation?"}
+    
+    Q5 -->|"Simple filtering<br/>(drop events,<br/>mask fields)"| HF_SIMPLE["Heavy Forwarder<br/>(straightforward<br/>props/transforms)"]
+    Q5 -->|"Complex transforms,<br/>enrichment, conditional<br/>routing"| HF_COMPLEX["Heavy Forwarder<br/>with dedicated resources<br/>OR Edge Processor"]
+    
+    style UF fill:#6e7681,stroke:#484f58,color:#fff
+    style EP_REC fill:#238636,stroke:#2ea043,color:#fff
+    style HF_REC fill:#58a6ff,stroke:#388bfd,color:#fff
+    style EP_MAYBE fill:#d29922,stroke:#bb8009,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: USE CASES -->
+                <!-- ============================================== -->
+                <h2>Edge Processor Use Cases for Detection Engineering</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Use Case</th>
+                                <th>What Edge Processor Does</th>
+                                <th>DE Impact</th>
+                                <th>Risk to Monitor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Volume reduction — Drop noisy events</strong></td>
+                                <td>Filter out known-benign events at the edge (e.g., heartbeat logs, debug messages, health checks) before they consume indexing license</td>
+                                <td>✅ Positive: Reduces index noise, improves search performance. Detections against remaining data are more efficient.</td>
+                                <td>🔴 Risk: If filtering criteria are too broad, security-relevant events may be dropped before reaching the index. <strong>DE must review all filter rules.</strong></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data masking — PII/PCI compliance</strong></td>
+                                <td>Mask credit card numbers, SSNs, or PII fields before data reaches the index (compliance with PCI DSS, GDPR, etc.)</td>
+                                <td>✅ Positive: Compliance with data protection requirements. DE can still detect on patterns without seeing raw PII.</td>
+                                <td>🟡 Risk: Over-masking can remove fields needed for correlation. Mask only the sensitive portion, preserve the field structure.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data routing — Multi-index or multi-destination</strong></td>
+                                <td>Route high-fidelity security events to the security index (fast, expensive) and verbose operational logs to a lower-cost tier or S3</td>
+                                <td>✅ Positive: Security-relevant data stays in fast indexes. Cost savings on operational data.</td>
+                                <td>🟡 Risk: Routing rules may misclassify events. Security-relevant events routed to low-cost tier may not be available for detections within required search windows.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Field enrichment — Add context at ingestion</strong></td>
+                                <td>Add lookup-based enrichment (e.g., asset owner, criticality tier, business unit) at the edge before indexing</td>
+                                <td>✅ Positive: Enriched data enables better correlation and reduces search-time lookup overhead.</td>
+                                <td>🟡 Risk: Enrichment lookups must be kept current. Stale enrichment = stale context in indexed events (hard to fix retroactively).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Schema normalization</strong></td>
+                                <td>Normalize field names to CIM at the edge, before indexing. Events arrive CIM-compliant.</td>
+                                <td>✅ Positive: Data models work immediately. No search-time field aliasing needed.</td>
+                                <td>🟡 Risk: Normalization errors at the edge are baked into the indexed data. Unlike search-time props, index-time errors require re-indexing to fix.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Aggregation — Reduce event volume</strong></td>
+                                <td>Aggregate repetitive events (e.g., 1000 identical firewall denies → 1 summary event with count)</td>
+                                <td>⚠️ Mixed: Reduces volume, but individual event details are lost. Some detections need raw events.</td>
+                                <td>🔴 Risk: Aggregation destroys granularity. Detections that need individual event timestamps, source/destination pairs, or payload content will fail against aggregated data.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: DE REQUIREMENTS FOR EDGE DECISIONS -->
+                <!-- ============================================== -->
+                <h2>Detection Engineering Requirements for Edge Processing Decisions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Critical Rule: DE Reviews All Edge Filter Rules</div>
+                    <p>Every filter rule, routing rule, masking rule, or aggregation rule applied at the edge MUST be reviewed by Detection Engineering before deployment. Edge processing happens before data reaches the index — once data is dropped, it's gone. There is no search-time recovery.</p>
+                </div>
+
+                <h3>DE Approval Checklist for Edge Rules</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>✅</th>
+                                <th>Review Item</th>
+                                <th>Question to Answer</th>
+                                <th>Red Flag</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>1. Filter scope</strong></td>
+                                <td>What events will be dropped? Is the filter specific enough (e.g., EventCode AND source) or overly broad (e.g., entire sourcetype)?</td>
+                                <td>Filtering an entire sourcetype that contains any security-relevant events</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>2. Detection dependency</strong></td>
+                                <td>Do any active or planned detections depend on the events being filtered?</td>
+                                <td>Dropping events referenced by an ESCU detection or a planned custom detection</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>3. Investigation dependency</strong></td>
+                                <td>Would a SOC analyst need these events during incident investigation (even if no detection directly fires on them)?</td>
+                                <td>Dropping context events (e.g., successful logins around a failed-login detection)</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>4. Compliance requirement</strong></td>
+                                <td>Are there retention or audit requirements that mandate keeping these events?</td>
+                                <td>Dropping audit-relevant events (access logs, change logs) in a PCI or SOX environment</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>5. Masking impact</strong></td>
+                                <td>If fields are being masked, does the masked version still allow detection to work? (e.g., can you still match on a masked IP range?)</td>
+                                <td>Masking a field that a detection uses for correlation (e.g., masking src_ip in a brute-force detection)</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>6. Routing destination SLA</strong></td>
+                                <td>If events are routed to a low-cost tier, are they still searchable within the detection's time window?</td>
+                                <td>Events routed to S3 with 24-hour query latency, but detection needs 15-minute lookback</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>7. Aggregation granularity</strong></td>
+                                <td>If events are aggregated, does the summary event preserve enough detail for detection?</td>
+                                <td>Aggregating individual auth events when the detection needs per-event timestamps for fatigue pattern detection</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ARCHITECTURE COMPARISON -->
+                <!-- ============================================== -->
+                <h2>Architecture Comparison: When Each Makes Sense</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Scenario</th>
+                                <th>Best Choice</th>
+                                <th>Why</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Simple collection from Windows/Linux endpoints</td>
+                                <td><strong>UF → Indexer</strong></td>
+                                <td>No edge processing needed. UF is lightweight and reliable. Let TAs handle field extraction at search time.</td>
+                            </tr>
+                            <tr>
+                                <td>Syslog from network devices (firewall, WAF, switches)</td>
+                                <td><strong>UF/Syslog → HF or EP → Indexer</strong></td>
+                                <td>Network syslog often needs parsing, filtering (drop health checks), and routing. HF or EP handles this.</td>
+                            </tr>
+                            <tr>
+                                <td>High-volume data with PCI masking requirement (retail)</td>
+                                <td><strong>UF → EP → Splunk Cloud</strong></td>
+                                <td>EP masks PCI data before it reaches the index. UI-based rules are auditable. Cloud-native management.</td>
+                            </tr>
+                            <tr>
+                                <td>Multi-destination routing (Splunk + S3 + SIEM migration)</td>
+                                <td><strong>UF → EP → Splunk Cloud + S3</strong></td>
+                                <td>EP can route copies of data to multiple destinations simultaneously. HF can do this too, but EP has a cleaner UI for it.</td>
+                            </tr>
+                            <tr>
+                                <td>Legacy on-prem environment with no Splunk Cloud</td>
+                                <td><strong>UF → HF → Indexer</strong></td>
+                                <td>EP is primarily a Splunk Cloud feature. On-prem environments use the traditional HF pipeline.</td>
+                            </tr>
+                            <tr>
+                                <td>Reducing indexing volume by 30%+ to manage license</td>
+                                <td><strong>UF → EP → Splunk Cloud</strong></td>
+                                <td>EP's filtering at the edge reduces data before it counts against license. But DE must approve all filter rules.</td>
+                            </tr>
+                            <tr>
+                                <td>Complex conditional routing with environment-specific lookups</td>
+                                <td><strong>HF (or EP with enrichment)</strong></td>
+                                <td>HF has the most flexibility for complex conditional logic. EP is catching up but may have limitations on complex lookups.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FAILURE MODES -->
+                <!-- ============================================== -->
+                <h2>Failure Modes</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Failure Mode</th>
+                                <th>Symptom</th>
+                                <th>Root Cause</th>
+                                <th>Impact</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Edge filter drops security events</strong></td>
+                                <td>Detection that previously worked stops finding results. Investigation queries return fewer events than expected.</td>
+                                <td>Edge filter rule too broad. Platform team added a filter without DE review.</td>
+                                <td>🔴 Critical: Detections silently fail. Security events are permanently lost.</td>
+                                <td>Emergency: Disable the filter rule. Review all edge rules with DE. Implement mandatory DE sign-off on filter changes.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Masking breaks detection field</strong></td>
+                                <td>Correlation search that matches on a specific field now returns zero results because the field is masked to <code>****</code></td>
+                                <td>Masking applied to a field used in detection logic (e.g., user email, IP address)</td>
+                                <td>🔴 Detection failure. May also break investigation workflows.</td>
+                                <td>Mask only the sensitive portion (e.g., mask the middle digits of a CC, not the entire field). Or use hashing instead of masking to allow correlation.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Edge Processor becomes a bottleneck</strong></td>
+                                <td>Data ingestion lag increases. Events arrive in Splunk minutes or hours after generation.</td>
+                                <td>EP underscaled for data volume. Processing rules too complex.</td>
+                                <td>Detections with short lookback windows miss events. Near-real-time alerting degrades.</td>
+                                <td>Scale EP horizontally. Simplify complex pipeline rules. Monitor EP throughput and latency metrics.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Aggregation destroys detection granularity</strong></td>
+                                <td>MFA fatigue detection stops working because individual push events are aggregated into a single summary per hour</td>
+                                <td>Aggregation rule doesn't preserve the event-level detail the detection needs</td>
+                                <td>Specific detection patterns that require event-level granularity can no longer be detected</td>
+                                <td>Never aggregate security-relevant event types without DE approval. Route a copy of raw events to the security index before aggregating.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Edge normalization error baked into index</strong></td>
+                                <td>CIM field mapped incorrectly at the edge. All indexed events have wrong field values.</td>
+                                <td>Normalization rule has a bug. Unlike search-time props, the error is in the indexed data.</td>
+                                <td>Detections using the wrong field produce false positives or false negatives. Fix requires re-indexing.</td>
+                                <td>Test normalization rules in a pipeline preview before deploying. Start with a small subset of data. Validate against CIM expected values.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: VALIDATION -->
+                <!-- ============================================== -->
+                <h2>Validation — After Edge Processor Deployment</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify Data Volume Before vs After Edge Processor</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Run this BEFORE and AFTER Edge Processor deployment")`
+`comment("Compare results to understand what was filtered/changed")`
+
+| tstats count WHERE index=* BY index, sourcetype span=1h
+| stats avg(count) AS avg_events_per_hour BY index, sourcetype
+| sort - avg_events_per_hour
+| head 30
+| eval note = "Compare this output before and after EP deployment to identify volume changes"</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify Detection Data Sources Still Exist Post-EP</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("For each active correlation search, verify its data source still exists")`
+`comment("Run this after any Edge Processor rule change")`
+
+| rest /services/saved/searches splunk_server=local
+| where disabled=0 AND isnotnull(action.correlationsearch.enabled)
+| rex field=search "index\s*=\s*(?<required_index>\w+)"
+| search required_index=*
+| dedup required_index
+| map search="| tstats count WHERE index=$required_index$ | eval index=\"$required_index$\""
+| eval status = if(count > 0, "✅ Data present", "🔴 NO DATA — check Edge Processor filters")</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK -->
+                <!-- ============================================== -->
+                <h2>Rollback Steps</h2>
+
+                <ol>
+                    <li><strong>Edge filter dropping critical data:</strong> Disable the specific filter rule in the EP pipeline immediately. Data flow resumes to the default (unfiltered) path. Verify with a <code>| tstats count WHERE index=affected_index earliest=-15m</code> check.</li>
+                    <li><strong>Edge normalization creating bad data:</strong> Disable the normalization rule. Events will arrive un-normalized (search-time TAs will handle field extraction). Accept search-time overhead until the normalization rule is fixed and retested.</li>
+                    <li><strong>Edge Processor outage:</strong> UFs should fall back to queuing data locally. When EP recovers, queued data will be forwarded. If EP is down for extended periods, consider routing UFs directly to indexers temporarily (requires deployment server push).</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>Any edge filter rule is deployed without DE review.</strong> Stop. Review the rule. If it drops security-relevant data, disable it immediately and restore the default path.</li>
+                        <li><strong>Detection coverage gaps appear after EP deployment.</strong> Compare data volumes before/after. If a data source is missing or reduced, trace the cause to an EP rule.</li>
+                        <li><strong>EP latency exceeds 5 minutes for security-critical data.</strong> Detections with short lookback windows (5-15 min) may miss events. Escalate to platform team for scaling.</li>
+                        <li><strong>Aggregation rules are proposed for any security event type.</strong> DE must explicitly approve. Default answer is "don't aggregate security events." Route a raw copy first.</li>
+                        <li><strong>Edge masking is proposed for fields used in active detections.</strong> Test the detection against masked sample data before deploying. If the detection breaks, find an alternative masking strategy (partial masking, hashing).</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Platform team manages edge rules, DE doesn't need to see them"</strong></td>
+                                <td>Platform optimizes for cost and performance. DE optimizes for detection coverage. Without DE review, cost savings come at the expense of security visibility.</td>
+                                <td>Mandatory DE sign-off on all edge filter, masking, routing, and aggregation rules. Documented in change management.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Filter everything except what we explicitly need"</strong></td>
+                                <td>Allowlist approach at the edge is extremely risky. New data sources, new detections, and investigation queries all need data you haven't predicted.</td>
+                                <td>Use a denylist approach: explicitly drop what you're certain is noise. Default to forwarding everything else.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"We'll aggregate at the edge and keep raw in S3"</strong></td>
+                                <td>S3 data has hours or days of query latency. Detections need near-real-time data. S3 is for forensics, not detection.</td>
+                                <td>Index raw security events in Splunk. Use S3 for long-term retention or compliance archives only.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Edge Processor replaces all Heavy Forwarders"</strong></td>
+                                <td>EP may not support all HF use cases (complex routing, specific TAs, index-time field extractions). Migration must be planned.</td>
+                                <td>Evaluate EP capabilities against your specific HF use cases. Migrate incrementally — start with the simplest pipelines.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"We'll figure out what to filter after we deploy EP"</strong></td>
+                                <td>Deploying EP without a filtering plan means either no benefit (data flows through unchanged) or reactive filtering that drops the wrong data.</td>
+                                <td>Define filter rules before deployment. Review with DE. Test in preview mode. Deploy to a subset first.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Edge Processor evaluation / POC</strong></td>
+                                <td>1 week</td>
+                                <td>2-4 weeks</td>
+                                <td>1-2 months (procurement, Splunk Cloud coordination)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Define filtering rules with DE review</strong></td>
+                                <td>1-2 days</td>
+                                <td>1 week</td>
+                                <td>2 weeks (many data sources, complex rules)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Deploy EP for one data pipeline</strong></td>
+                                <td>1 day</td>
+                                <td>2-3 days</td>
+                                <td>1 week (network/firewall changes needed)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Migrate all HF pipelines to EP</strong></td>
+                                <td>2 weeks (few pipelines)</td>
+                                <td>1-2 months</td>
+                                <td>3+ months (complex environment, many HFs)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Post-deployment validation (all detections)</strong></td>
+                                <td>Half day</td>
+                                <td>1-2 days</td>
+                                <td>1 week (issues found, rules need adjusting)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Architecture decision record</strong></td>
+                                <td>Decision document: why EP / HF / UF was chosen, criteria evaluated</td>
+                                <td>Architecture documentation</td>
+                                <td>When making the decision</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Edge rule definitions with DE approval</strong></td>
+                                <td>Rule name, logic, DE reviewer, approval date, detection impact assessment</td>
+                                <td>Change management records</td>
+                                <td>Before deploying each edge rule</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Pre/post volume comparison</strong></td>
+                                <td>SPL output from validation queries — before and after EP deployment</td>
+                                <td>Platform documentation</td>
+                                <td>Before deployment and 24h/1w/1m after</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detection data source verification</strong></td>
+                                <td>SPL output confirming all active detection data sources remain available</td>
+                                <td>Detection registry</td>
+                                <td>After EP deployment and after each rule change</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Edge rule change log</strong></td>
+                                <td>Record of all edge rule additions, modifications, and removals</td>
+                                <td>Change management system</td>
+                                <td>Every edge rule change</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="../phase1-log-coverage/index.html" class="next-steps-link">Phase 1: Log Coverage & Readiness →</a>
+                        <a href="../decision-guides/index.html" class="next-steps-link">← All Decision Guides</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

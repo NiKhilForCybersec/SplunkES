@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decision Guides - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="index.html" class="nav-item active">Decision Guides</a>
+                    <a href="edge-processor.html" class="nav-item nav-item-sub">Edge Processor</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
+                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
+                    <a href="../onboarding-primary/syslog-devices.html" class="nav-item nav-item-sub">Syslog Devices</a>
+                    <a href="../onboarding-primary/endpoint-logs.html" class="nav-item nav-item-sub">Endpoint Logs</a>
+                    <a href="../onboarding-primary/custom-apps-hec.html" class="nav-item nav-item-sub">Custom Apps (HEC)</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Alternate Onboarding</div>
+                    <a href="../onboarding-alternate/index.html" class="nav-item">Overview</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/akamai-waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-authentication.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase1-log-coverage/index.html">Phase 1</a>
+                <span class="separator">/</span>
+                <span class="current">Decision Guides</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-1">📊 Phase 1 — Log Coverage</span>
+                <h1>Decision Guides</h1>
+
+                <!-- ============================================== -->
+                <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>Decision guides include risk factors and enterprise considerations for each path.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 MANDATORY: Document Decision Rationale</div>
+                    <p><strong>Every architectural decision must be documented in the project scope.</strong> These guides help you choose, but the rationale must be captured for future reference. Undocumented decisions lead to technical debt and audit failures.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Decision Reversibility</div>
+                    <p>Some decisions are harder to reverse than others:</p>
+                    <ul>
+                        <li><strong>Easy to change:</strong> Sourcetype names, index routing, TA selection</li>
+                        <li><strong>Moderate effort:</strong> Ingestion method, Heavy Forwarder vs HEC</li>
+                        <li><strong>Difficult to change:</strong> Index structure, data model mappings, timestamp extraction</li>
+                    </ul>
+                    <p>Consider long-term impact before committing to difficult-to-reverse decisions.</p>
+                </div>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title">🧭 When to Use These Guides</div>
+                    <p>Use these decision trees when you need to choose between competing approaches. Each guide walks through the decision systematically based on real-world constraints.</p>
+                </div>
+
+                <h2 id="ingestion-method">Guide 1: Choosing an Ingestion Method</h2>
+                <p>Select the appropriate ingestion method based on source characteristics.</p>
+                
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    START[New Data Source] --> Q1{Source can push<br/>to Splunk?}
+    Q1 -->|Yes| Q2{Native Splunk<br/>integration?}
+    Q1 -->|No| Q3{API available?}
+    
+    Q2 -->|Yes - UF Available| UF[Universal Forwarder]
+    Q2 -->|No - HTTP/HTTPS| Q4{JSON/Structured?}
+    Q2 -->|No - Syslog| SYSLOG[Syslog via HF]
+    
+    Q4 -->|Yes| HEC[HTTP Event Collector]
+    Q4 -->|No| HF_PARSE[Heavy Forwarder<br/>with parsing]
+    
+    Q3 -->|Yes| Q5{Real-time<br/>required?}
+    Q3 -->|No| MANUAL[Manual/Batch Upload<br/>⚠️ Not recommended]
+    
+    Q5 -->|Yes| HEC_POLL[HEC + Polling Script]
+    Q5 -->|No - Batch OK| DBCONNECT[DB Connect / Scripted Input]
+    
+    UF --> DONE[✓ Configure & Validate]
+    HEC --> DONE
+    SYSLOG --> DONE
+    HF_PARSE --> DONE
+    HEC_POLL --> DONE
+    DBCONNECT --> DONE
+    
+    style UF fill:#238636,stroke:#3fb950,color:#fff
+    style HEC fill:#238636,stroke:#3fb950,color:#fff
+    style SYSLOG fill:#1f6feb,stroke:#58a6ff,color:#fff
+    style HF_PARSE fill:#8957e5,stroke:#a371f7,color:#fff
+    style HEC_POLL fill:#db6d28,stroke:#f0883e,color:#fff
+    style DBCONNECT fill:#6e7681,stroke:#8b949e,color:#fff
+    style MANUAL fill:#f85149,stroke:#da3633,color:#fff
+                    </div>
+                </div>
+
+                <h3>Method Comparison Matrix</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Best For</th>
+                            <th>Latency</th>
+                            <th>Complexity</th>
+                            <th>Scalability</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Universal Forwarder</strong></td>
+                            <td>Files, Windows Events</td>
+                            <td>Seconds</td>
+                            <td>Low</td>
+                            <td>High</td>
+                        </tr>
+                        <tr>
+                            <td><strong>HTTP Event Collector</strong></td>
+                            <td>Applications, APIs, Cloud</td>
+                            <td>Seconds</td>
+                            <td>Medium</td>
+                            <td>Very High</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Syslog (via HF)</strong></td>
+                            <td>Network devices, Linux</td>
+                            <td>Seconds</td>
+                            <td>Medium</td>
+                            <td>High</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Heavy Forwarder</strong></td>
+                            <td>Complex parsing, aggregation</td>
+                            <td>Seconds-Minutes</td>
+                            <td>High</td>
+                            <td>Medium</td>
+                        </tr>
+                        <tr>
+                            <td><strong>DB Connect</strong></td>
+                            <td>Databases, batch data</td>
+                            <td>Minutes-Hours</td>
+                            <td>Medium</td>
+                            <td>Medium</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <h2 id="edge-ownership">Guide 2: Edge vs. Splunk Ownership</h2>
+                <p>Determine who owns the data collection: the edge team or the Splunk team.</p>
+                
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    START[Data Source Identified] --> Q1{Who manages<br/>the source system?}
+    
+    Q1 -->|Client infra team| Q2{Willing to install<br/>software?}
+    Q1 -->|Security/SOC team| SPLUNK[Splunk Team Owns]
+    Q1 -->|Third-party/SaaS| Q3{Push or Pull?}
+    
+    Q2 -->|Yes| EDGE[Edge Team Owns<br/>→ UF deployment]
+    Q2 -->|No| Q4{Can open firewall<br/>to HF?}
+    
+    Q4 -->|Yes| HYBRID[Hybrid: Edge → HF]
+    Q4 -->|No| ESCALATE[⚠️ Escalate to Management]
+    
+    Q3 -->|Push - Webhook/API| SPLUNK
+    Q3 -->|Pull - API polling| SPLUNK
+    
+    EDGE --> DOC1[Document in RACI:<br/>Edge = Responsible]
+    SPLUNK --> DOC2[Document in RACI:<br/>Splunk = Responsible]
+    HYBRID --> DOC3[Document in RACI:<br/>Shared Responsibility]
+    
+    style EDGE fill:#238636,stroke:#3fb950,color:#fff
+    style SPLUNK fill:#1f6feb,stroke:#58a6ff,color:#fff
+    style HYBRID fill:#8957e5,stroke:#a371f7,color:#fff
+    style ESCALATE fill:#f85149,stroke:#da3633,color:#fff
+                    </div>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Ownership Must Be Clear</div>
+                    <p>Document ownership in the project RACI. Ambiguous ownership leads to gaps when data stops flowing and nobody owns the fix.</p>
+                </div>
+
+                <h3>Ownership Responsibility Matrix</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Task</th>
+                            <th>Edge Team</th>
+                            <th>Splunk Team</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Install/maintain forwarder</td>
+                            <td>✓</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>Configure outputs.conf</td>
+                            <td></td>
+                            <td>✓</td>
+                        </tr>
+                        <tr>
+                            <td>Monitor data flow</td>
+                            <td></td>
+                            <td>✓</td>
+                        </tr>
+                        <tr>
+                            <td>Troubleshoot source system</td>
+                            <td>✓</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>Troubleshoot Splunk parsing</td>
+                            <td></td>
+                            <td>✓</td>
+                        </tr>
+                        <tr>
+                            <td>Firewall change requests</td>
+                            <td>✓</td>
+                            <td>Consulted</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <h2 id="mfa-provider">Guide 3: MFA Provider Selection</h2>
+                <p>When multiple MFA providers exist, determine which to prioritize for log coverage.</p>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Context: Multi-Provider Environment</div>
+                    <p>Many enterprises use multiple MFA solutions (e.g., Entra ID for cloud, CyberArk for privileged access). This guide helps prioritize which to onboard first.</p>
+                </div>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    START[Multiple MFA<br/>Providers Identified] --> Q1{Which protects<br/>most critical assets?}
+    
+    Q1 -->|Privileged Access| PAM[Start with PAM MFA<br/>CyberArk, Delinea, etc.]
+    Q1 -->|General Workforce| IAM[Start with Primary IAM<br/>Entra ID, Okta, etc.]
+    Q1 -->|Equal criticality| Q2{Which has better<br/>log quality?}
+    
+    Q2 -->|Option A| START_A[Start with Option A]
+    Q2 -->|Option B| START_B[Start with Option B]
+    Q2 -->|Similar| BOTH[Onboard Both<br/>in Parallel]
+    
+    PAM --> CORRELATE[Plan: Correlate<br/>across providers]
+    IAM --> CORRELATE
+    START_A --> CORRELATE
+    START_B --> CORRELATE
+    BOTH --> CORRELATE
+    
+    CORRELATE --> DONE[Build unified<br/>authentication view]
+    
+    style PAM fill:#f85149,stroke:#da3633,color:#fff
+    style IAM fill:#1f6feb,stroke:#58a6ff,color:#fff
+    style BOTH fill:#8957e5,stroke:#a371f7,color:#fff
+                    </div>
+                </div>
+
+                <h3>MFA Provider Comparison</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Provider Type</th>
+                            <th>Typical Use</th>
+                            <th>Log Quality</th>
+                            <th>Priority</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Entra ID MFA</strong></td>
+                            <td>Cloud apps, O365, Azure</td>
+                            <td>Excellent (native JSON)</td>
+                            <td>High - Large user base</td>
+                        </tr>
+                        <tr>
+                            <td><strong>CyberArk MFA</strong></td>
+                            <td>Privileged sessions</td>
+                            <td>Good (structured syslog)</td>
+                            <td>Critical - High-risk accounts</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Duo Security</strong></td>
+                            <td>VPN, legacy apps</td>
+                            <td>Good (JSON API)</td>
+                            <td>Medium - Depends on coverage</td>
+                        </tr>
+                        <tr>
+                            <td><strong>RSA SecurID</strong></td>
+                            <td>Legacy systems</td>
+                            <td>Variable (syslog)</td>
+                            <td>Legacy - Document gaps</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <h2 id="index-strategy">Guide 4: Index Strategy</h2>
+                <p>Determine whether to use dedicated or shared indexes.</p>
+                
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    START[New Data Source] --> Q1{Expected daily<br/>volume?}
+    
+    Q1 -->|< 10 GB/day| Q2{Sensitive data?}
+    Q1 -->|10-50 GB/day| Q3{Unique retention<br/>requirement?}
+    Q1 -->|> 50 GB/day| DEDICATED[Dedicated Index]
+    
+    Q2 -->|Yes - PII, regulated| DEDICATED
+    Q2 -->|No| SHARED[Shared Category Index]
+    
+    Q3 -->|Yes| DEDICATED
+    Q3 -->|No - Standard| Q4{Performance<br/>critical?}
+    
+    Q4 -->|Yes - Sub-second| DEDICATED
+    Q4 -->|No| SHARED
+    
+    DEDICATED --> NAME1[Name: prod_security_{source}]
+    SHARED --> NAME2[Name: prod_security_general<br/>or prod_network_general]
+    
+    style DEDICATED fill:#8957e5,stroke:#a371f7,color:#fff
+    style SHARED fill:#238636,stroke:#3fb950,color:#fff
+                    </div>
+                </div>
+
+                <h3>Index Strategy Summary</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Criterion</th>
+                            <th>Dedicated Index</th>
+                            <th>Shared Index</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Volume > 50 GB/day</td>
+                            <td>✓</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>Special retention</td>
+                            <td>✓</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>Access control needed</td>
+                            <td>✓</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>Cost optimization</td>
+                            <td></td>
+                            <td>✓</td>
+                        </tr>
+                        <tr>
+                            <td>Simpler management</td>
+                            <td></td>
+                            <td>✓</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <h2 id="ta-selection">Guide 5: Technology Add-on Selection</h2>
+                <p>Choose between official TAs, community TAs, or custom parsing.</p>
+                
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    START[Need to parse<br/>new sourcetype] --> Q1{Official TA<br/>on Splunkbase?}
+    
+    Q1 -->|Yes| Q2{TA version<br/>current?}
+    Q1 -->|No| Q3{Community TA<br/>available?}
+    
+    Q2 -->|Yes - Recent update| OFFICIAL[Use Official TA]
+    Q2 -->|No - Outdated| Q4{Critical fields<br/>missing?}
+    
+    Q4 -->|Yes| CUSTOM_EXT[Official TA +<br/>Custom Extensions]
+    Q4 -->|No - Acceptable| OFFICIAL
+    
+    Q3 -->|Yes| Q5{Well maintained?<br/>Recent commits?}
+    Q3 -->|No| CUSTOM[Build Custom TA]
+    
+    Q5 -->|Yes| COMMUNITY[Use Community TA<br/>⚠️ Test thoroughly]
+    Q5 -->|No - Abandoned| CUSTOM
+    
+    OFFICIAL --> TEST[Test with real data<br/>before deployment]
+    CUSTOM_EXT --> TEST
+    COMMUNITY --> TEST
+    CUSTOM --> TEST
+    
+    style OFFICIAL fill:#238636,stroke:#3fb950,color:#fff
+    style CUSTOM_EXT fill:#8957e5,stroke:#a371f7,color:#fff
+    style COMMUNITY fill:#db6d28,stroke:#f0883e,color:#fff
+    style CUSTOM fill:#f85149,stroke:#da3633,color:#fff
+                    </div>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚫 Never Deploy Untested TAs</div>
+                    <p>Always test TAs against your actual data in a non-production context. Vendor TAs may not handle your specific log format variations.</p>
+                </div>
+
+                <h2>Quick Reference</h2>
+                
+                <div class="collapsible">
+                    <button class="collapsible-trigger">
+                        <span>📋 Decision Checklist Summary</span>
+                        <span class="chevron">▼</span>
+                    </button>
+                    <div class="collapsible-content">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Decision</th>
+                                    <th>Key Question</th>
+                                    <th>Default Answer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Ingestion Method</td>
+                                    <td>Can source push to Splunk?</td>
+                                    <td>HEC for cloud; Syslog for network</td>
+                                </tr>
+                                <tr>
+                                    <td>Ownership</td>
+                                    <td>Who manages the source?</td>
+                                    <td>Edge team installs; Splunk team configures</td>
+                                </tr>
+                                <tr>
+                                    <td>MFA Provider</td>
+                                    <td>Which protects critical assets?</td>
+                                    <td>PAM MFA first for privileged access</td>
+                                </tr>
+                                <tr>
+                                    <td>Index Strategy</td>
+                                    <td>Volume > 50GB or special needs?</td>
+                                    <td>Dedicated if yes; shared otherwise</td>
+                                </tr>
+                                <tr>
+                                    <td>TA Selection</td>
+                                    <td>Official TA available?</td>
+                                    <td>Official first; custom only if needed</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <h2>Next Steps</h2>
+                <div class="next-steps">
+                    <a href="../onboarding-primary/index.html" class="next-step-card">
+                        <span class="next-step-label">Primary Onboarding</span>
+                        <span class="next-step-title">Source-Specific Guides →</span>
+                    </a>
+                    <a href="../onboarding-alternate/index.html" class="next-step-card">
+                        <span class="next-step-label">Alternate Onboarding</span>
+                        <span class="next-step-title">External Collectors & APIs →</span>
+                    </a>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: DECISION DOCUMENTATION TEMPLATE -->
+                <!-- ============================================== -->
+                <h2>Decision Documentation Template</h2>
+
+                <p>Use this template to document architectural decisions for audit trail:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Architecture Decision Record (ADR)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>## Decision: [Brief Title]
+
+**Date:** YYYY-MM-DD
+**Decision Maker:** [Name]
+**Status:** Proposed | Accepted | Deprecated
+
+### Context
+[What is the situation? What problem are we solving?]
+
+### Decision
+[What did we decide?]
+
+### Rationale
+[Why did we choose this option?]
+- Considered alternatives: [List other options evaluated]
+- Key factors: [What drove the decision?]
+
+### Consequences
+- **Positive:** [Benefits of this decision]
+- **Negative:** [Drawbacks or tradeoffs]
+- **Risks:** [What could go wrong?]
+
+### Reversal Plan
+[How would we change this decision if needed?]
+[What is the effort level? Easy / Moderate / Difficult]</code></pre>
+                </div>
+
+                <h3>Example: Ingestion Method Selection</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Sample ADR: Akamai WAF Ingestion</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>## Decision: Akamai WAF via SIEM Integration
+
+**Date:** 2024-01-15
+**Decision Maker:** Detection Engineering Team
+**Status:** Accepted
+
+### Context
+Need to ingest Akamai WAF logs for DDoS and web attack detection.
+Options: SIEM Integration (HEC), Log Delivery Service (S3), Datastream.
+
+### Decision
+Use SIEM Integration with HEC push to Splunk Cloud.
+
+### Rationale
+- Considered alternatives: Log Delivery (S3 polling), Datastream
+- Key factors: 
+  - SIEM Integration is lowest latency (~2-5 min)
+  - No additional infrastructure required
+  - Akamai manages the integration
+  - Directly supported by Akamai TA for Splunk
+
+### Consequences
+- **Positive:** Simple setup, low maintenance, good latency
+- **Negative:** Dependent on Akamai-side configuration
+- **Risks:** HEC token compromise could allow data injection
+
+### Reversal Plan
+Could switch to Log Delivery if SIEM Integration has issues.
+Effort: Moderate (2-3 days to reconfigure)</code></pre>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OOTB vs Custom Detection Strategy - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="ootb-vs-custom.html" class="nav-item nav-item-sub active">OOTB vs Custom Strategy</a>
+                    <a href="correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">OOTB vs Custom Detection Strategy</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Content Management</span>
+                <h1>OOTB vs Custom Detection Strategy</h1>
+
+                <!-- ============================================== -->
+                <!-- HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES CONTENT MANAGEMENT</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This page provides the decision framework for choosing between OOTB, cloned, and custom detections. Every detection in this environment must be justified against this framework.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 CRITICAL: The Goal Is Working Detections, Not Detection Count</div>
+                    <p><strong>5 well-tuned detections that the SOC trusts are worth more than 50 enabled OOTB searches that nobody triages.</strong></p>
+                    <ul>
+                        <li>Do NOT measure success by how many searches are enabled</li>
+                        <li>Do NOT build custom when OOTB works after tuning</li>
+                        <li>Do NOT enable OOTB when the data reality doesn't support it</li>
+                        <li>Every detection must have an owner, a runbook, and a reason to exist</li>
+                    </ul>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> OOTB content inventory has been completed (see <a href="ootb-content.html">OOTB Content Reality</a>). <strong>Risk if wrong:</strong> You can't make good decisions without knowing what exists.</li>
+                        <li><strong>Assumption:</strong> Phase 1 and Phase 2 are complete for the data sources you plan to detect against. <strong>Risk if wrong:</strong> Detection without validated data is guessing.</li>
+                        <li><strong>Assumption:</strong> SOC has capacity to triage new detections. <strong>Risk if wrong:</strong> Enabling detections nobody can triage wastes everyone's time.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: THE FOUR PATHS -->
+                <!-- ============================================== -->
+                <h2>The Four Paths for Every Detection Need</h2>
+
+                <p>For every security detection requirement, there are exactly four possible paths. Each has different costs, risks, and maintenance burdens. The decision tree below helps you pick the right one.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Path</th>
+                                <th>What It Means</th>
+                                <th>When to Use</th>
+                                <th>Ongoing Cost</th>
+                                <th>Upgrade Risk</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>1. Enable OOTB As-Is</strong></td>
+                                <td>Enable the OOTB search exactly as shipped. No modifications.</td>
+                                <td>OOTB logic matches your data, thresholds are appropriate, backtest looks clean</td>
+                                <td style="color: var(--accent-green);">🟢 Lowest — Splunk maintains during upgrades</td>
+                                <td style="color: var(--accent-green);">🟢 None — Upgrades improve it automatically</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>2. Clone & Tune</strong></td>
+                                <td>Copy the OOTB search, modify thresholds/filters, disable original</td>
+                                <td>OOTB logic is correct but thresholds or filters need retail adjustments</td>
+                                <td style="color: var(--accent-orange);">🟡 Medium — You own the clone. Must review after ES upgrades.</td>
+                                <td style="color: var(--accent-orange);">🟡 Medium — Must manually compare with updated OOTB after upgrades</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-blue);"><strong>3. Write Custom</strong></td>
+                                <td>Build detection from scratch for a specific use case</td>
+                                <td>No OOTB covers this threat, OR OOTB logic fundamentally doesn't fit your data</td>
+                                <td style="color: var(--accent-red);">🔴 Highest — Entirely your responsibility to maintain</td>
+                                <td style="color: var(--accent-green);">🟢 None — Custom is independent of ES upgrades</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--text-muted);"><strong>4. Suppress / Disable</strong></td>
+                                <td>Leave OOTB disabled with documented justification</td>
+                                <td>No data, not relevant, requires RBA, or SOC cannot triage</td>
+                                <td style="color: var(--accent-green);">🟢 Minimal — Just document and re-evaluate quarterly</td>
+                                <td style="color: var(--accent-green);">🟢 None</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: MASTER DECISION TREE -->
+                <!-- ============================================== -->
+                <h2>Master Decision Tree — OOTB vs Custom</h2>
+
+                <p>Use this decision tree for EVERY detection requirement. Start at the top and follow the path.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    START["📋 Detection Requirement<br/>identified"] --> Q1{"Does an OOTB<br/>correlation search<br/>exist for this?"}
+    
+    Q1 -->|"No OOTB exists"| Q1A{"Is this threat<br/>relevant to<br/>retail?"}
+    Q1A -->|"Yes"| CUSTOM["🔵 WRITE CUSTOM<br/>No OOTB — build from scratch<br/>Full lifecycle required"]
+    Q1A -->|"No / Low priority"| DEFER["⚪ DEFER<br/>Document gap<br/>Re-evaluate quarterly"]
+    
+    Q1 -->|"OOTB exists"| Q2{"Does the required<br/>DATA exist and pass<br/>Phase 1 + 2?"}
+    
+    Q2 -->|"No"| DISABLE_DATA["🔴 DISABLE OOTB<br/>Document: 'Data not ready'<br/>Enable after data onboarding"]
+    
+    Q2 -->|"Yes"| Q3["Run 30-day BACKTEST<br/>on OOTB as-is"]
+    
+    Q3 --> Q4{"Backtest results?"}
+    
+    Q4 -->|"Zero results"| Q4A{"Expected?<br/>(Rare attack type)"}
+    Q4A -->|"Yes — rare attack"| ENABLE_MONITOR_LOW["🟢 ENABLE MONITORING<br/>Low volume expected<br/>Validates detection works"]
+    Q4A -->|"No — should have hits"| INVESTIGATE["🟡 INVESTIGATE<br/>Data mapping issue?<br/>Field name mismatch?<br/>Time zone problem?"]
+    
+    Q4 -->|"< 10/day avg<br/>Mostly true positives"| ENABLE_ASIS["🟢 ENABLE AS-IS<br/>OOTB works for this environment<br/>Monitoring → Production"]
+    
+    Q4 -->|"< 10/day avg<br/>Mixed TP/FP"| CLONE_TUNE["🟡 CLONE & TUNE<br/>Logic is right<br/>Filters need adjustment"]
+    
+    Q4 -->|"> 50/day avg<br/>Mostly noise"| Q5{"Can noise be fixed<br/>with thresholds<br/>or filters?"}
+    
+    Q5 -->|"Yes — threshold<br/>or filter fix"| CLONE_TUNE
+    Q5 -->|"No — fundamental<br/>logic mismatch"| Q6{"Is there a<br/>DIFFERENT OOTB search<br/>for same threat?"}
+    
+    Q6 -->|"Yes"| Q3
+    Q6 -->|"No"| CUSTOM
+    
+    CLONE_TUNE --> CLONE_STEPS["CLONE PROCESS:<br/>1. Clone with CUSTOM prefix<br/>2. Adjust thresholds/filters<br/>3. Disable original<br/>4. Monitoring mode (1-2 weeks)<br/>5. Production if clean"]
+    
+    ENABLE_ASIS --> MON_STEPS["ENABLEMENT PROCESS:<br/>1. Monitoring mode (1-2 weeks)<br/>2. SOC review results<br/>3. Create runbook<br/>4. Production enablement<br/>5. Track metrics"]
+    
+    style ENABLE_ASIS fill:#238636,stroke:#2ea043,color:#fff
+    style ENABLE_MONITOR_LOW fill:#238636,stroke:#2ea043,color:#fff
+    style CLONE_TUNE fill:#d29922,stroke:#bb8009,color:#fff
+    style CUSTOM fill:#58a6ff,stroke:#388bfd,color:#fff
+    style DISABLE_DATA fill:#f85149,stroke:#da3633,color:#fff
+    style DEFER fill:#6e7681,stroke:#484f58,color:#fff
+    style INVESTIGATE fill:#d29922,stroke:#bb8009,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: COST OF PREMATURE CUSTOM -->
+                <!-- ============================================== -->
+                <h2>The Cost of Premature Custom Detections</h2>
+
+                <p>Building custom detections is expensive. Before writing custom, understand what you're signing up for:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cost Factor</th>
+                                <th>OOTB (Enable As-Is)</th>
+                                <th>Clone & Tune</th>
+                                <th>Custom</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Initial development</strong></td>
+                                <td>30 min (evaluate + enable)</td>
+                                <td>2-4 hours (clone + modify + test)</td>
+                                <td>4-16 hours (research + write + test)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Monitoring period</strong></td>
+                                <td>1-2 weeks</td>
+                                <td>1-2 weeks</td>
+                                <td>2-4 weeks (more unknowns)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Documentation</strong></td>
+                                <td>Decision record only</td>
+                                <td>Decision record + what was changed</td>
+                                <td>Full detection document (logic, rationale, MITRE mapping, runbook)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ongoing maintenance</strong></td>
+                                <td>Splunk handles via upgrades</td>
+                                <td>Quarterly review + upgrade comparison</td>
+                                <td>Monthly review + threat intel updates + logic updates</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Knowledge required</strong></td>
+                                <td>ES admin basics</td>
+                                <td>ES admin + SPL intermediate</td>
+                                <td>Advanced SPL + threat research + data model expertise</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Risk of abandonment</strong></td>
+                                <td style="color: var(--accent-green);">Low</td>
+                                <td style="color: var(--accent-orange);">Medium</td>
+                                <td style="color: var(--accent-red);">High — no one maintains what they don't understand</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ The "Custom Detection Graveyard"</div>
+                    <p>In almost every enterprise Splunk environment, there are custom detections that:</p>
+                    <ul>
+                        <li>Were built by a consultant who left</li>
+                        <li>Nobody understands the logic</li>
+                        <li>Haven't been reviewed in over a year</li>
+                        <li>Generate notables that nobody triages</li>
+                        <li>Consume search concurrency slots for zero value</li>
+                    </ul>
+                    <p><strong>Every custom detection you write today becomes someone else's mystery tomorrow.</strong> Only build custom when OOTB truly cannot work.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHEN OOTB IS GOOD ENOUGH -->
+                <!-- ============================================== -->
+                <h2>When OOTB Is "Good Enough"</h2>
+
+                <p>OOTB is the right choice when the following conditions are met. Do NOT over-engineer when the standard detection works.</p>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-title">✅ Generic Threat Patterns</div>
+                        <p>Brute force, multiple failed logins, account lockouts — these are universal patterns. If your data maps cleanly to the Authentication data model, OOTB brute force detections work well after threshold tuning.</p>
+                        <p><strong>Example:</strong> "Excessive Failed Logins" OOTB works if you adjust the threshold from 5 to 20 (retail has higher baseline).</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">✅ Threat Intelligence Matching</div>
+                        <p>If you have quality threat intel feeds configured, the OOTB threat intel matching searches work. They match IOCs against network, DNS, and email data. No custom logic needed — the value is in the intel quality.</p>
+                        <p><strong>Example:</strong> "Threat Activity Detected" fires when a known-bad IP appears in firewall logs.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">✅ Compliance-Driven Detections</div>
+                        <p>Many compliance requirements (PCI-DSS, SOX) specify specific detection types. OOTB "Unauthorized Access Attempt" or "Account Created/Deleted" searches directly map to audit requirements with minimal tuning.</p>
+                        <p><strong>Example:</strong> PCI requirement 10.2 — OOTB notable for "User Created" satisfies logging and detection requirements.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">✅ Well-Populated Data Models</div>
+                        <p>When your data maps cleanly to CIM data models (Authentication, Network_Traffic, Endpoint), OOTB searches that use tstats queries will work efficiently. The data model abstraction means the OOTB logic applies regardless of the underlying sourcetype.</p>
+                        <p><strong>Example:</strong> Any tstats-based OOTB search works if the data model is properly accelerated and populated.</p>
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHEN CUSTOM IS MANDATORY -->
+                <!-- ============================================== -->
+                <h2>When Custom Detections Are Mandatory</h2>
+
+                <p>Custom detections are required when OOTB cannot address the threat, regardless of tuning. These are the scenarios where you MUST build custom.</p>
+
+                <h3>WAF Detection Use Cases (Custom Required)</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Use Case</th>
+                                <th>Why Custom</th>
+                                <th>OOTB Alternative?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Akamai WAF attack pattern correlation</strong></td>
+                                <td>No OOTB search understands Akamai-specific attack categories, rule IDs, or action codes</td>
+                                <td>None — Akamai is not a standard ES data source</td>
+                            </tr>
+                            <tr>
+                                <td><strong>WAF bypass detection</strong></td>
+                                <td>Detecting when attacks pass through WAF requires correlating WAF logs with web server logs — OOTB doesn't do this</td>
+                                <td>None</td>
+                            </tr>
+                            <tr>
+                                <td><strong>DDoS traffic pattern detection</strong></td>
+                                <td>Retail DDoS patterns (slow-rate attacks on checkout APIs) require custom thresholds based on YOUR traffic baselines</td>
+                                <td>OOTB "Network Volumetric Anomaly" exists but doesn't understand retail API patterns</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Bot classification and detection</strong></td>
+                                <td>Retail needs to distinguish legitimate bots (Googlebot) from malicious bots (credential stuffing). OOTB has no bot classification.</td>
+                                <td>None</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>MFA Detection Use Cases (Custom Required)</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Use Case</th>
+                                <th>Why Custom</th>
+                                <th>OOTB Alternative?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>MFA fatigue / push bombing</strong></td>
+                                <td>Detecting rapid MFA push requests requires counting push events per user within a window — no OOTB for this specific pattern</td>
+                                <td>No OOTB covers MFA push fatigue specifically</td>
+                            </tr>
+                            <tr>
+                                <td><strong>MFA bypass via legacy protocols</strong></td>
+                                <td>Detecting authentication via legacy protocols (IMAP, SMTP, ActiveSync) that skip MFA requires Entra ID-specific field analysis</td>
+                                <td>OOTB "Multiple Authentication Mechanism" exists but doesn't target MFA bypass specifically</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Impossible travel with MFA context</strong></td>
+                                <td>Standard impossible travel doesn't consider MFA status — an impossible travel WITH successful MFA is higher severity</td>
+                                <td>OOTB impossible travel exists but lacks MFA context enrichment</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Conditional access policy failures</strong></td>
+                                <td>Entra ID Conditional Access failures have specific result codes that require custom mapping to detect policy bypass attempts</td>
+                                <td>None</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Other Scenarios Requiring Custom</h3>
+                <ul>
+                    <li><strong>Cross-source correlation:</strong> When detection requires correlating events from two or more different data sources (e.g., WAF event + authentication failure within 5 minutes)</li>
+                    <li><strong>Business-context detections:</strong> When detection requires understanding business logic (e.g., "admin access outside business hours for this specific role")</li>
+                    <li><strong>Non-standard data sources:</strong> When your data source has no CIM mapping and OOTB searches can't see it</li>
+                    <li><strong>Retail-specific threats:</strong> Point-of-sale skimming patterns, loyalty program fraud, inventory manipulation — OOTB has nothing for these</li>
+                </ul>
+
+                <!-- ============================================== -->
+                <!-- SECTION: RISKS OF CLONING WITHOUT OWNERSHIP -->
+                <!-- ============================================== -->
+                <h2>Risks of Cloning Without Ownership</h2>
+
+                <p>Cloning is the most common path, but it creates hidden risk if ownership is not established.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    CLONE["Clone OOTB Search"] --> Q1{"Is ownership<br/>assigned?"}
+    
+    Q1 -->|"Yes"| GOOD_PATH["Owner tracks changes<br/>Reviews quarterly<br/>Compares with OOTB after upgrades<br/>Updates documentation"]
+    
+    Q1 -->|"No"| BAD_PATH["Clone becomes orphan"]
+    
+    BAD_PATH --> DRIFT["Clone drifts from OOTB<br/>as ES upgrades happen"]
+    DRIFT --> STALE["Clone logic becomes stale<br/>Misses new attack variants<br/>Performance degrades"]
+    STALE --> ZOMBIE["'Zombie detection'<br/>Running, consuming resources<br/>Nobody monitoring output"]
+    ZOMBIE --> FAILURE["Real attack missed<br/>OR<br/>Alert fatigue from noise"]
+    
+    GOOD_PATH --> MAINTAINED["Detection stays current<br/>Tuned for environment<br/>SOC trusts the output"]
+    MAINTAINED --> VALUE["Actual security value<br/>Audit-ready documentation<br/>Sustainable long-term"]
+    
+    style GOOD_PATH fill:#238636,stroke:#2ea043,color:#fff
+    style BAD_PATH fill:#f85149,stroke:#da3633,color:#fff
+    style ZOMBIE fill:#f85149,stroke:#da3633,color:#fff
+    style FAILURE fill:#f85149,stroke:#da3633,color:#fff
+    style VALUE fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <h3>Clone Ownership Requirements</h3>
+                <p>Every cloned detection MUST have:</p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Requirement</th>
+                                <th>Details</th>
+                                <th>Enforcement</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Named owner</strong></td>
+                                <td>A specific person or team responsible for this detection</td>
+                                <td>Documented in detection registry</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Naming convention</strong></td>
+                                <td><code>CUSTOM - [Original Name] - [Company]</code></td>
+                                <td>Enforced during clone creation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Change documentation</strong></td>
+                                <td>What was modified from original, and why</td>
+                                <td>Stored in detection registry or inline comments</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Original OOTB disabled</strong></td>
+                                <td>The OOTB version must be disabled to prevent duplicates</td>
+                                <td>Verified during enablement</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Upgrade comparison plan</strong></td>
+                                <td>After each ES upgrade, compare your clone with the updated OOTB</td>
+                                <td>Added to upgrade runbook</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Quarterly review schedule</strong></td>
+                                <td>Review effectiveness, volume, and relevance every quarter</td>
+                                <td>Calendar reminder assigned to owner</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: OOTB PATH SELECTION BY USE CASE -->
+                <!-- ============================================== -->
+                <h2>Path Selection by Use Case Area</h2>
+
+                <p>This table provides pre-evaluated guidance for common use case areas in this retail environment:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Use Case Area</th>
+                                <th>Recommended Path</th>
+                                <th>Rationale</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Brute force / failed login</strong></td>
+                                <td style="color: var(--accent-orange);">Clone & Tune</td>
+                                <td>OOTB logic is correct. Thresholds need increase for retail (mobile app + POS volume). Add service account exclusions.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Account lockout</strong></td>
+                                <td style="color: var(--accent-green);">Enable As-Is</td>
+                                <td>Account lockout events are specific enough that OOTB thresholds work. Low noise risk.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Threat intel matching</strong></td>
+                                <td style="color: var(--accent-green);">Enable As-Is</td>
+                                <td>OOTB intel matching is generic and works. Quality depends on intel feeds, not detection logic.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>WAF attack detection</strong></td>
+                                <td style="color: var(--accent-blue);">Custom</td>
+                                <td>No OOTB understands Akamai WAF data. See WAF/DDoS Use Cases page.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>MFA bypass / fatigue</strong></td>
+                                <td style="color: var(--accent-blue);">Custom</td>
+                                <td>No OOTB covers MFA-specific attack patterns. See MFA/Auth Use Cases page.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Impossible travel</strong></td>
+                                <td style="color: var(--accent-orange);">Clone & Tune</td>
+                                <td>OOTB impossible travel exists. Needs VPN exclusions and store IP allowlists for retail.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Privilege escalation</strong></td>
+                                <td style="color: var(--accent-orange);">Clone & Tune</td>
+                                <td>OOTB "New User Added to Admin Group" works. Clone to add specific admin group names for this environment.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Network scanning</strong></td>
+                                <td style="color: var(--text-muted);">Disable (for now)</td>
+                                <td>Requires network flow data. If not onboarded in Phase 1, disable until data available.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>DNS anomaly</strong></td>
+                                <td style="color: var(--text-muted);">Disable (for now)</td>
+                                <td>Retail DNS volume makes OOTB thresholds useless. Defer to future custom if DNS data is available.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Endpoint anomaly</strong></td>
+                                <td style="color: var(--accent-orange);">Clone & Tune</td>
+                                <td>If EDR data is onboarded. OOTB is a starting point but needs endpoint-specific tuning for POS/kiosk systems.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>You want to build custom but there IS an OOTB option.</strong> Stop and justify why OOTB won't work. Get peer review before committing to custom.</li>
+                        <li><strong>A stakeholder demands "enable all OOTB for compliance."</strong> Escalate with the anti-patterns from this page. Volume ≠ coverage. Noise ≠ detection.</li>
+                        <li><strong>You have more than 10 cloned detections with no owner.</strong> Stop adding more. Fix ownership for existing clones first.</li>
+                        <li><strong>Custom detection development is taking more than 2 days per detection.</strong> Re-evaluate scope. The detection may be too complex for current data quality.</li>
+                        <li><strong>SOC is rejecting alerts from a detection you enabled.</strong> Disable it, don't argue. Investigate why and fix before re-enabling.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Custom is always better than OOTB"</strong></td>
+                                <td>Custom is more expensive to maintain, harder to hand off, and more likely to become a zombie. OOTB that works is the BEST option.</td>
+                                <td>Try OOTB first. Clone & tune second. Custom only when nothing else works.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Clone everything to be safe"</strong></td>
+                                <td>Creates massive maintenance burden. After ES upgrades, every clone must be manually reviewed. 50 clones = 50 manual comparisons.</td>
+                                <td>Only clone when OOTB needs specific changes. Enable as-is whenever possible.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"We need custom for every MITRE technique"</strong></td>
+                                <td>MITRE coverage without data is theater. You can't detect T1059 if you don't have process execution logs.</td>
+                                <td>Map detections to available data first, then to MITRE. Coverage follows data, not the matrix.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Let the consultant build it all custom"</strong></td>
+                                <td>When the consultant leaves, nobody maintains or understands the detections. They become zombie searches within months.</td>
+                                <td>Consultants should document heavily. Internal team must understand every detection. Prefer OOTB when possible.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Disable OOTB we don't understand"</strong></td>
+                                <td>May disable a working detection that was catching real threats. Loss of visibility without anyone knowing.</td>
+                                <td>Investigate before disabling. Check notable output first. If it's catching real things, don't touch it.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Evaluate one OOTB search (decide path)</strong></td>
+                                <td>30 minutes</td>
+                                <td>1-2 hours</td>
+                                <td>Half day (data issues)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Enable OOTB as-is (full lifecycle)</strong></td>
+                                <td>1 week</td>
+                                <td>2 weeks</td>
+                                <td>3+ weeks (SOC unavailable)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Clone & tune (full lifecycle)</strong></td>
+                                <td>1.5 weeks</td>
+                                <td>3 weeks</td>
+                                <td>4+ weeks (multiple tuning rounds)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Write custom detection (full lifecycle)</strong></td>
+                                <td>2 weeks</td>
+                                <td>4 weeks</td>
+                                <td>6+ weeks (complex logic, data issues)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Complete strategy for all use cases</strong></td>
+                                <td>2 weeks (decisions only)</td>
+                                <td>4-6 weeks (decisions + first implementations)</td>
+                                <td>8+ weeks (data gaps, priority changes)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE TO CAPTURE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Path decision per use case</strong></td>
+                                <td>Enable / Clone / Custom / Disable + rationale</td>
+                                <td>Detection registry</td>
+                                <td>After evaluation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Clone change documentation</strong></td>
+                                <td>What was changed from OOTB, and why</td>
+                                <td>Inline comments in search + detection registry</td>
+                                <td>During clone creation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Custom detection specification</strong></td>
+                                <td>Full detection document (logic, MITRE, data sources, runbook)</td>
+                                <td>Detection registry + project docs</td>
+                                <td>During development</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Disable justification</strong></td>
+                                <td>Why disabled + re-evaluation trigger</td>
+                                <td>Detection registry</td>
+                                <td>When disabling</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Next Steps -->
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="correlation-lifecycle.html" class="next-steps-link">Correlation Search Lifecycle Management →</a>
+                        <a href="tuning-noise.html" class="next-steps-link">Tuning, Noise Reduction & SOC Trust →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

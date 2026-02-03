@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incident Review & Triage Operations - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="../es-content-management/tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="../es-content-management/health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="../es-content-management/governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                    <a href="../es-content-management/escu-overview.html" class="nav-item nav-item-sub">ESCU Overview</a>
+                    <a href="../es-content-management/escu-operationalize.html" class="nav-item nav-item-sub">Operationalizing ESCU</a>
+                    <a href="../es-content-management/escu-log-mapping.html" class="nav-item nav-item-sub">ESCU Log Mapping</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="incident-review.html" class="nav-item nav-item-sub active">Incident Review & Triage</a>
+                    <a href="notable-suppression.html" class="nav-item nav-item-sub">Notable Suppression</a>
+                    <a href="investigations-evidence.html" class="nav-item nav-item-sub">Investigations & Evidence</a>
+                    <a href="enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">Incident Review & Triage Operations</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Operations</span>
+                <h1>Incident Review & Triage Operations</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES OPERATIONS</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> Exact step-by-step procedures for working notables in Splunk ES Incident Review. Covers the complete triage lifecycle from initial alert through disposition, with domain-specific guidance for WAF and MFA alert types.</p>
+                    <p><strong>Ownership:</strong> SOC Team (triage execution) + Detection Engineering (quality feedback loop)</p>
+                    <p><strong>Preconditions:</strong> At least one correlation search enabled and producing notables in production. SOC analyst has <code>ess_analyst</code> role or equivalent permissions.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> Incident Review dashboard is accessible at <code>Enterprise Security → Incident Review</code>. <strong>Verify:</strong> Navigate there. If missing, the ES app may not be installed or the user role lacks permissions.</li>
+                        <li><strong>Assumption:</strong> Notable events exist. <strong>Verify:</strong> Run <code>`notable` | head 5</code>. If empty, no detections are firing — see <a href="enablement-mechanics.html">Enablement Mechanics</a>.</li>
+                        <li><strong>Assumption:</strong> The analyst can change notable status and add comments. <strong>Verify:</strong> Open a notable, attempt to change status. If greyed out, check role capabilities: <code>edit_notable_events</code>.</li>
+                        <li><strong>Assumption:</strong> Asset and identity lookups are populated. <strong>Risk if wrong:</strong> Notables will lack enrichment (no asset criticality, no user department). See <a href="../es-content-management/health-performance.html">Health & Performance</a>.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: INCIDENT REVIEW DASHBOARD ANATOMY -->
+                <!-- ============================================== -->
+                <h2>Incident Review Dashboard — Anatomy</h2>
+
+                <h3>Navigating to Incident Review</h3>
+                <ol>
+                    <li>Open Splunk Web → Select the <strong>Enterprise Security</strong> app from the app menu (top-left)</li>
+                    <li>In the ES menu bar, click <strong>Incident Review</strong> (or navigate: Security Intelligence → Incident Review)</li>
+                    <li>The dashboard loads with the default filter: <strong>last 24 hours, all severities, status = New or In Progress</strong></li>
+                </ol>
+
+                <h3>Key UI Elements</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Element</th>
+                                <th>Location</th>
+                                <th>What It Shows</th>
+                                <th>How to Use It</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Filter Bar</strong></td>
+                                <td>Top of dashboard</td>
+                                <td>Time range, urgency, status, owner, search name, security domain</td>
+                                <td>Narrow the notable queue. Filter by <code>search_name</code> to review one detection at a time.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Notable List</strong></td>
+                                <td>Main body</td>
+                                <td>Columns: Urgency, Title, Status, Owner, Time, Security Domain, Source, Destination</td>
+                                <td>Click any row to expand the notable detail pane. Sort by urgency (default) or time.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Notable Detail Pane</strong></td>
+                                <td>Expands below selected row</td>
+                                <td>Full event fields, asset/identity enrichment, MITRE mapping, history</td>
+                                <td>This is where you triage. All actions (status, owner, comment, suppress) happen here.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Action Menu</strong></td>
+                                <td>Inside detail pane, dropdown</td>
+                                <td>Actions: Assign, Comment, Change Status, Suppress, Add to Investigation</td>
+                                <td>Every action is logged in the notable audit trail.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Urgency Color Band</strong></td>
+                                <td>Left edge of each row</td>
+                                <td>Critical (red), High (orange), Medium (yellow), Low (blue), Informational (grey)</td>
+                                <td>Urgency = Severity × Asset Priority. If asset lookup is empty, urgency defaults to severity.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: TRIAGE WORKFLOW -->
+                <!-- ============================================== -->
+                <h2>Standard Triage Workflow</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    QUEUE["Notable appears<br/>in Incident Review<br/>Status: NEW"] --> CLAIM["Step 1: CLAIM<br/>Set Owner = your name<br/>Set Status = In Progress"]
+    
+    CLAIM --> INITIAL["Step 2: INITIAL ASSESSMENT<br/>Read title + key fields<br/>Check urgency + severity<br/>Check source + destination"]
+    
+    INITIAL --> ENRICH["Step 3: ENRICH<br/>Check asset lookup (is this a CDE system?)<br/>Check identity lookup (who is this user?)<br/>Click source/dest for drilldown"]
+    
+    ENRICH --> CONTEXT["Step 4: CONTEXT SEARCH<br/>Pivot to raw events<br/>Check what happened before/after<br/>Look for related notables"]
+    
+    CONTEXT --> CLASSIFY{"Step 5: CLASSIFY<br/>True Positive,<br/>False Positive,<br/>or Benign?"}
+    
+    CLASSIFY -->|"True Positive"| TP["TP ACTIONS:<br/>1. Set Status = In Progress<br/>2. Set Urgency (raise if needed)<br/>3. Add to Investigation<br/>4. Follow incident runbook<br/>5. Escalate per severity SLA"]
+    
+    CLASSIFY -->|"False Positive"| FP["FP ACTIONS:<br/>1. Add Comment: explain WHY it's FP<br/>2. Set Status = Resolved<br/>3. Set Disposition = False Positive<br/>4. Notify Detection Engineering<br/>(feedback loop for tuning)"]
+    
+    CLASSIFY -->|"Benign True Positive"| BTP["BENIGN ACTIONS:<br/>1. Add Comment: confirmed activity,<br/>authorized by [who/what]<br/>2. Set Status = Resolved<br/>3. Set Disposition = Benign<br/>4. Consider suppression if recurring"]
+    
+    TP --> DOCUMENT["Step 6: DOCUMENT<br/>Add comments with:<br/>• What you found<br/>• Actions taken<br/>• Escalation ticket #"]
+    
+    FP --> DOCUMENT
+    BTP --> DOCUMENT
+    
+    DOCUMENT --> CLOSE["Step 7: CLOSE<br/>Set final Status = Resolved<br/>Verify all fields populated"]
+
+    style CLAIM fill:#58a6ff,stroke:#388bfd,color:#fff
+    style TP fill:#f85149,stroke:#da3633,color:#fff
+    style FP fill:#d29922,stroke:#bb8009,color:#fff
+    style BTP fill:#238636,stroke:#2ea043,color:#fff
+    style CLOSE fill:#6e7681,stroke:#484f58,color:#fff
+                    </div>
+                </div>
+
+                <h3>Step-by-Step: Claiming & Working a Notable</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Step</th>
+                                <th>Action</th>
+                                <th>Exact UI Navigation</th>
+                                <th>Why This Matters</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1. Claim</strong></td>
+                                <td>Assign to yourself</td>
+                                <td>Click notable row → In detail pane, click <strong>Edit</strong> (or the pencil icon) → Set <strong>Owner</strong> to your username → Set <strong>Status</strong> to <code>In Progress</code> → Click <strong>Save</strong></td>
+                                <td>Prevents other analysts from duplicating work. Creates ownership audit trail.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2. Read Fields</strong></td>
+                                <td>Assess the notable</td>
+                                <td>In the detail pane: review <code>src</code>, <code>dest</code>, <code>user</code>, <code>action</code>, <code>app</code>, <code>severity</code>. Check the <strong>Contributing Events</strong> tab if available.</td>
+                                <td>Determines your next pivot. Missing fields indicate data quality issues — flag for DE.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3. Asset/Identity Enrichment</strong></td>
+                                <td>Check context</td>
+                                <td>In the detail pane: <strong>Asset</strong> section shows criticality, category, owner. <strong>Identity</strong> section shows department, manager, VIP status.</td>
+                                <td>A critical asset or VIP user raises effective urgency. No enrichment = asset/identity lookup is stale.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4. Pivot to Raw Events</strong></td>
+                                <td>Investigate the underlying data</td>
+                                <td>In the detail pane → Click the <strong>View contributing events</strong> link → Opens search with pre-populated fields → Widen time range if needed (±30 min)</td>
+                                <td>The notable is a summary. Raw events tell the full story.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>5. Check Related Notables</strong></td>
+                                <td>Look for correlated alerts</td>
+                                <td>In Incident Review, filter by <code>src</code> or <code>user</code> from this notable → Look for other alerts involving the same entity in the last 24-48h</td>
+                                <td>Multiple different detections firing for the same entity is a strong indicator of real attack.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>6. Comment</strong></td>
+                                <td>Document your findings</td>
+                                <td>Detail pane → <strong>Add Comment</strong> → Type findings → <strong>Save</strong>. Comments persist in the notable audit trail.</td>
+                                <td>Every notable must have a comment before closing. This is your audit evidence and handoff to the next shift.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>7. Disposition & Close</strong></td>
+                                <td>Set final status</td>
+                                <td>Edit → Set <strong>Status</strong> to <code>Resolved</code> → Set <strong>Disposition</strong> to one of: <code>True Positive - Suspicious Activity</code>, <code>Benign Positive</code>, <code>False Positive</code> → Save</td>
+                                <td>Disposition drives metrics. Without it, you can't measure detection quality.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WAF TRIAGE -->
+                <!-- ============================================== -->
+                <h2>What Good Triage Looks Like: WAF Alerts</h2>
+
+                <p>WAF detections (Akamai-sourced) have unique triage patterns. The volume is high, the context is web-specific, and the enrichment path differs from endpoint or auth alerts.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Triage Step</th>
+                                <th>WAF-Specific Action</th>
+                                <th>What to Look For</th>
+                                <th>Common Disposition</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Read the attack classification</strong></td>
+                                <td>Check <code>attack_type</code>, <code>rule_id</code>, <code>rule_message</code> fields</td>
+                                <td>SQLi, XSS, RCE, path traversal, command injection. Akamai rule ID tells you the specific signature.</td>
+                                <td>—</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Check the source IP</strong></td>
+                                <td>Look up <code>src_ip</code> in threat intel, geo-IP, and known bot lists</td>
+                                <td>Known scanner (Shodan, Censys)? Tor exit node? Cloud provider IP range (often legitimate scanners)? Same geo as your customer base?</td>
+                                <td>Known scanner → often Benign if blocked by WAF</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Check the WAF action</strong></td>
+                                <td>Was the request <code>blocked</code>, <code>alerted</code>, or <code>passed</code>?</td>
+                                <td><strong>Blocked = WAF handled it.</strong> Still investigate for pattern. <strong>Passed = potential compromise.</strong> Investigate the web server immediately.</td>
+                                <td>Blocked + isolated → Benign. Passed → escalate as TP.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Check the target URI</strong></td>
+                                <td>Examine <code>uri_path</code>, <code>uri_query</code></td>
+                                <td>Targeting login page? API endpoint? Admin panel? Known-vulnerable path? Or scanning generic paths like <code>/wp-admin</code> on a non-WordPress site?</td>
+                                <td>Generic scanning of non-existent paths → FP / Benign</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Check for volume pattern</strong></td>
+                                <td>Pivot: <code>`notable` | search src_ip="X" | stats count by uri_path</code></td>
+                                <td>Single hit = likely scanner sweep. Sustained hits (>50 in 1 hour to same endpoint) = targeted attack or automated tool.</td>
+                                <td>Sustained targeting → TP. One-off → Benign.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Correlate with web server logs</strong></td>
+                                <td>Check if the attack reached the origin. Search <code>index=web</code> for same timestamp + URI + source.</td>
+                                <td>If the WAF blocked and the request never reached the origin, impact is contained. If it passed, check for signs of successful exploitation.</td>
+                                <td>—</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: MFA TRIAGE -->
+                <!-- ============================================== -->
+                <h2>What Good Triage Looks Like: MFA Alerts</h2>
+
+                <p>MFA detections involve identity-centric investigation. The triage path requires understanding of authentication flows, conditional access policies, and user behavior patterns.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Triage Step</th>
+                                <th>MFA-Specific Action</th>
+                                <th>What to Look For</th>
+                                <th>Common Disposition</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Identify the user</strong></td>
+                                <td>Check <code>user</code>, <code>user_type</code> (human vs service account). Cross-reference identity lookup.</td>
+                                <td>Is this a real person? A service account? An admin? Check department, manager, VIP status.</td>
+                                <td>Service account triggering human MFA rules → FP</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Check MFA method used</strong></td>
+                                <td>Look at <code>mfa_method</code>, <code>authentication_method</code> fields</td>
+                                <td>Push notification (vulnerable to fatigue), TOTP, FIDO2, phone call. Legacy auth (IMAP/SMTP) bypasses MFA entirely.</td>
+                                <td>Legacy protocol auth → escalate immediately</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Check location context</strong></td>
+                                <td>Review <code>src_ip</code>, geo-location, <code>named_location</code> (Entra ID)</td>
+                                <td>VPN IP? Corporate office? Known travel destination? Check if user has a travel request. Impossible travel = two auth events from >500km apart within 1 hour.</td>
+                                <td>VPN IP → check if user is known VPN user. Travel → verify with HR if suspicious.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Check conditional access result</strong></td>
+                                <td>Review <code>conditionalAccessStatus</code>, <code>failure_reason</code> (Entra ID specific)</td>
+                                <td><code>success</code> = policy allowed. <code>failure</code> = policy blocked. <code>notApplied</code> = no policy matched (potential gap).</td>
+                                <td><code>notApplied</code> on a user that should have MFA → escalate to IAM team</td>
+                            </tr>
+                            <tr>
+                                <td><strong>MFA fatigue pattern</strong></td>
+                                <td>Count push notifications: <code>| where mfa_method="push" | stats count by user, _time span=10m</code></td>
+                                <td>>5 push requests in 10 minutes that the user didn't initiate = MFA fatigue attack. Check if any were approved.</td>
+                                <td>Rapid pushes + one approved → TP. Rapid pushes + all denied → attack failed, monitor user.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Check post-auth activity</strong></td>
+                                <td>If MFA was passed/approved, check what the session did next. Pivot to audit logs for same user + 1 hour.</td>
+                                <td>Mailbox rules created? Files downloaded from SharePoint? Privilege escalation? These indicate account compromise POST-MFA bypass.</td>
+                                <td>Any post-auth anomaly + suspicious auth → TP. Escalate.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: BULK OPERATIONS -->
+                <!-- ============================================== -->
+                <h2>Bulk Operations in Incident Review</h2>
+
+                <h3>Bulk Status Update</h3>
+                <ol>
+                    <li>In Incident Review, apply filters to isolate the target notables (e.g., filter by <code>search_name</code> + time range)</li>
+                    <li>Click the <strong>checkbox</strong> in the header row to select all visible notables (or select individual rows)</li>
+                    <li>Click <strong>Edit Selected</strong> (or the batch action button)</li>
+                    <li>Set <strong>Status</strong>, <strong>Owner</strong>, and/or <strong>Comment</strong> for all selected</li>
+                    <li>Click <strong>Save</strong></li>
+                </ol>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Bulk Close Requires a Comment</div>
+                    <p>Never bulk-close notables without a comment. Auditors see unexplained closures as evidence of negligence. Always add: "Bulk closed — [reason]. Example reviewed: [notable ID]. Pattern confirmed as [FP/Benign/Storm cleanup]."</p>
+                </div>
+
+                <h3>Bulk Close After Alert Storm (Emergency Cleanup)</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Identify Alert Storm Notables for Bulk Close</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("After an emergency disable, find the storm notables")`
+`comment("Review a sample BEFORE bulk closing")`
+
+`notable`
+| search search_name="STORM_SEARCH_NAME" status_label="New"
+| stats count AS storm_count, 
+    earliest(_time) AS storm_start,
+    latest(_time) AS storm_end
+| eval storm_duration_min = round((storm_end - storm_start) / 60, 0)
+| table storm_count, storm_start, storm_end, storm_duration_min</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FAILURE MODES -->
+                <!-- ============================================== -->
+                <h2>Failure Modes</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Failure Mode</th>
+                                <th>Symptom</th>
+                                <th>Root Cause</th>
+                                <th>Impact</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>No notables visible</strong></td>
+                                <td>Incident Review shows empty queue</td>
+                                <td>Time filter too narrow, status filter excluding notables, no correlation searches enabled, permissions issue</td>
+                                <td>Analyst assumes "no alerts" when alerts may exist</td>
+                                <td>Reset all filters. Check <code>`notable` | stats count</code>. Check role has <code>ess_analyst</code> capability.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Notables missing enrichment</strong></td>
+                                <td>Asset/Identity fields are blank in the detail pane</td>
+                                <td>Asset/Identity lookup tables are empty or stale. Context-gen searches not running.</td>
+                                <td>Urgency calculation defaults to severity only. Analyst lacks context for triage.</td>
+                                <td>Check <code>| inputlookup asset_lookup_by_str | stats count</code>. See <a href="../es-content-management/health-performance.html">Health & Performance</a>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Contributing events" returns zero</strong></td>
+                                <td>Drilldown link opens search with no results</td>
+                                <td>Drilldown time range doesn't match event time. Index retention expired. Data model acceleration gap.</td>
+                                <td>Analyst cannot verify the alert against raw data</td>
+                                <td>Manually search the source index for the same time + fields. Widen the search window by ±1 hour.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status change doesn't save</strong></td>
+                                <td>Click Save but status reverts to previous value</td>
+                                <td>Role missing <code>edit_notable_events</code> capability. KV store write failure.</td>
+                                <td>Analyst cannot progress the triage workflow</td>
+                                <td>Check role capabilities. If KV store issue, escalate to Splunk admin. Temporary workaround: document in external tracker.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Dashboard loads slowly or times out</strong></td>
+                                <td>Incident Review takes >30 seconds to load</td>
+                                <td>Too many unresolved notables (>1000), complex filters, slow KV store reads</td>
+                                <td>SOC wastes time waiting. Triage SLA at risk.</td>
+                                <td>Narrow time range. Close or resolve old notables. Contact Splunk admin if KV store is slow.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Analyst closes without comment</strong></td>
+                                <td>Notable shows "Resolved" with no comment or disposition</td>
+                                <td>No enforcement of comment requirement. Training gap.</td>
+                                <td>Audit trail broken. Detection metrics unreliable (can't calculate FP rate).</td>
+                                <td>Enforce "no close without comment" policy. Review closed notables weekly for compliance.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK -->
+                <!-- ============================================== -->
+                <h2>Rollback Steps</h2>
+
+                <p>Notable status changes are logged but can be corrected:</p>
+                <ol>
+                    <li><strong>Incorrect status change:</strong> Re-open the notable → Edit → Set correct Status and Disposition → Add comment explaining correction: "Reopened — incorrectly closed as FP, re-evaluating."</li>
+                    <li><strong>Accidental bulk close:</strong> Filter by the closure time + your username → Re-open affected notables → Add comment: "Bulk close reversed — [reason]."</li>
+                    <li><strong>Wrong owner assignment:</strong> Edit → Change Owner → Add comment: "Reassigned from [old] to [new] — [reason]."</li>
+                </ol>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Notable Audit Trail Is Permanent</div>
+                    <p>Every status change, comment, and owner assignment is logged in the notable event's audit history. You can correct a mistake, but you cannot erase the history. This is by design — it provides audit evidence. Don't panic about mistakes; document the correction.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: VALIDATION SPL -->
+                <!-- ============================================== -->
+                <h2>Validation SPL & Expected Output</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify Incident Review Is Operational</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Run this to confirm IR is functioning and notables are triageable")`
+
+`notable`
+| stats count AS total_notables,
+    dc(search_name) AS unique_detections,
+    dc(status_label) AS status_types,
+    dc(owner) AS unique_owners
+| eval health = case(
+    total_notables = 0, "🔴 NO NOTABLES — check correlation searches",
+    unique_detections < 2, "🟡 Very few detections firing",
+    status_types < 2, "🟡 No triage happening (all same status)",
+    unique_owners < 2, "🟡 Single analyst or unassigned",
+    true(), "🟢 Operational"
+)
+| table total_notables, unique_detections, status_types, unique_owners, health</code></pre>
+                </div>
+
+                <p><strong>Expected healthy output:</strong></p>
+                <ul>
+                    <li><code>total_notables</code> > 0 (notables exist)</li>
+                    <li><code>unique_detections</code> ≥ 3 (multiple detections active)</li>
+                    <li><code>status_types</code> ≥ 3 (New, In Progress, Resolved all present → triage is happening)</li>
+                    <li><code>unique_owners</code> ≥ 2 (multiple analysts working the queue)</li>
+                </ul>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Triage Quality Check — Closures Without Comments</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Finds notables closed without analyst comments — audit risk")`
+
+`notable`
+| search status_label="Resolved" OR status_label="Closed"
+| where isnull(comment) OR comment=""
+| stats count AS no_comment_count BY owner, search_name
+| sort - no_comment_count
+| table owner, search_name, no_comment_count</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>Notable queue exceeds 200 unresolved in 24 hours.</strong> SOC is overwhelmed. Disable the noisiest detection (see <a href="../es-content-management/tuning-noise.html">Tuning & Noise</a>). Escalate to SOC lead + Detection Engineering.</li>
+                        <li><strong>Incident Review dashboard fails to load or times out consistently.</strong> Escalate to Splunk admin. SOC cannot triage without the dashboard.</li>
+                        <li><strong>Multiple true positives from the same source entity in &lt;1 hour.</strong> This is likely an active attack. Escalate immediately to incident response. Do not wait to finish triaging all notables.</li>
+                        <li><strong>A notable indicates a CDE (cardholder data) system is compromised.</strong> Escalate to PCI incident response per your IR plan. Do not attempt remediation from Incident Review alone.</li>
+                        <li><strong>Analysts are closing notables as FP without investigation.</strong> This is a training issue or a noise problem. Escalate to SOC lead. Review the detection for tuning needs.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Close everything at end of shift"</strong></td>
+                                <td>Uninvestigated notables are marked resolved. Real attacks are hidden. Metrics become fiction.</td>
+                                <td>Only close what you've investigated. Leave the rest as New for the next shift. Document open items in handoff.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"I know this is FP, no need to check"</strong></td>
+                                <td>Pattern recognition without verification leads to missed attacks. Adversaries exploit known FP patterns.</td>
+                                <td>Spend 30 seconds verifying. Check at least one unique field before classifying. If it's truly a pattern FP, feed back to Detection Engineering for tuning.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"No comment needed — the disposition says it all"</strong></td>
+                                <td>Disposition without context is useless for audit. "False Positive" doesn't explain WHY.</td>
+                                <td>Always comment with reasoning: "FP — scheduled vulnerability scanner from 10.1.2.3 triggered WAF SQLi rule. Confirmed with vuln team."</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Let notables age out"</strong></td>
+                                <td>Old, unresolved notables clutter the queue, slow the dashboard, and demonstrate zero process to auditors.</td>
+                                <td>Triage SLA: Critical ≤ 15 min, High ≤ 1 hour, Medium ≤ 4 hours, Low ≤ 24 hours. Resolve or escalate within SLA.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Only triage Critical and High"</strong></td>
+                                <td>Medium and Low notables pile up. Some real attacks start as Low severity before context reveals impact.</td>
+                                <td>Triage all severities per SLA. If volume is too high, escalate for tuning — don't ignore lower severities.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Triage one notable (simple FP)</strong></td>
+                                <td>2 minutes</td>
+                                <td>5 minutes</td>
+                                <td>15+ minutes (unfamiliar detection)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Triage one notable (investigation needed)</strong></td>
+                                <td>15 minutes</td>
+                                <td>30-60 minutes</td>
+                                <td>2+ hours (cross-correlation, escalation)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Daily queue clearance (well-tuned detections)</strong></td>
+                                <td>30 minutes</td>
+                                <td>1-2 hours</td>
+                                <td>4+ hours (noisy detections or incident)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Alert storm cleanup (bulk close)</strong></td>
+                                <td>15 minutes</td>
+                                <td>30-60 minutes (sample + close)</td>
+                                <td>2+ hours (multiple storms)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>New analyst onboarding to IR dashboard</strong></td>
+                                <td>1 hour (walkthrough)</td>
+                                <td>Half day (walkthrough + supervised triage)</td>
+                                <td>1 week (full SOC rotation)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Notable comment (per notable)</strong></td>
+                                <td>Free-text in ES notable comment field</td>
+                                <td>ES notable index (automatic)</td>
+                                <td>During triage — before closing</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Disposition classification</strong></td>
+                                <td>ES disposition field (TP/FP/Benign)</td>
+                                <td>ES notable index (automatic)</td>
+                                <td>When closing the notable</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Triage quality report (weekly)</strong></td>
+                                <td>SPL output: closures without comments, SLA compliance</td>
+                                <td>Weekly SOC status report</td>
+                                <td>Every Monday</td>
+                            </tr>
+                            <tr>
+                                <td><strong>FP feedback to Detection Engineering</strong></td>
+                                <td>Email, ticket, or structured form: detection name, FP pattern, suggested fix</td>
+                                <td>Detection registry / ticket system</td>
+                                <td>When FP pattern is identified (≥3 FPs with same pattern)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Escalation records</strong></td>
+                                <td>Ticket number, escalation time, resolution</td>
+                                <td>Incident tracker / ticketing system</td>
+                                <td>When any notable escalates beyond SOC</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="notable-suppression.html" class="next-steps-link">Notable Suppression & Noise Operations →</a>
+                        <a href="investigations-evidence.html" class="next-steps-link">Investigations & Evidence Handling →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

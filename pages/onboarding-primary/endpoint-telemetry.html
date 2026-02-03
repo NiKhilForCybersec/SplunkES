@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Endpoint Telemetry | Splunk ES Detection Engineering</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+    </button>
+
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1><a href="../../index.html">Splunk ES</a></h1>
+            <span class="version">Detection Engineering</span>
+        </div>
+        <ul class="nav-tree">
+            <li><a href="../delivery-model/index.html">Delivery Model</a></li>
+            <li><a href="../planning/index.html">Planning & Scoping</a></li>
+            <li>
+                <span class="nav-section">Phase 1: Log Coverage</span>
+                <ul>
+                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
+                    <li><a href="../universal-onboarding/index.html">Universal Framework</a></li>
+                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
+                    <li>
+                        <span class="nav-section">Primary Paths</span>
+                        <ul>
+                            <li><a href="index.html">Overview</a></li>
+                            <li><a href="akamai-waf.html">Akamai WAF</a></li>
+                            <li><a href="authentication-mfa.html">Authentication & MFA</a></li>
+                            <li><a href="syslog-hf.html">Syslog via HF</a></li>
+                            <li><a href="endpoint-telemetry.html" class="active">Endpoint Telemetry</a></li>
+                            <li><a href="hec-ingestion.html">HEC Ingestion</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="../onboarding-alternate/index.html">Alternate Paths</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase2-data-quality/index.html">Phase 2: Data Quality</a></li>
+            <li><a href="../phase3-detection/index.html">Phase 3: Detection</a></li>
+            <li>
+                <span class="nav-section">Use Case Library</span>
+                <ul>
+                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS</a></li>
+                    <li><a href="../use-cases/mfa-auth.html">MFA & Authentication</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase4-automation/index.html">Phase 4: Automation</a></li>
+            <li><a href="../phase5-rba/index.html">Phase 5: RBA</a> <span class="badge badge-future">Future</span></li>
+            <li>
+                <span class="nav-section">Appendix</span>
+                <ul>
+                    <li><a href="../appendix/spl-library.html">SPL Library</a></li>
+                    <li><a href="../appendix/troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="../appendix/checklists.html">Checklists</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <nav class="breadcrumb">
+            <a href="../../index.html">Home</a>
+            <span class="separator">›</span>
+            <a href="../phase1-log-coverage/index.html">Phase 1</a>
+            <span class="separator">›</span>
+            <a href="index.html">Primary Paths</a>
+            <span class="separator">›</span>
+            <span class="current">Endpoint Telemetry</span>
+        </nav>
+
+        <header class="page-header">
+            <div class="phase-indicator phase-1">Phase 1: Log Coverage</div>
+            <h1>Endpoint Telemetry</h1>
+            <p class="page-subtitle">Windows Event Logs, EDR telemetry, and endpoint data collection via Universal Forwarder</p>
+        </header>
+
+        <!-- ============================================== -->
+        <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <div class="callout callout-info">
+                <div class="callout-title">📋 Page Status: HARDENED</div>
+                <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                <p>This page includes explicit validation criteria, volume management guidance, and enterprise deployment considerations.</p>
+            </div>
+
+            <div class="callout callout-danger">
+                <div class="callout-title">🚨 CRITICAL: Endpoint Data Can Explode License Usage</div>
+                <p><strong>Unfiltered endpoint logs from 10,000+ endpoints can consume 100+ GB/day.</strong> Before enabling endpoint collection:</p>
+                <ul>
+                    <li><strong>ALWAYS calculate expected volume</strong> before onboarding (use estimates below)</li>
+                    <li><strong>NEVER enable "collect all events"</strong> without volume filtering</li>
+                    <li><strong>ALWAYS start with a pilot group</strong> (50-100 endpoints) before full rollout</li>
+                    <li><strong>VERIFY license headroom</strong> with Splunk admin before large-scale deployment</li>
+                </ul>
+            </div>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">⚠️ Retail Business Timing — UF Deployment</div>
+                <p>Universal Forwarder mass deployment impacts endpoints and may require restarts:</p>
+                <ul>
+                    <li><strong>POS systems:</strong> Deploy during overnight maintenance windows only</li>
+                    <li><strong>Store systems:</strong> Never during store hours or promotions</li>
+                    <li><strong>Domain Controllers:</strong> Stagger deployment, never all DCs at once</li>
+                    <li><strong>Deployment Server changes:</strong> Test on pilot group first</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Overview</h2>
+            <p>Endpoint telemetry is foundational for security monitoring—it provides visibility into process execution, authentication events, file access, and registry changes that are critical for threat detection. This guide covers collection of Windows Event Logs and EDR telemetry via Splunk Universal Forwarder (UF).</p>
+
+            <div class="callout callout-info">
+                <div class="callout-title">Architecture Pattern</div>
+                <p>Endpoint → Universal Forwarder → Deployment Server (config management) → Splunk Cloud. For EDR integrations, data may flow via vendor API or syslog depending on the product.</p>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Data Source Categories</h2>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Source</th>
+                            <th>Sourcetype</th>
+                            <th>Index</th>
+                            <th>Detection Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Windows Security</td>
+                            <td>Security Event Log</td>
+                            <td>WinEventLog:Security</td>
+                            <td>wineventlog</td>
+                            <td>Auth, process creation, file access</td>
+                        </tr>
+                        <tr>
+                            <td>Windows System</td>
+                            <td>System Event Log</td>
+                            <td>WinEventLog:System</td>
+                            <td>wineventlog</td>
+                            <td>Service changes, driver loads</td>
+                        </tr>
+                        <tr>
+                            <td>PowerShell</td>
+                            <td>PowerShell Logs</td>
+                            <td>WinEventLog:PowerShell</td>
+                            <td>wineventlog</td>
+                            <td>Script execution, command line</td>
+                        </tr>
+                        <tr>
+                            <td>Sysmon</td>
+                            <td>Sysmon Event Log</td>
+                            <td>XmlWinEventLog:Microsoft-Windows-Sysmon/Operational</td>
+                            <td>sysmon</td>
+                            <td>Process, network, file monitoring</td>
+                        </tr>
+                        <tr>
+                            <td>EDR Telemetry</td>
+                            <td>CrowdStrike, Defender, etc.</td>
+                            <td>Vendor-specific</td>
+                            <td>edr</td>
+                            <td>Detection alerts, process tree</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Architecture</h2>
+            <div class="mermaid-wrapper">
+                <pre class="mermaid">
+flowchart TD
+    subgraph Endpoints["Windows Endpoints"]
+        WS[Workstations]
+        SRV[Servers]
+        DC[Domain Controllers]
+    end
+
+    subgraph Forwarders["Universal Forwarders"]
+        UF1[UF on Endpoint]
+    end
+
+    subgraph Management["Management Layer"]
+        DS[Deployment Server]
+        APPS[Server Classes & Apps]
+    end
+
+    subgraph Cloud["Splunk Cloud"]
+        IDM[IDM / Inputs]
+        IDX[Indexers]
+    end
+
+    WS --> UF1
+    SRV --> UF1
+    DC --> UF1
+    DS --> APPS
+    APPS -.-> |Config Push| UF1
+    UF1 --> IDM
+    IDM --> IDX
+
+    style DS fill:#238636,stroke:#2ea043
+    style IDM fill:#1f6feb,stroke:#388bfd
+                </pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Prerequisites</h2>
+
+            <div class="checklist">
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="endpoint-ds">
+                    <span>Deployment Server configured for UF management</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="endpoint-outputs">
+                    <span>Outputs.conf from Splunk Cloud admin</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="endpoint-indexes">
+                    <span>Target indexes created (wineventlog, sysmon, edr)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="endpoint-firewall">
+                    <span>Firewall: Endpoints → DS (TCP 8089), Endpoints → Cloud (TCP 9997)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="endpoint-gpo">
+                    <span>GPO or SCCM for UF deployment (enterprise scale)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="endpoint-sysmon">
+                    <span>Sysmon deployed with appropriate config (if in scope)</span>
+                </label>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Windows Event Log Configuration</h2>
+
+            <h3>Critical Event IDs for Security Monitoring</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Event ID</th>
+                            <th>Description</th>
+                            <th>Detection Use Case</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>4624</td>
+                            <td>Successful Logon</td>
+                            <td>Authentication tracking, lateral movement</td>
+                        </tr>
+                        <tr>
+                            <td>4625</td>
+                            <td>Failed Logon</td>
+                            <td>Brute force detection</td>
+                        </tr>
+                        <tr>
+                            <td>4648</td>
+                            <td>Explicit Credential Logon</td>
+                            <td>Credential theft detection</td>
+                        </tr>
+                        <tr>
+                            <td>4672</td>
+                            <td>Special Privileges Assigned</td>
+                            <td>Privilege escalation</td>
+                        </tr>
+                        <tr>
+                            <td>4688</td>
+                            <td>Process Creation</td>
+                            <td>Command execution (requires audit policy)</td>
+                        </tr>
+                        <tr>
+                            <td>4697</td>
+                            <td>Service Installed</td>
+                            <td>Persistence detection</td>
+                        </tr>
+                        <tr>
+                            <td>4698/4702</td>
+                            <td>Scheduled Task Created/Updated</td>
+                            <td>Persistence detection</td>
+                        </tr>
+                        <tr>
+                            <td>4720</td>
+                            <td>User Account Created</td>
+                            <td>Rogue account detection</td>
+                        </tr>
+                        <tr>
+                            <td>4732</td>
+                            <td>Member Added to Security-Enabled Group</td>
+                            <td>Privilege escalation</td>
+                        </tr>
+                        <tr>
+                            <td>7045</td>
+                            <td>Service Installed (System Log)</td>
+                            <td>Persistence detection</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">Audit Policy Requirement</div>
+                <p>Event ID 4688 (Process Creation) requires "Audit Process Creation" policy enabled. For command-line logging, enable "Include command line in process creation events" in Group Policy.</p>
+            </div>
+
+            <h3>Inputs Configuration</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">inputs.conf - Windows Security Events</span>
+                    <button class="copy-btn" data-copy="win-inputs">Copy</button>
+                </div>
+                <pre><code id="win-inputs"># ========================================
+# Windows Event Log Inputs
+# Deploy via Deployment Server
+# ========================================
+
+# Security Event Log - Critical for authentication & access
+[WinEventLog://Security]
+disabled = 0
+index = wineventlog
+sourcetype = WinEventLog:Security
+renderXml = false
+evt_resolve_ad_obj = 1
+checkpointInterval = 5
+
+# System Event Log - Service changes, driver loads
+[WinEventLog://System]
+disabled = 0
+index = wineventlog
+sourcetype = WinEventLog:System
+renderXml = false
+checkpointInterval = 5
+
+# PowerShell Operational Log
+[WinEventLog://Microsoft-Windows-PowerShell/Operational]
+disabled = 0
+index = wineventlog
+sourcetype = WinEventLog:PowerShell
+renderXml = false
+checkpointInterval = 5
+
+# PowerShell Script Block Logging (Detailed commands)
+[WinEventLog://Microsoft-Windows-PowerShell/Operational]
+disabled = 0
+index = wineventlog
+sourcetype = WinEventLog:PowerShell
+whitelist = 4103,4104
+renderXml = false
+
+# Task Scheduler Log
+[WinEventLog://Microsoft-Windows-TaskScheduler/Operational]
+disabled = 0
+index = wineventlog
+sourcetype = WinEventLog:TaskScheduler
+renderXml = false
+
+# Windows Defender Log
+[WinEventLog://Microsoft-Windows-Windows Defender/Operational]
+disabled = 0
+index = wineventlog
+sourcetype = WinEventLog:Defender
+renderXml = false</code></pre>
+            </div>
+
+            <h3>Sysmon Configuration</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">inputs.conf - Sysmon Events</span>
+                    <button class="copy-btn" data-copy="sysmon-inputs">Copy</button>
+                </div>
+                <pre><code id="sysmon-inputs"># ========================================
+# Sysmon Event Log Input
+# Requires Sysmon installed on endpoints
+# ========================================
+
+[WinEventLog://Microsoft-Windows-Sysmon/Operational]
+disabled = 0
+index = sysmon
+sourcetype = XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+renderXml = true
+checkpointInterval = 5
+
+# Key Sysmon Event Types:
+# EventID 1  - Process Create
+# EventID 3  - Network Connection
+# EventID 7  - Image Loaded (DLL)
+# EventID 8  - CreateRemoteThread
+# EventID 10 - Process Access
+# EventID 11 - File Create
+# EventID 12 - Registry Event
+# EventID 13 - Registry Value Set
+# EventID 22 - DNS Query</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Deployment Server Setup</h2>
+
+            <h3>Directory Structure</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">bash</span>
+                    <button class="copy-btn" data-copy="ds-structure">Copy</button>
+                </div>
+                <pre><code id="ds-structure"># Deployment Server App Structure
+$SPLUNK_HOME/etc/deployment-apps/
+├── TA_windows_inputs/
+│   └── local/
+│       └── inputs.conf          # Windows Event Log inputs
+├── TA_sysmon_inputs/
+│   └── local/
+│       └── inputs.conf          # Sysmon inputs
+├── TA_outputs_cloud/
+│   └── local/
+│       └── outputs.conf         # Splunk Cloud forwarding
+└── TA_deploymentclient/
+    └── local/
+        └── deploymentclient.conf # DS phone-home config</code></pre>
+            </div>
+
+            <h3>Server Classes Configuration</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">serverclass.conf</span>
+                    <button class="copy-btn" data-copy="serverclass">Copy</button>
+                </div>
+                <pre><code id="serverclass"># ========================================
+# Server Classes for Endpoint Deployment
+# $SPLUNK_HOME/etc/system/local/serverclass.conf
+# ========================================
+
+# All Windows Endpoints - Base config
+[serverClass:Windows_All]
+whitelist.0 = *
+machineTypesFilter = windows-x64
+
+[serverClass:Windows_All:app:TA_outputs_cloud]
+restartSplunkd = true
+
+[serverClass:Windows_All:app:TA_windows_inputs]
+restartSplunkd = true
+
+# Workstations - Standard collection
+[serverClass:Windows_Workstations]
+whitelist.0 = WS*
+whitelist.1 = DESKTOP*
+machineTypesFilter = windows-x64
+
+[serverClass:Windows_Workstations:app:TA_sysmon_inputs]
+restartSplunkd = true
+
+# Servers - Enhanced collection
+[serverClass:Windows_Servers]
+whitelist.0 = SRV*
+whitelist.1 = SVR*
+machineTypesFilter = windows-x64
+
+[serverClass:Windows_Servers:app:TA_sysmon_inputs]
+restartSplunkd = true
+
+# Domain Controllers - Critical assets
+[serverClass:Domain_Controllers]
+whitelist.0 = DC*
+machineTypesFilter = windows-x64
+
+[serverClass:Domain_Controllers:app:TA_windows_dc_inputs]
+restartSplunkd = true</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>EDR Integration Patterns</h2>
+
+            <h3>CrowdStrike Falcon</h3>
+            <div class="callout callout-info">
+                <div class="callout-title">Integration Method</div>
+                <p>CrowdStrike data can be collected via the Falcon Data Replicator (FDR) to S3, then ingested via Splunk Add-on for AWS, or via the CrowdStrike Falcon Event Streams API.</p>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Expected Sourcetypes - CrowdStrike</span>
+                    <button class="copy-btn" data-copy="cs-sourcetypes">Copy</button>
+                </div>
+                <pre><code id="cs-sourcetypes"># CrowdStrike Sourcetypes
+crowdstrike:events:sensor          # Endpoint telemetry
+crowdstrike:events:aidmaster       # Host data
+crowdstrike:events:managedAssets   # Asset inventory
+crowdstrike:events:detect          # Detections/alerts</code></pre>
+            </div>
+
+            <h3>Microsoft Defender for Endpoint</h3>
+            <div class="callout callout-info">
+                <div class="callout-title">Integration Method</div>
+                <p>MDE data flows via Microsoft Defender XDR → Azure Event Hub → Splunk Add-on for Microsoft Cloud Services, or via the Microsoft 365 Defender Streaming API.</p>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Expected Sourcetypes - MDE</span>
+                    <button class="copy-btn" data-copy="mde-sourcetypes">Copy</button>
+                </div>
+                <pre><code id="mde-sourcetypes"># Microsoft Defender for Endpoint Sourcetypes
+ms:defender:atp:alerts           # Detection alerts
+ms:defender:atp:machines         # Device inventory
+ms:defender:atp:advancedhunting  # Advanced hunting results</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Validation</h2>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">SPL - Endpoint Data Validation</span>
+                    <button class="copy-btn" data-copy="endpoint-validate">Copy</button>
+                </div>
+                <pre><code id="endpoint-validate">| Coverage Check - Windows Event Logs
+index=wineventlog sourcetype=WinEventLog:*
+| stats dc(host) as unique_hosts count by sourcetype
+| sort - count
+
+| Critical Event IDs Present
+index=wineventlog sourcetype=WinEventLog:Security EventCode IN (4624, 4625, 4648, 4672, 4688, 4720, 4732)
+| stats count by EventCode
+| lookup eventcode_lookup EventCode OUTPUT description
+| sort EventCode
+
+| Process Creation with Command Line
+index=wineventlog sourcetype=WinEventLog:Security EventCode=4688
+| stats count by host
+| where count > 0
+| stats count as hosts_with_4688
+
+| Sysmon Coverage
+index=sysmon sourcetype=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+| stats dc(host) as unique_hosts count by EventCode
+| sort EventCode
+
+| Endpoint Reporting Health
+index=wineventlog OR index=sysmon
+| stats latest(_time) as last_seen by host
+| eval hours_since = round((now() - last_seen)/3600, 1)
+| where hours_since > 24
+| sort - hours_since
+| head 20</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Volume Estimation</h2>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Source</th>
+                            <th>Est. GB/day per 1000 endpoints</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Security Event Log (filtered)</td>
+                            <td>5-15 GB</td>
+                            <td>Depends on logon frequency</td>
+                        </tr>
+                        <tr>
+                            <td>Security Event Log (all)</td>
+                            <td>20-50 GB</td>
+                            <td>High volume from DCs</td>
+                        </tr>
+                        <tr>
+                            <td>Sysmon (tuned config)</td>
+                            <td>10-30 GB</td>
+                            <td>Highly variable by config</td>
+                        </tr>
+                        <tr>
+                            <td>PowerShell Script Block</td>
+                            <td>2-10 GB</td>
+                            <td>Spiky during admin activity</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">Volume Control</div>
+                <p>Endpoint data can explode license usage. Use whitelist/blacklist in inputs.conf, tune Sysmon config, and consider filtering noisy Event IDs (like 4689 - Process Termination) at the source.</p>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Troubleshooting</h2>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">UF not receiving config from Deployment Server</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Verify deploymentclient.conf points to correct DS</li>
+                        <li>Check network connectivity to DS on TCP 8089</li>
+                        <li>Review serverclass.conf whitelist patterns</li>
+                        <li>Check DS logs: <code>$SPLUNK_HOME/var/log/splunk/splunkd.log</code></li>
+                        <li>Force phone-home: <code>splunk reload deploy-server</code></li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">Missing Event IDs (especially 4688)</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Verify Windows Audit Policy via <code>auditpol /get /category:*</code></li>
+                        <li>Enable "Audit Process Creation" in Group Policy</li>
+                        <li>Enable command-line logging: Computer Configuration → Administrative Templates → System → Audit Process Creation</li>
+                        <li>Check Security Log size and retention policy</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">High event volume overwhelming license</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Identify top talkers: <code>index=wineventlog | stats count by host | sort - count</code></li>
+                        <li>Filter noisy EventCodes in inputs.conf with blacklist</li>
+                        <li>Tune Sysmon config to reduce noise</li>
+                        <li>Consider sampling for low-value events</li>
+                        <li>Move verbose logs to summary index</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">Sysmon events not appearing</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Verify Sysmon service is running: <code>sc query sysmon64</code></li>
+                        <li>Check Sysmon config loaded: <code>sysmon64 -c</code></li>
+                        <li>Verify Event Log exists in Event Viewer</li>
+                        <li>Check inputs.conf channel name matches exactly</li>
+                        <li>Test with default Sysmon config first</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Acceptance Criteria</h2>
+
+            <div class="acceptance-criteria">
+                <h3>Phase 1 Gate Requirements</h3>
+                <div class="checklist">
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="endpoint-accept-coverage">
+                        <span>≥95% of in-scope endpoints reporting to Splunk</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="endpoint-accept-events">
+                        <span>Critical Event IDs (4624, 4625, 4688, 4720, 4732) present</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="endpoint-accept-cmdline">
+                        <span>Process creation events include command line (4688)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="endpoint-accept-sysmon">
+                        <span>Sysmon data flowing (if in scope)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="endpoint-accept-latency">
+                        <span>Event latency &lt;5 minutes under normal conditions</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="endpoint-accept-ds">
+                        <span>Deployment Server managing all UF configurations</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- SECTION: ROLLBACK & SAFETY -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <h2>Rollback & Safety</h2>
+
+            <h3>Emergency: Stop Endpoint Data Collection</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Emergency Procedure</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Endpoint data causing license overrun or performance issues
+
+OPTION 1: Disable via Deployment Server (Preferred)
+───────────────────────────────────────────────────
+1. On Deployment Server, edit serverclass.conf
+2. Set: disabled = 1 for the inputs app server class
+3. Reload: $SPLUNK_HOME/bin/splunk reload deploy-server
+4. Wait for UFs to check in (default: 10 min intervals)
+
+OPTION 2: Push Empty Inputs.conf
+────────────────────────────────
+1. Create app with empty/disabled inputs.conf
+2. Deploy via serverclass to affected endpoints
+3. This overrides existing collection
+
+OPTION 3: Disable Individual UF (Single Endpoint)
+─────────────────────────────────────────────────
+On the endpoint:
+1. Stop UF service: net stop SplunkForwarder
+2. Or disable specific input in local\inputs.conf
+
+OPTION 4: Block at Network (Emergency)
+──────────────────────────────────────
+Block outbound TCP 9997 from endpoint subnet
+⚠️ WARNING: This stops ALL UF traffic from that subnet
+
+COMMUNICATION:
+- Notify SOC (detection gaps occurring)
+- Notify security team (endpoint visibility lost)
+- Document affected endpoints and duration</code></pre>
+            </div>
+
+            <h3>Safe Deployment Server Change Procedure</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Safe Change Procedure</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>BEFORE ANY DEPLOYMENT SERVER CHANGE:
+
+STEP 1: Backup Current Configuration
+─────────────────────────────────────
+tar -czvf /backup/ds_etc_$(date +%Y%m%d_%H%M).tar.gz $SPLUNK_HOME/etc/deployment-apps/
+tar -czvf /backup/ds_serverclass_$(date +%Y%m%d_%H%M).tar.gz $SPLUNK_HOME/etc/system/local/serverclass.conf
+
+STEP 2: Test on Pilot Group First
+─────────────────────────────────
+1. Create test server class for pilot endpoints (50-100 systems)
+2. Deploy new config to pilot only
+3. Validate data flow and volume from pilot
+4. Wait 24 hours to observe volume patterns
+
+STEP 3: Staged Rollout
+──────────────────────
+Deploy to production in phases:
+- Phase 1: 10% of endpoints (non-critical)
+- Phase 2: 50% of endpoints (if Phase 1 successful)
+- Phase 3: 100% of endpoints
+
+Wait minimum 4 hours between phases to observe volume impact.
+
+STEP 4: Volume Validation After Each Phase
+──────────────────────────────────────────
+index=wineventlog OR index=sysmon earliest=-1h
+| stats count by index
+| eval GB_per_day = round(count * 0.5 / 1024 / 1024 * 24, 2)  `comment("Rough estimate")`
+
+Compare to license allocation before proceeding.</code></pre>
+            </div>
+
+            <h3>Volume Reduction Emergency Procedures</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">License Emergency: Reduce Endpoint Volume</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Endpoint data exceeding license allocation
+
+IMMEDIATE ACTIONS (Pick based on severity):
+
+LEVEL 1: Filter Noisy Event IDs (Low Impact)
+────────────────────────────────────────────
+Add to inputs.conf blacklist:
+[WinEventLog:Security]
+blacklist1 = EventCode="4689"   # Process termination (high volume, low value)
+blacklist2 = EventCode="5156"   # Windows Filtering Platform connection (very high volume)
+blacklist3 = EventCode="5158"   # Windows Filtering Platform bind
+
+LEVEL 2: Reduce Sysmon Verbosity (Medium Impact)
+────────────────────────────────────────────────
+Deploy tuned Sysmon config that excludes:
+- Image loads from trusted paths (Event 7)
+- File creates in temp directories (Event 11)
+- Registry events from trusted processes (Events 12, 13, 14)
+
+LEVEL 3: Disable Non-Critical Sources (High Impact)
+───────────────────────────────────────────────────
+In order of detection value (disable lowest first):
+1. WinEventLog:System (usually low detection value)
+2. WinEventLog:Application (rarely needed for security)
+3. Sysmon registry events (if not actively used)
+
+LEVEL 4: Sample High-Volume Sources (Emergency)
+───────────────────────────────────────────────
+props.conf:
+[WinEventLog:Security]
+# Only index 10% of events (EMERGENCY ONLY)
+TRANSFORMS-sample = sample_10_percent
+
+transforms.conf:
+[sample_10_percent]
+REGEX = .
+DEST_KEY = queue
+FORMAT = nullQueue
+
+⚠️ WARNING: Sampling causes detection gaps - use only in license emergency</code></pre>
+            </div>
+
+            <h3>UF Health Monitoring Query</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">SPL: Monitor UF Fleet Health</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>`comment("Create scheduled alert to detect silent UF failures")`
+
+| tstats latest(_time) AS last_seen WHERE index=wineventlog BY host
+| eval hours_since = round((now() - last_seen)/3600, 1)
+| where hours_since > 4
+| sort - hours_since
+| eval alert = case(
+    hours_since > 24, "🔴 CRITICAL: No data >24h",
+    hours_since > 8, "🟠 WARNING: No data >8h",
+    hours_since > 4, "🟡 NOTICE: No data >4h"
+)
+| table host, last_seen, hours_since, alert
+
+`comment("Schedule this to run every hour and alert on results > 0")`</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section next-steps">
+            <h2>Next Steps</h2>
+            <div class="next-steps-grid">
+                <a href="hec-ingestion.html" class="next-step-card">
+                    <span class="next-step-label">Next Guide</span>
+                    <span class="next-step-title">HEC Ingestion →</span>
+                </a>
+                <a href="../phase2-data-quality/index.html" class="next-step-card">
+                    <span class="next-step-label">After Log Coverage</span>
+                    <span class="next-step-title">Phase 2: Data Quality →</span>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

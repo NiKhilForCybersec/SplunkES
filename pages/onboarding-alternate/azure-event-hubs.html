@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Event Hubs Integration | Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>Splunk ES</h1>
+            <span class="version">Detection Engineering</span>
+        </div>
+        <ul class="nav-tree">
+            <li><a href="../../index.html"><span class="nav-icon">◈</span> Home</a></li>
+            <li><a href="../delivery-model/index.html"><span class="nav-icon">◆</span> Delivery Model</a></li>
+            <li><a href="../planning/index.html"><span class="nav-icon">◇</span> Planning & Scoping</a></li>
+            <li class="nav-section">
+                <span class="section-title">Phase 1: Log Coverage</span>
+                <ul>
+                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
+                    <li><a href="../universal-onboarding/index.html">Universal Onboarding</a></li>
+                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
+                </ul>
+            </li>
+            <li class="nav-section">
+                <span class="section-title">Onboarding - Primary</span>
+                <ul>
+                    <li><a href="../onboarding-primary/index.html">Overview</a></li>
+                    <li><a href="../onboarding-primary/akamai-waf.html">Akamai WAF</a></li>
+                    <li><a href="../onboarding-primary/authentication-mfa.html">Authentication/MFA</a></li>
+                    <li><a href="../onboarding-primary/syslog-hf.html">Syslog via HF</a></li>
+                    <li><a href="../onboarding-primary/endpoint-telemetry.html">Endpoint Telemetry</a></li>
+                    <li><a href="../onboarding-primary/hec-ingestion.html">HEC Ingestion</a></li>
+                </ul>
+            </li>
+            <li class="nav-section">
+                <span class="section-title">Onboarding - Alternate</span>
+                <ul>
+                    <li><a href="index.html">Overview</a></li>
+                    <li><a href="azure-event-hubs.html" class="active">Azure Event Hubs</a></li>
+                    <li><a href="kafka-connect.html">Kafka Connect</a></li>
+                    <li><a href="db-connect.html">DB Connect</a></li>
+                    <li><a href="scripted-inputs.html">Scripted Inputs</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase2-data-quality/index.html"><span class="nav-icon">◆</span> Phase 2: Data Quality</a></li>
+            <li><a href="../phase3-detection/index.html"><span class="nav-icon">◇</span> Phase 3: Detection</a></li>
+            <li class="nav-section">
+                <span class="section-title">Use Cases</span>
+                <ul>
+                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS Detection</a></li>
+                    <li><a href="../use-cases/mfa-auth.html">MFA Authentication</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase4-automation/index.html"><span class="nav-icon">◈</span> Phase 4: Automation</a></li>
+            <li><a href="../phase5-rba/index.html"><span class="nav-icon">◇</span> Phase 5: RBA <span class="badge future">Future</span></a></li>
+            <li class="nav-section">
+                <span class="section-title">Appendix</span>
+                <ul>
+                    <li><a href="../appendix/index.html">Reference Index</a></li>
+                    <li><a href="../appendix/spl-library.html">SPL Library</a></li>
+                    <li><a href="../appendix/troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="../appendix/checklists.html">Checklists</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <nav class="breadcrumb">
+            <a href="../../index.html">Home</a>
+            <span class="separator">›</span>
+            <a href="index.html">Onboarding - Alternate</a>
+            <span class="separator">›</span>
+            <span class="current">Azure Event Hubs</span>
+        </nav>
+
+        <header class="page-header">
+            <div class="phase-indicator">Phase 1 · Alternate Path</div>
+            <h1>Azure Event Hubs Integration</h1>
+            <p class="subtitle">Stream Azure and Microsoft 365 logs via Event Hubs to Splunk using the Splunk Add-on for Microsoft Cloud Services</p>
+        </header>
+
+        <!-- ============================================== -->
+        <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <div class="callout callout-info">
+                <div class="callout-title">📋 Page Status: HARDENED</div>
+                <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                <p>This page includes Azure-specific configuration guidance, failure modes, and rollback procedures.</p>
+            </div>
+
+            <div class="callout callout-danger">
+                <div class="callout-title">🚨 CRITICAL: Azure Event Hubs Has Multiple Failure Points</div>
+                <p><strong>Event Hubs ingestion involves Azure infrastructure, Heavy Forwarder, and Splunk.</strong> Any component failure causes data gaps. Ensure:</p>
+                <ul>
+                    <li><strong>Monitor ALL components:</strong> Event Hubs metrics, HF health, Splunk input status</li>
+                    <li><strong>Azure permissions are NOT service account:</strong> Use dedicated app registration with certificate auth</li>
+                    <li><strong>Certificate expiry alerts:</strong> Certificates expire — set reminders 30 days before</li>
+                    <li><strong>Throughput unit planning:</strong> Under-provisioned TUs cause data loss</li>
+                </ul>
+            </div>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">⚠️ Azure Cost Considerations</div>
+                <p>Event Hubs pricing is based on throughput units and retention:</p>
+                <ul>
+                    <li><strong>Standard tier:</strong> ~$22/month per throughput unit + ingress/egress costs</li>
+                    <li><strong>Retention:</strong> Default 24 hours; longer retention = higher cost</li>
+                    <li><strong>Right-size:</strong> Start with 2 TUs, scale based on actual usage</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Architecture Overview -->
+        <section class="content-section">
+            <h2>Architecture Overview</h2>
+            <p>Azure Event Hubs provides a scalable, high-throughput data streaming platform ideal for ingesting large volumes of Azure-native logs into Splunk. This method is preferred for Azure Activity Logs, Microsoft 365 audit logs, Azure AD sign-ins, and Defender for Cloud alerts.</p>
+
+            <div class="mermaid-container">
+                <div class="mermaid">
+flowchart LR
+    subgraph Azure["Azure Environment"]
+        direction TB
+        AAD["Azure AD<br/>Sign-in Logs"]
+        M365["Microsoft 365<br/>Audit Logs"]
+        AzLog["Azure Activity<br/>Logs"]
+        Def["Defender for<br/>Cloud Alerts"]
+    end
+    
+    subgraph EH["Event Hubs Namespace"]
+        direction TB
+        Hub1["eventhub-signin"]
+        Hub2["eventhub-audit"]
+        Hub3["eventhub-activity"]
+        Hub4["eventhub-defender"]
+    end
+    
+    subgraph Splunk["Splunk Infrastructure"]
+        direction TB
+        HF["Heavy Forwarder<br/>+ MS Cloud Add-on"]
+        IDX["Indexer Cluster"]
+        SH["Search Head<br/>+ ES"]
+    end
+    
+    AAD --> Hub1
+    M365 --> Hub2
+    AzLog --> Hub3
+    Def --> Hub4
+    
+    Hub1 --> HF
+    Hub2 --> HF
+    Hub3 --> HF
+    Hub4 --> HF
+    
+    HF --> IDX --> SH
+    
+    style Azure fill:#0078d4,color:#fff
+    style EH fill:#68217a,color:#fff
+    style Splunk fill:#65a637,color:#fff
+                </div>
+            </div>
+        </section>
+
+        <!-- Prerequisites -->
+        <section class="content-section">
+            <h2>Prerequisites</h2>
+            
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Requirement</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Azure Subscription</strong></td>
+                            <td>Active subscription with Event Hubs access</td>
+                            <td>Standard or Premium tier recommended</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Azure AD App Registration</strong></td>
+                            <td>Service Principal with Event Hubs Data Receiver role</td>
+                            <td>Certificate auth preferred over secrets</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Splunk Add-on</strong></td>
+                            <td>Splunk Add-on for Microsoft Cloud Services v5.x+</td>
+                            <td>Install on Heavy Forwarder</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Heavy Forwarder</strong></td>
+                            <td>8+ GB RAM, 4+ CPU cores</td>
+                            <td>Dedicated for Azure ingestion</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Network</strong></td>
+                            <td>Outbound HTTPS (443) to Event Hubs endpoint</td>
+                            <td>*.servicebus.windows.net</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Step 1: Event Hub Namespace Setup -->
+        <section class="content-section">
+            <h2>Step 1: Create Event Hubs Namespace</h2>
+            
+            <div class="callout info">
+                <div class="callout-title">Naming Convention</div>
+                <p>Use consistent naming: <code>evhns-{company}-{environment}-{region}</code> for namespaces and <code>evh-{logtype}</code> for individual hubs.</p>
+            </div>
+
+            <h3>Azure CLI Commands</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Azure CLI</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Create Resource Group
+az group create \
+  --name rg-splunk-eventhubs \
+  --location canadacentral
+
+# Create Event Hubs Namespace
+az eventhubs namespace create \
+  --name evhns-company-prod-cc \
+  --resource-group rg-splunk-eventhubs \
+  --location canadacentral \
+  --sku Standard \
+  --capacity 2
+
+# Create Event Hubs for each log type
+az eventhubs eventhub create \
+  --name evh-azuread-signin \
+  --namespace-name evhns-company-prod-cc \
+  --resource-group rg-splunk-eventhubs \
+  --partition-count 4 \
+  --message-retention 7
+
+az eventhubs eventhub create \
+  --name evh-m365-audit \
+  --namespace-name evhns-company-prod-cc \
+  --resource-group rg-splunk-eventhubs \
+  --partition-count 4 \
+  --message-retention 7
+
+az eventhubs eventhub create \
+  --name evh-azure-activity \
+  --namespace-name evhns-company-prod-cc \
+  --resource-group rg-splunk-eventhubs \
+  --partition-count 4 \
+  --message-retention 7</code></pre>
+            </div>
+
+            <h3>Consumer Groups</h3>
+            <p>Create dedicated consumer groups for Splunk to enable independent offset tracking:</p>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Azure CLI</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Create consumer group for each hub
+az eventhubs eventhub consumer-group create \
+  --eventhub-name evh-azuread-signin \
+  --namespace-name evhns-company-prod-cc \
+  --resource-group rg-splunk-eventhubs \
+  --name splunk-cg
+
+az eventhubs eventhub consumer-group create \
+  --eventhub-name evh-m365-audit \
+  --namespace-name evhns-company-prod-cc \
+  --resource-group rg-splunk-eventhubs \
+  --name splunk-cg
+
+az eventhubs eventhub consumer-group create \
+  --eventhub-name evh-azure-activity \
+  --namespace-name evhns-company-prod-cc \
+  --resource-group rg-splunk-eventhubs \
+  --name splunk-cg</code></pre>
+            </div>
+        </section>
+
+        <!-- Step 2: Configure Diagnostic Settings -->
+        <section class="content-section">
+            <h2>Step 2: Configure Azure Diagnostic Settings</h2>
+            
+            <h3>Azure AD Sign-in Logs</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Azure CLI</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Get Event Hub resource ID
+EVENTHUB_ID=$(az eventhubs eventhub show \
+  --name evh-azuread-signin \
+  --namespace-name evhns-company-prod-cc \
+  --resource-group rg-splunk-eventhubs \
+  --query id -o tsv)
+
+# Get Event Hubs authorization rule ID
+AUTH_RULE_ID=$(az eventhubs namespace authorization-rule show \
+  --name RootManageSharedAccessKey \
+  --namespace-name evhns-company-prod-cc \
+  --resource-group rg-splunk-eventhubs \
+  --query id -o tsv)
+
+# Create diagnostic setting for Azure AD
+az monitor diagnostic-settings create \
+  --name ds-azuread-to-eventhubs \
+  --resource "/providers/Microsoft.aadiam/diagnosticSettings" \
+  --event-hub evh-azuread-signin \
+  --event-hub-rule $AUTH_RULE_ID \
+  --logs '[
+    {"category": "SignInLogs", "enabled": true},
+    {"category": "AuditLogs", "enabled": true},
+    {"category": "NonInteractiveUserSignInLogs", "enabled": true},
+    {"category": "ServicePrincipalSignInLogs", "enabled": true},
+    {"category": "ManagedIdentitySignInLogs", "enabled": true},
+    {"category": "RiskyUsers", "enabled": true},
+    {"category": "UserRiskEvents", "enabled": true}
+  ]'</code></pre>
+            </div>
+
+            <h3>Azure Activity Logs (Subscription Level)</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Azure CLI</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Create diagnostic setting for Activity Logs
+az monitor diagnostic-settings subscription create \
+  --name ds-activity-to-eventhubs \
+  --location global \
+  --event-hub evh-azure-activity \
+  --event-hub-rule $AUTH_RULE_ID \
+  --logs '[
+    {"category": "Administrative", "enabled": true},
+    {"category": "Security", "enabled": true},
+    {"category": "ServiceHealth", "enabled": true},
+    {"category": "Alert", "enabled": true},
+    {"category": "Policy", "enabled": true},
+    {"category": "Autoscale", "enabled": true},
+    {"category": "ResourceHealth", "enabled": true}
+  ]'</code></pre>
+            </div>
+        </section>
+
+        <!-- Step 3: App Registration -->
+        <section class="content-section">
+            <h2>Step 3: Create App Registration</h2>
+            
+            <div class="callout warning">
+                <div class="callout-title">Security Best Practice</div>
+                <p>Use certificate authentication instead of client secrets for production. Certificates provide stronger security and longer validity periods.</p>
+            </div>
+
+            <h3>Create Service Principal</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Azure CLI</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Create App Registration
+az ad app create \
+  --display-name "Splunk Event Hubs Reader" \
+  --sign-in-audience AzureADMyOrg
+
+# Get the App ID
+APP_ID=$(az ad app list --display-name "Splunk Event Hubs Reader" --query "[0].appId" -o tsv)
+
+# Create Service Principal
+az ad sp create --id $APP_ID
+
+# Get Service Principal Object ID
+SP_OID=$(az ad sp show --id $APP_ID --query id -o tsv)
+
+# Assign Event Hubs Data Receiver role
+az role assignment create \
+  --assignee $SP_OID \
+  --role "Azure Event Hubs Data Receiver" \
+  --scope "/subscriptions/{subscription-id}/resourceGroups/rg-splunk-eventhubs"</code></pre>
+            </div>
+
+            <h3>Generate Certificate (Recommended)</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Bash</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Generate self-signed certificate (2 year validity)
+openssl req -x509 -nodes -days 730 \
+  -newkey rsa:2048 \
+  -keyout splunk-eventhubs.key \
+  -out splunk-eventhubs.crt \
+  -subj "/CN=Splunk Event Hubs Reader"
+
+# Create PEM file for Splunk
+cat splunk-eventhubs.key splunk-eventhubs.crt > splunk-eventhubs.pem
+
+# Upload certificate to Azure AD app
+az ad app credential reset \
+  --id $APP_ID \
+  --cert @splunk-eventhubs.crt \
+  --append</code></pre>
+            </div>
+
+            <h3>Required Values for Splunk Configuration</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Value</th>
+                            <th>How to Obtain</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Tenant ID</strong></td>
+                            <td><code>az account show --query tenantId</code></td>
+                            <td>12345678-1234-1234-1234-123456789abc</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Client ID (App ID)</strong></td>
+                            <td><code>az ad app list --display-name "Splunk..." --query "[0].appId"</code></td>
+                            <td>abcd1234-abcd-1234-abcd-1234567890ab</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Event Hub Namespace</strong></td>
+                            <td>Azure Portal → Event Hubs Namespace → Overview</td>
+                            <td>evhns-company-prod-cc</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Event Hub Name</strong></td>
+                            <td>Azure Portal → Event Hub → Name</td>
+                            <td>evh-azuread-signin</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Consumer Group</strong></td>
+                            <td>Azure Portal → Event Hub → Consumer groups</td>
+                            <td>splunk-cg</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Step 4: Splunk Configuration -->
+        <section class="content-section">
+            <h2>Step 4: Configure Splunk Add-on</h2>
+            
+            <h3>Install Add-on</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Heavy Forwarder CLI</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Download from Splunkbase or copy the package
+cd /opt/splunk/etc/apps
+
+# Extract add-on
+tar -xzf splunk-add-on-for-microsoft-cloud-services_5xx.tgz
+
+# Restart Splunk
+/opt/splunk/bin/splunk restart</code></pre>
+            </div>
+
+            <h3>inputs.conf Configuration</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>$SPLUNK_HOME/etc/apps/Splunk_TA_microsoft-cloudservices/local/inputs.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Azure AD Sign-in Logs
+[azure_event_hub://azuread_signin]
+account = azure_splunk_account
+event_hub_namespace = evhns-company-prod-cc
+event_hub_name = evh-azuread-signin
+consumer_group = splunk-cg
+max_batch_size = 500
+use_amqp_over_websocket = 0
+index = azure_aad
+sourcetype = azure:aad:signin
+disabled = 0
+
+# Microsoft 365 Audit Logs
+[azure_event_hub://m365_audit]
+account = azure_splunk_account
+event_hub_namespace = evhns-company-prod-cc
+event_hub_name = evh-m365-audit
+consumer_group = splunk-cg
+max_batch_size = 500
+index = o365
+sourcetype = o365:management:activity
+disabled = 0
+
+# Azure Activity Logs
+[azure_event_hub://azure_activity]
+account = azure_splunk_account
+event_hub_namespace = evhns-company-prod-cc
+event_hub_name = evh-azure-activity
+consumer_group = splunk-cg
+max_batch_size = 500
+index = azure_activity
+sourcetype = azure:monitor:activity
+disabled = 0</code></pre>
+            </div>
+
+            <h3>Account Configuration (Certificate Auth)</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>$SPLUNK_HOME/etc/apps/Splunk_TA_microsoft-cloudservices/local/splunk_ta_ms_cloudservices_account.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>[azure_splunk_account]
+tenant_id = 12345678-1234-1234-1234-123456789abc
+client_id = abcd1234-abcd-1234-abcd-1234567890ab
+client_certificate_path = /opt/splunk/etc/apps/Splunk_TA_microsoft-cloudservices/certs/splunk-eventhubs.pem
+environment = Azure Global</code></pre>
+            </div>
+
+            <div class="callout info">
+                <div class="callout-title">Certificate Placement</div>
+                <p>Copy the PEM file to the add-on's certs directory:</p>
+                <code>mkdir -p $SPLUNK_HOME/etc/apps/Splunk_TA_microsoft-cloudservices/certs</code><br>
+                <code>cp splunk-eventhubs.pem $SPLUNK_HOME/etc/apps/Splunk_TA_microsoft-cloudservices/certs/</code><br>
+                <code>chmod 400 $SPLUNK_HOME/etc/apps/Splunk_TA_microsoft-cloudservices/certs/splunk-eventhubs.pem</code>
+            </div>
+        </section>
+
+        <!-- Step 5: Index Configuration -->
+        <section class="content-section">
+            <h2>Step 5: Create Indexes</h2>
+            
+            <div class="code-block">
+                <div class="code-header">
+                    <span>indexes.conf (Indexer Cluster Master / Manager)</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Azure AD Index
+[azure_aad]
+homePath = $SPLUNK_DB/azure_aad/db
+coldPath = $SPLUNK_DB/azure_aad/colddb
+thawedPath = $SPLUNK_DB/azure_aad/thaweddb
+maxDataSize = auto_high_volume
+maxHotBuckets = 10
+frozenTimePeriodInSecs = 7776000
+
+# Office 365 Index
+[o365]
+homePath = $SPLUNK_DB/o365/db
+coldPath = $SPLUNK_DB/o365/colddb
+thawedPath = $SPLUNK_DB/o365/thaweddb
+maxDataSize = auto_high_volume
+maxHotBuckets = 10
+frozenTimePeriodInSecs = 7776000
+
+# Azure Activity Index
+[azure_activity]
+homePath = $SPLUNK_DB/azure_activity/db
+coldPath = $SPLUNK_DB/azure_activity/colddb
+thawedPath = $SPLUNK_DB/azure_activity/thaweddb
+maxDataSize = auto_high_volume
+maxHotBuckets = 10
+frozenTimePeriodInSecs = 7776000</code></pre>
+            </div>
+        </section>
+
+        <!-- Validation -->
+        <section class="content-section">
+            <h2>Validation Queries</h2>
+            
+            <h3>Check Data Arrival</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>| tstats count WHERE index=azure_aad OR index=o365 OR index=azure_activity 
+    BY index, sourcetype, _time span=1h 
+| timechart span=1h sum(count) BY index</code></pre>
+            </div>
+
+            <h3>Check Event Hub Input Health</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>index=_internal sourcetype=splunkd component=ModularInputs
+    (azure_event_hub OR "Splunk_TA_microsoft-cloudservices")
+| stats latest(_time) as last_event, count BY data_input 
+| eval status=if(now()-last_event < 300, "Healthy", "Check Required")
+| table data_input, last_event, count, status</code></pre>
+            </div>
+
+            <h3>Verify Azure AD Sign-in Fields</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>index=azure_aad sourcetype="azure:aad:signin" earliest=-1h
+| stats count BY 
+    properties.userPrincipalName,
+    properties.ipAddress,
+    properties.status.errorCode,
+    properties.appDisplayName,
+    properties.conditionalAccessStatus
+| head 20</code></pre>
+            </div>
+
+            <h3>CIM Mapping Verification</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>| datamodel Authentication search 
+| where index="azure_aad"
+| stats count BY user, src, action, app 
+| head 20</code></pre>
+            </div>
+        </section>
+
+        <!-- Troubleshooting -->
+        <section class="content-section">
+            <h2>Troubleshooting</h2>
+            
+            <details class="collapsible">
+                <summary>No Data Arriving in Splunk</summary>
+                <div class="collapsible-content">
+                    <ol>
+                        <li><strong>Verify Event Hub has data:</strong> Azure Portal → Event Hubs → Metrics → Incoming Messages</li>
+                        <li><strong>Check modular input logs:</strong>
+                            <div class="code-block">
+                                <pre><code>index=_internal sourcetype=splunkd (ERROR OR WARN) 
+    "azure_event_hub" OR "Splunk_TA_microsoft"
+| table _time, log_level, message</code></pre>
+                            </div>
+                        </li>
+                        <li><strong>Verify network connectivity:</strong>
+                            <div class="code-block">
+                                <pre><code># From Heavy Forwarder
+curl -v https://evhns-company-prod-cc.servicebus.windows.net/</code></pre>
+                            </div>
+                        </li>
+                        <li><strong>Check certificate permissions:</strong>
+                            <div class="code-block">
+                                <pre><code>ls -la $SPLUNK_HOME/etc/apps/Splunk_TA_microsoft-cloudservices/certs/</code></pre>
+                            </div>
+                        </li>
+                    </ol>
+                </div>
+            </details>
+
+            <details class="collapsible">
+                <summary>Authentication Errors</summary>
+                <div class="collapsible-content">
+                    <ul>
+                        <li>Verify Tenant ID and Client ID match Azure AD app registration</li>
+                        <li>Confirm certificate is uploaded to Azure AD app and not expired</li>
+                        <li>Check Service Principal has "Azure Event Hubs Data Receiver" role</li>
+                        <li>Ensure PEM file contains both private key and certificate</li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="collapsible">
+                <summary>High Latency / Lag</summary>
+                <div class="collapsible-content">
+                    <ul>
+                        <li>Increase <code>max_batch_size</code> in inputs.conf (up to 5000)</li>
+                        <li>Add more partitions to Event Hub (requires namespace tier upgrade)</li>
+                        <li>Scale Heavy Forwarder CPU/memory</li>
+                        <li>Check for checkpoint lag:
+                            <div class="code-block">
+                                <pre><code>index=_internal sourcetype=splunkd "checkpoint" "azure_event_hub"
+| stats latest(_time) BY data_input</code></pre>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </details>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- SECTION: ROLLBACK & SAFETY -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <h2>Rollback & Safety</h2>
+
+            <h3>Emergency: Disable Event Hub Ingestion</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Emergency Procedure</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Event Hub ingestion causing issues (volume spike, parsing errors, HF overload)
+
+OPTION 1: Disable Splunk Input (Preferred)
+─────────────────────────────────────────
+1. SSH to Heavy Forwarder
+2. Edit: $SPLUNK_HOME/etc/apps/Splunk_TA_microsoft-cloudservices/local/inputs.conf
+3. Add: disabled = 1 to the problematic input stanza
+4. Restart: $SPLUNK_HOME/bin/splunk restart
+
+OPTION 2: Disable via Splunk Web
+────────────────────────────────
+1. Settings → Data Inputs → Azure Event Hub
+2. Find input → Edit → Disabled = Yes
+3. Save
+
+OPTION 3: Block at Azure Side (If HF Overwhelmed)
+─────────────────────────────────────────────────
+1. Azure Portal → Event Hubs Namespace → Access Control (IAM)
+2. Remove "Azure Event Hubs Data Receiver" role from Service Principal
+3. This immediately stops Splunk from reading
+4. Data continues to queue in Event Hub (up to retention limit)
+
+COMMUNICATION:
+- Notify SOC (Azure log gap occurring)
+- Notify Azure team if Azure-side changes made
+- Document start/end time for audit</code></pre>
+            </div>
+
+            <h3>Certificate Renewal Procedure</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Zero-Downtime Certificate Rotation</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Certificate approaching expiry (30+ days notice)
+
+STEP 1: Generate New Certificate
+────────────────────────────────
+openssl req -x509 -newkey rsa:2048 -keyout new_key.pem -out new_cert.pem -days 730 -nodes
+
+STEP 2: Upload to Azure AD App Registration
+───────────────────────────────────────────
+1. Azure Portal → App registrations → Your App
+2. Certificates & secrets → Upload certificate
+3. Upload new_cert.pem (keep old cert active)
+
+STEP 3: Create Combined PEM for Splunk
+──────────────────────────────────────
+cat new_key.pem new_cert.pem > combined_new.pem
+
+STEP 4: Update Splunk Configuration
+───────────────────────────────────
+1. Copy combined_new.pem to HF: $SPLUNK_HOME/etc/apps/Splunk_TA_microsoft-cloudservices/certs/
+2. Update inputs.conf with new certificate path
+3. Restart Splunk: $SPLUNK_HOME/bin/splunk restart
+
+STEP 5: Verify New Certificate Working
+──────────────────────────────────────
+index=_internal sourcetype=splunkd "azure_event_hub" earliest=-15m
+| stats count BY log_level
+# Should show INFO only, no ERROR
+
+STEP 6: Remove Old Certificate
+──────────────────────────────
+1. Wait 24 hours to confirm new cert working
+2. Azure Portal → App registrations → Your App
+3. Certificates & secrets → Delete old certificate
+
+SCHEDULE: Set calendar reminder 60 days before new cert expires</code></pre>
+            </div>
+
+            <h3>Event Hub Health Monitoring Query</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL: Monitor Event Hub Input Health</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>`comment("Create scheduled alert to detect Event Hub failures")`
+
+index=_internal sourcetype=splunkd component=ModularInputs 
+    (azure_event_hub OR "Splunk_TA_microsoft-cloudservices") earliest=-1h
+| stats 
+    latest(_time) AS last_event,
+    sum(eval(if(log_level="ERROR", 1, 0))) AS error_count,
+    sum(eval(if(log_level="WARN", 1, 0))) AS warn_count
+    BY data_input
+| eval hours_since = round((now() - last_event)/3600, 1)
+| eval status = case(
+    error_count > 0, "🔴 ERRORS - Check immediately",
+    hours_since > 1, "🟠 STALE - No activity >1h",
+    warn_count > 5, "🟡 WARNINGS - Review logs",
+    true(), "✅ Healthy"
+)
+| table data_input, status, last_event, error_count, warn_count
+
+`comment("Alert when status contains 🔴 or 🟠")`</code></pre>
+            </div>
+        </section>
+
+        <!-- Acceptance Criteria -->
+        <section class="content-section">
+            <h2>Acceptance Criteria</h2>
+            
+            <div class="checklist" data-id="azure-eventhubs-acceptance">
+                <div class="checklist-item">
+                    <input type="checkbox" id="eh-acc-1">
+                    <label for="eh-acc-1">Event Hubs namespace and hubs created with appropriate naming</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="eh-acc-2">
+                    <label for="eh-acc-2">Diagnostic settings configured for all required log sources</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="eh-acc-3">
+                    <label for="eh-acc-3">Service Principal created with certificate authentication</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="eh-acc-4">
+                    <label for="eh-acc-4">Splunk Add-on installed and configured on Heavy Forwarder</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="eh-acc-5">
+                    <label for="eh-acc-5">Data arriving in Splunk with < 5 minute latency</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="eh-acc-6">
+                    <label for="eh-acc-6">CIM mapping validated for Authentication data model</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="eh-acc-7">
+                    <label for="eh-acc-7">Monitoring dashboard or alert configured for input health</label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Next Steps -->
+        <section class="content-section">
+            <h2>Next Steps</h2>
+            <div class="next-steps">
+                <a href="kafka-connect.html" class="next-step-link">
+                    <span class="step-label">Next Page</span>
+                    <span class="step-title">Kafka Connect →</span>
+                </a>
+                <a href="../phase2-data-quality/index.html" class="next-step-link">
+                    <span class="step-label">After Onboarding</span>
+                    <span class="step-title">Phase 2: Data Quality →</span>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

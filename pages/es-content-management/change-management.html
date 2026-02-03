@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ES Change Management & Rollback - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="change-management.html" class="nav-item nav-item-sub active">ES Change Management</a>
+                    <a href="health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">ES Change Management & Rollback</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Content Management</span>
+                <h1>ES Change Management & Rollback</h1>
+
+                <!-- ============================================== -->
+                <!-- HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES CONTENT MANAGEMENT</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This page defines how every ES detection change is planned, executed, rolled back, and communicated. In a single production environment, this IS your safety net.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 CRITICAL: Every Detection Change Is a Production Change</div>
+                    <p><strong>There is no DEV, no UAT, no staging.</strong> When you modify, enable, or disable a correlation search, you are changing production security monitoring. The SOC sees the effect immediately. An auditor can ask about any change at any time.</p>
+                    <ul>
+                        <li>One bad enablement = alert storm in production SOC</li>
+                        <li>One bad disable = detection gap nobody knows about</li>
+                        <li>One undocumented change = audit finding</li>
+                    </ul>
+                    <p>This page is your change management framework. Follow it for every change, every time.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> You have a change log or registry to record changes. <strong>Risk if wrong:</strong> Changes become untrackable. Set up at minimum a shared spreadsheet.</li>
+                        <li><strong>Assumption:</strong> SOC has an agreed communication channel (email, Slack, Teams). <strong>Risk if wrong:</strong> Changes surprise the SOC.</li>
+                        <li><strong>Assumption:</strong> There is a named escalation contact for "emergency stop" scenarios. <strong>Verify:</strong> Confirm who to call at 2 AM if a detection goes wrong.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: CHANGE CLASSIFICATION -->
+                <!-- ============================================== -->
+                <h2>Change Classification</h2>
+
+                <p>Not all changes carry the same risk. Classify every change before executing it to determine the required approval level and communication.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Classification</th>
+                                <th>Examples</th>
+                                <th>Approval</th>
+                                <th>SOC Notice</th>
+                                <th>Rollback Plan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>🟢 Low Risk</strong></td>
+                                <td>Adjust throttle window, modify description, update inline comments, disable a search that is already not producing results</td>
+                                <td>Self-approved. Document in change log.</td>
+                                <td>Informational (post-change email)</td>
+                                <td>Revert setting. Immediate.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>🟡 Medium Risk</strong></td>
+                                <td>Modify detection thresholds, add allowlist entries, change cron schedule, enable an OOTB search after monitoring period</td>
+                                <td>Peer review recommended. Document with rationale.</td>
+                                <td>Pre-change notification (24 hours)</td>
+                                <td>Documented. Tested. Can execute in <15 min.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-red);"><strong>🔴 High Risk</strong></td>
+                                <td>Enable new detection in production, modify SPL logic, disable an active detection, bulk enable/disable, deploy custom detection</td>
+                                <td>Peer review required. SOC sign-off required.</td>
+                                <td>Pre-change meeting or detailed email (48 hours)</td>
+                                <td>Full rollback procedure documented and rehearsed.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-red);"><strong>🔴🔴 Emergency</strong></td>
+                                <td>Alert storm in progress, detection causing SOC overload, false positives impacting operations</td>
+                                <td>Act first, document immediately after.</td>
+                                <td>Immediate notification (Slack/call during change)</td>
+                                <td>Kill switch: disable search immediately. Investigate after.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: SAFE ENABLEMENT CHECKLIST -->
+                <!-- ============================================== -->
+                <h2>Safe Enablement Checklist</h2>
+
+                <p>Use this checklist before enabling ANY correlation search in production. This applies to OOTB (after monitoring), cloned, and custom detections.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    START["Ready to enable<br/>detection in production"] --> C1{"Monitoring period<br/>completed (1-2 weeks)?"}
+    
+    C1 -->|"No"| STOP1["🛑 STOP<br/>Complete monitoring first"]
+    C1 -->|"Yes"| C2{"FP rate < 30%<br/>in monitoring?"}
+    
+    C2 -->|"No"| STOP2["🛑 STOP<br/>Tune offline first"]
+    C2 -->|"Yes"| C3{"Throttle<br/>configured?"}
+    
+    C3 -->|"No"| FIX1["Configure throttle<br/>before enabling"]
+    FIX1 --> C3
+    C3 -->|"Yes"| C4{"Triage runbook<br/>exists?"}
+    
+    C4 -->|"No"| FIX2["Create runbook<br/>before enabling"]
+    FIX2 --> C4
+    C4 -->|"Yes"| C5{"SOC notified<br/>(24-48h advance)?"}
+    
+    C5 -->|"No"| FIX3["Send notification<br/>Wait required period"]
+    FIX3 --> C5
+    C5 -->|"Yes"| C6{"Rollback plan<br/>documented?"}
+    
+    C6 -->|"No"| FIX4["Document rollback<br/>steps"]
+    FIX4 --> C6
+    C6 -->|"Yes"| C7{"Change log<br/>entry created?"}
+    
+    C7 -->|"No"| FIX5["Create change<br/>log entry"]
+    FIX5 --> C7
+    C7 -->|"Yes"| C8{"Is it a safe<br/>deployment window?<br/>(Tue-Wed, no freeze)"}
+    
+    C8 -->|"No"| WAIT["Wait for safe<br/>deployment window"]
+    WAIT --> C8
+    C8 -->|"Yes"| ENABLE["✅ ENABLE<br/>in production"]
+    
+    ENABLE --> VERIFY["Verify within 1 hour:<br/>• Notables appearing as expected<br/>• Volume within predicted range<br/>• No alert storm"]
+    
+    VERIFY --> Q_OK{"Everything<br/>looks good?"}
+    Q_OK -->|"Yes"| DONE["✅ DONE<br/>Monitor daily for 1 week"]
+    Q_OK -->|"No"| ROLLBACK["🔴 EXECUTE ROLLBACK<br/>Disable immediately<br/>Investigate offline"]
+    
+    style STOP1 fill:#f85149,stroke:#da3633,color:#fff
+    style STOP2 fill:#f85149,stroke:#da3633,color:#fff
+    style ROLLBACK fill:#f85149,stroke:#da3633,color:#fff
+    style ENABLE fill:#238636,stroke:#2ea043,color:#fff
+    style DONE fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <h3>Enablement Checklist Table</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">✅</th>
+                                <th style="width: 45%;">Requirement</th>
+                                <th style="width: 50%;">Evidence / Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>☐</td><td>Monitoring period completed (minimum 1 week)</td><td>Dates: _____ to _____</td></tr>
+                            <tr><td>☐</td><td>Daily volume during monitoring: _____ avg/day</td><td>Target: < 10/day</td></tr>
+                            <tr><td>☐</td><td>False positive rate assessed: _____% </td><td>Target: < 30%. Method: sample of 20+ events</td></tr>
+                            <tr><td>☐</td><td>Throttle configured: Key=_____ Window=_____</td><td>Every production detection needs a throttle</td></tr>
+                            <tr><td>☐</td><td>Triage runbook exists</td><td>Link: _____</td></tr>
+                            <tr><td>☐</td><td>SOC notified (date): _____</td><td>Channel: email / Slack / meeting</td></tr>
+                            <tr><td>☐</td><td>SOC acknowledged readiness to triage</td><td>Confirmation from: _____</td></tr>
+                            <tr><td>☐</td><td>Rollback plan documented</td><td>Steps: disable search → notify SOC → investigate</td></tr>
+                            <tr><td>☐</td><td>Change log entry created</td><td>Entry #: _____</td></tr>
+                            <tr><td>☐</td><td>Deployment window confirmed (not during freeze, event, or weekend)</td><td>Date/time: _____</td></tr>
+                            <tr><td>☐</td><td>Post-enablement verification scheduled (1 hour after)</td><td>Reminder set: yes / no</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK PROCEDURES -->
+                <!-- ============================================== -->
+                <h2>Rollback Procedures — Step by Step</h2>
+
+                <h3>Scenario 1: Disable a Detection (Alert Storm / Noise)</h3>
+                <p>Time to execute: &lt; 5 minutes</p>
+                <ol>
+                    <li><strong>Disable the search immediately:</strong>
+                        <ul>
+                            <li>Settings → Searches, Reports, and Alerts</li>
+                            <li>Find the search by name</li>
+                            <li>Click Edit → Disable</li>
+                            <li>OR via CLI: <code>splunk edit saved-search "SEARCH_NAME" -disabled 1</code></li>
+                        </ul>
+                    </li>
+                    <li><strong>Verify it stopped:</strong>
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span>SPL: Confirm Search is Disabled</span>
+                                <button class="copy-btn">Copy</button>
+                            </div>
+                            <pre><code>| rest /services/saved/searches splunk_server=local
+| search title="YOUR_SEARCH_NAME"
+| table title, disabled, next_scheduled_time</code></pre>
+                        </div>
+                    </li>
+                    <li><strong>Notify SOC:</strong> "Detection [name] has been disabled due to [reason]. No further alerts from this search. Will investigate and re-enable after fix."</li>
+                    <li><strong>Log the change:</strong> Record in change log: what, when, why, who.</li>
+                    <li><strong>Create a ticket:</strong> Track the fix and re-enablement plan.</li>
+                </ol>
+
+                <h3>Scenario 2: Revert a Threshold Change</h3>
+                <p>Time to execute: &lt; 10 minutes</p>
+                <ol>
+                    <li><strong>Open the search:</strong> Settings → Searches → Find search → Edit Search</li>
+                    <li><strong>Locate the previous version</strong> from:
+                        <ul>
+                            <li>Inline SPL version header (see <a href="correlation-lifecycle.html">Lifecycle page</a>)</li>
+                            <li>Description field backup</li>
+                            <li>Change log entry for the previous version</li>
+                        </ul>
+                    </li>
+                    <li><strong>Revert the threshold value</strong> to the previous number.</li>
+                    <li><strong>Update the version header:</strong> Increment version, document rollback reason.</li>
+                    <li><strong>Verify the change took effect:</strong> Wait for next scheduled run, confirm results match expected behavior.</li>
+                    <li><strong>Notify SOC</strong> if the threshold change had caused noise: "Threshold reverted. Volume should return to normal within [cron interval]."</li>
+                </ol>
+
+                <h3>Scenario 3: Revert an SPL Logic Change</h3>
+                <p>Time to execute: &lt; 15 minutes</p>
+                <ol>
+                    <li><strong>Retrieve the previous SPL version</strong> from:
+                        <ul>
+                            <li>Description field backup (if saved there before the change)</li>
+                            <li>Detection registry document</li>
+                            <li>For OOTB clones: the original OOTB search is still present (disabled) as reference</li>
+                        </ul>
+                    </li>
+                    <li><strong>Replace the current SPL</strong> with the previous version.</li>
+                    <li><strong>If no backup exists:</strong>
+                        <ul>
+                            <li>Disable the search immediately</li>
+                            <li>Recreate from the last known good version in documentation</li>
+                            <li>Run through backtest before re-enabling</li>
+                        </ul>
+                    </li>
+                    <li><strong>Run an immediate test:</strong> Execute the reverted search manually over the last hour to verify it works.</li>
+                    <li><strong>Update version header and change log.</strong></li>
+                </ol>
+
+                <h3>Scenario 4: Undo a Bulk Enablement</h3>
+                <p>Time to execute: 15-30 minutes depending on count</p>
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 This Scenario Should Never Happen</div>
+                    <p>Bulk enablement of detections without individual evaluation violates the OOTB evaluation process. If you're in this situation, something went wrong upstream.</p>
+                </div>
+                <ol>
+                    <li><strong>Identify all recently enabled searches:</strong>
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span>SPL: Find Recently Enabled Correlation Searches</span>
+                                <button class="copy-btn">Copy</button>
+                            </div>
+                            <pre><code>| rest /services/saved/searches splunk_server=local
+| search action.correlationsearch.enabled=1 disabled=0
+| eval last_modified = strftime(updated, "%Y-%m-%d %H:%M")
+| where updated > relative_time(now(), "-24h")
+| table title, eai:acl.app, last_modified, eai:acl.owner
+| sort - last_modified</code></pre>
+                        </div>
+                    </li>
+                    <li><strong>Disable ALL recently enabled searches</strong> one by one. Verify each is disabled.</li>
+                    <li><strong>Notify SOC:</strong> "Multiple detections have been disabled pending proper evaluation. This was a correction."</li>
+                    <li><strong>Re-evaluate each search individually</strong> using the <a href="ootb-content.html">OOTB evaluation decision tree</a>.</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EMERGENCY STOP -->
+                <!-- ============================================== -->
+                <h2>Emergency Stop Procedures</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 EMERGENCY: When to Use the Kill Switch</div>
+                    <p>Use emergency stop when:</p>
+                    <ul>
+                        <li>A detection is generating >50 notables per hour and climbing</li>
+                        <li>SOC is being overwhelmed by false positives from a specific detection</li>
+                        <li>A detection is causing Splunk performance degradation (long runtimes, search queue backup)</li>
+                        <li>A detection is creating notables that cause automated response actions (email floods, ticket storms)</li>
+                    </ul>
+                </div>
+
+                <h3>Emergency Stop Steps</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Step</th>
+                                <th>Action</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1</strong></td>
+                                <td><strong>DISABLE the search.</strong> Settings → Searches → Find → Edit → Disable. This is the kill switch. Do it first, ask questions later.</td>
+                                <td>< 2 min</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2</strong></td>
+                                <td><strong>Notify SOC immediately.</strong> Slack/call: "Detection [name] has been emergency disabled. Alert storm stopped. No further notables from this search."</td>
+                                <td>< 1 min</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3</strong></td>
+                                <td><strong>Check for cascading effects.</strong> Did the search trigger adaptive response actions? Check for email floods, ticket creation, or automated blocks.</td>
+                                <td>< 5 min</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4</strong></td>
+                                <td><strong>Bulk-close the storm notables.</strong> In Incident Review, filter by search name, select all, set status to "Closed — False Positive" with note "Alert storm — disabled [date]".</td>
+                                <td>5-15 min</td>
+                            </tr>
+                            <tr>
+                                <td><strong>5</strong></td>
+                                <td><strong>Document the incident.</strong> Change log entry: what happened, when detected, time to disable, root cause (if known), impact assessment.</td>
+                                <td>15 min</td>
+                            </tr>
+                            <tr>
+                                <td><strong>6</strong></td>
+                                <td><strong>Root cause analysis.</strong> What changed? Data volume spike? Threshold too low? New data source? Fix the root cause BEFORE re-enabling.</td>
+                                <td>1-4 hours</td>
+                            </tr>
+                            <tr>
+                                <td><strong>7</strong></td>
+                                <td><strong>Re-enable through full lifecycle.</strong> Treat re-enablement as a new deployment: backtest → monitoring → production. Do NOT just re-enable.</td>
+                                <td>1-2 weeks</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: PRESERVING HISTORICAL CONTEXT -->
+                <!-- ============================================== -->
+                <h2>Preserving Historical Context</h2>
+
+                <p>When you disable, modify, or retire a detection, the historical notables and the context around them must be preserved for audit and investigation purposes.</p>
+
+                <h3>What to Preserve</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Artifact</th>
+                                <th>Where It Lives</th>
+                                <th>Retention</th>
+                                <th>Action on Retirement</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Historical notables</strong></td>
+                                <td><code>notable</code> index</td>
+                                <td>Follows index retention (typically 90-365 days)</td>
+                                <td>No action needed — notables persist in the index</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Search SPL (last version)</strong></td>
+                                <td>Saved search object</td>
+                                <td>Until deleted or overwritten by ES upgrade</td>
+                                <td>Export to detection registry BEFORE retiring</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Search SPL (all versions)</strong></td>
+                                <td>Detection registry / change log</td>
+                                <td>Permanent</td>
+                                <td>Already preserved if versioning was followed</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tuning history</strong></td>
+                                <td>Change log</td>
+                                <td>Permanent</td>
+                                <td>Add final entry: "Retired on [date] for [reason]"</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SOC feedback</strong></td>
+                                <td>Emails, tickets, meeting notes</td>
+                                <td>Per organizational retention</td>
+                                <td>Summarize key feedback in retirement record</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Never Delete — Always Disable</div>
+                    <p>Deleting a saved search removes it from Splunk entirely. There is no undo. Disabling preserves the search object, SPL, and settings for future reference or re-enablement.</p>
+                    <ul>
+                        <li><strong>OOTB searches:</strong> Disable only. ES upgrades may restore deleted OOTB, creating duplicates.</li>
+                        <li><strong>Custom searches:</strong> Disable and export SPL to registry before any cleanup.</li>
+                        <li><strong>Cloned searches:</strong> Disable both the clone and verify the original OOTB is also disabled.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: CHANGE FREEZE HANDLING -->
+                <!-- ============================================== -->
+                <h2>Change Freeze Handling</h2>
+
+                <p>Retail environments have mandatory change freezes around critical business periods. During these windows, NO changes should be made to detection content.</p>
+
+                <h3>Freeze Calendar</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Freeze Period</th>
+                                <th>Typical Dates</th>
+                                <th>Duration</th>
+                                <th>What Is Frozen</th>
+                                <th>Exceptions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Black Friday / Cyber Monday</strong></td>
+                                <td>Last week of November through first week of December</td>
+                                <td>~2 weeks</td>
+                                <td>ALL detection changes: enable, disable, modify, deploy</td>
+                                <td>Emergency stop only (alert storm affecting SOC operations)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Holiday season</strong></td>
+                                <td>December 15 through January 5</td>
+                                <td>~3 weeks</td>
+                                <td>ALL detection changes</td>
+                                <td>Emergency stop only</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ES upgrade windows</strong></td>
+                                <td>As scheduled by Splunk Cloud</td>
+                                <td>1 week before through 1 week after</td>
+                                <td>All OOTB modifications. Custom changes with caution.</td>
+                                <td>Post-upgrade validation searches OK</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Major promotional events</strong></td>
+                                <td>Varies (coordinate with marketing)</td>
+                                <td>Day before through day after</td>
+                                <td>Volume-sensitive detections</td>
+                                <td>Non-volume detections can proceed with caution</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>What to Do During Freeze</h3>
+                <ul>
+                    <li><strong>Develop offline:</strong> Write and document new detections, but do NOT deploy.</li>
+                    <li><strong>Prepare backtests:</strong> Run historical queries to validate logic, save results for post-freeze deployment.</li>
+                    <li><strong>Audit existing content:</strong> Review detection health metrics, identify tuning candidates for post-freeze.</li>
+                    <li><strong>Update documentation:</strong> Complete runbooks, registry entries, and change logs.</li>
+                    <li><strong>Plan post-freeze sprint:</strong> Queue up changes for the first safe deployment window after freeze lifts.</li>
+                </ul>
+
+                <!-- ============================================== -->
+                <!-- SECTION: COMMUNICATION TEMPLATES -->
+                <!-- ============================================== -->
+                <h2>Communication Templates</h2>
+
+                <h3>Template 1: Pre-Deployment Notification (SOC)</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Email / Slack Template: New Detection Deployment</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>Subject: [ES Change] New Detection Deployment — [Detection Name]
+
+Team,
+
+A new detection will be enabled in production on [DATE] at approximately [TIME].
+
+Detection: [Name]
+Type: [OOTB Enable / Clone / Custom]
+Threat: [Brief description of what it detects]
+MITRE: [Technique ID]
+Expected Volume: ~[X] notables/day based on monitoring period
+Severity: [Informational / Low / Medium / High / Critical]
+
+What SOC should expect:
+- New notables will appear in Incident Review from search "[search_name]"
+- Triage runbook: [LINK]
+- Expected false positive patterns: [Brief description]
+
+Rollback plan:
+- If volume exceeds [X]/hour or quality issues arise, the detection will be disabled within 15 minutes
+- Contact [YOUR NAME] at [CONTACT] for questions
+
+Please reply to confirm you are ready to begin triaging this detection.
+
+Thanks,
+[YOUR NAME]</code></pre>
+                </div>
+
+                <h3>Template 2: Emergency Disable Notification</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Email / Slack Template: Emergency Disable</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>Subject: [ES EMERGENCY] Detection Disabled — [Detection Name]
+
+Team,
+
+Detection "[Detection Name]" has been EMERGENCY DISABLED
+at [TIME] on [DATE].
+
+Reason: [Alert storm / Performance impact / False positive flood]
+Impact: [X] false notables generated between [TIME] and [TIME]
+
+Action taken:
+1. Search disabled at [TIME]
+2. [X] false notables will be bulk-closed as FP
+3. Root cause investigation in progress
+
+Next steps:
+- Detection will remain disabled until root cause is fixed
+- Will go through full monitoring cycle before re-enablement
+- ETA for fix: [X days/weeks]
+
+No further notables will be generated from this search.
+
+Contact [YOUR NAME] at [CONTACT] with questions.
+
+[YOUR NAME]</code></pre>
+                </div>
+
+                <h3>Template 3: Stakeholder Change Summary (Weekly)</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Email Template: Weekly ES Change Summary</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>Subject: [ES Weekly] Detection Changes — Week of [DATE]
+
+Changes This Week:
+- ENABLED: [Detection Name] — monitoring complete, now in production
+- TUNED: [Detection Name] — threshold adjusted from X to Y
+- DISABLED: [Detection Name] — pending data quality fix
+
+Metrics:
+- Total active detections: [X]
+- Total notables this week: [X] (vs [X] last week)
+- Detections in monitoring: [X]
+- Detections pending enablement: [X]
+
+Upcoming:
+- [Detection Name] completes monitoring on [DATE]
+- Change freeze begins [DATE]
+
+No action required unless you have questions.
+
+[YOUR NAME]</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>A change was made without documentation and you discover it.</strong> Stop all work. Investigate who made the change and why. Update registry. This is an audit risk.</li>
+                        <li><strong>SOC reports they were not notified about a detection change.</strong> Communication failure. Apologize, fix the process, add SOC confirmation to your checklist.</li>
+                        <li><strong>An emergency stop was required more than once in a month.</strong> Something is systematically wrong: either the monitoring process is insufficient or the environment is changing faster than detections can keep up. Escalate for process review.</li>
+                        <li><strong>A change freeze exception is requested.</strong> Require written business justification. Default answer is NO. Only emergency stops are permitted during freeze.</li>
+                        <li><strong>An ES upgrade is happening and you have modified OOTB content.</strong> Freeze all OOTB modifications. After upgrade, verify all clones still work. Compare updated OOTB with your clones.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Quick fix, I'll document later"</strong></td>
+                                <td>"Later" never comes. Undocumented changes become mystery changes that the next person has to reverse-engineer.</td>
+                                <td>Document BEFORE the change (pre-change record) and update AFTER (result record). It takes 5 minutes.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Friday afternoon deployment"</strong></td>
+                                <td>If something goes wrong, nobody is available over the weekend. SOC gets hit with an alert storm on Saturday with no detection engineer to fix it.</td>
+                                <td>Deploy Tuesday-Wednesday only. Full coverage period after deployment.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Batch enable 10 detections at once"</strong></td>
+                                <td>If something goes wrong, you can't tell which detection caused the problem. Debugging becomes a nightmare.</td>
+                                <td>Enable ONE detection at a time. Wait at least 24 hours between enablements.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Skip SOC notification — it's a minor change"</strong></td>
+                                <td>The SOC sees new or different alerts and doesn't know why. Trust erodes. They assume the detection platform is unreliable.</td>
+                                <td>Always notify. Even low-risk changes get an informational note.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Re-enable after emergency stop without monitoring"</strong></td>
+                                <td>The same problem will recur. You just re-introduced the alert storm you just stopped.</td>
+                                <td>Full lifecycle after any emergency stop: fix → backtest → monitor → enable.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Low-risk change (throttle, description)</strong></td>
+                                <td>15 minutes</td>
+                                <td>30 minutes (including documentation)</td>
+                                <td>N/A</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Medium-risk change (threshold, schedule)</strong></td>
+                                <td>1 hour (including notification)</td>
+                                <td>2-4 hours (peer review + notification + deployment)</td>
+                                <td>1 day (peer unavailable)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>High-risk change (enable, modify logic)</strong></td>
+                                <td>Half day (all steps)</td>
+                                <td>1-2 days (SOC coordination)</td>
+                                <td>1 week (SOC sign-off delayed)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Emergency stop + cleanup</strong></td>
+                                <td>30 minutes (disable + notify)</td>
+                                <td>2-4 hours (disable + close notables + document)</td>
+                                <td>Half day (cascading effects to clean up)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Post-emergency re-enablement</strong></td>
+                                <td>1 week (fix + monitor)</td>
+                                <td>2-3 weeks (fix + full lifecycle)</td>
+                                <td>4+ weeks (root cause hard to identify)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Pre-change record</strong></td>
+                                <td>Change log entry with what/why/who</td>
+                                <td>Detection registry</td>
+                                <td>Before every change</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Post-change verification</strong></td>
+                                <td>Screenshot or SPL output confirming change applied</td>
+                                <td>Change log</td>
+                                <td>Within 1 hour of change</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SOC notification sent</strong></td>
+                                <td>Copy of email or Slack message</td>
+                                <td>Change log or project docs</td>
+                                <td>Before high-risk changes</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SOC acknowledgment</strong></td>
+                                <td>Reply email or Slack confirmation</td>
+                                <td>Change log</td>
+                                <td>Before production enablement</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Emergency stop record</strong></td>
+                                <td>Incident report (what, when, impact, root cause)</td>
+                                <td>Detection registry + incident tracker</td>
+                                <td>Within 4 hours of emergency</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Next Steps -->
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="health-performance.html" class="next-steps-link">ES Health, Reliability & Performance →</a>
+                        <a href="governance-audit.html" class="next-steps-link">Detection Governance & Audit →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

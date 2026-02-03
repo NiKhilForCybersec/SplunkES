@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OOTB Content Reality & Risks - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="ootb-content.html" class="nav-item nav-item-sub active">OOTB Content Reality</a>
+                    <a href="ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">OOTB Content Reality & Risks</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Content Management</span>
+                <h1>Splunk ES Out-of-the-Box Content — Reality & Risks</h1>
+
+                <!-- ============================================== -->
+                <!-- HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES CONTENT MANAGEMENT</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This page covers what ES ships with, why it is NOT safe to enable blindly, and exactly how to evaluate OOTB content for a retail production environment.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 CRITICAL: OOTB Content Is NOT Plug-and-Play</div>
+                    <p><strong>Splunk ES ships with hundreds of correlation searches. Enabling them without review WILL cause:</strong></p>
+                    <ul>
+                        <li><strong>Alert storms:</strong> Dozens of noisy detections firing on benign activity</li>
+                        <li><strong>SOC distrust:</strong> Analysts learn to ignore ES alerts entirely</li>
+                        <li><strong>Performance degradation:</strong> Concurrent searches overloading search heads</li>
+                        <li><strong>False sense of security:</strong> Enabled but unconfigured detections catching nothing real</li>
+                    </ul>
+                    <p>Every OOTB correlation search must be individually evaluated, tested, and approved before enabling in this environment.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> Splunk ES is installed with default content packs. <strong>Verify:</strong> Check installed apps and add-ons.</li>
+                        <li><strong>Assumption:</strong> No OOTB correlation searches have been modified by previous admins. <strong>Verify:</strong> Run the inventory SPL below.</li>
+                        <li><strong>Assumption:</strong> No custom Security Essentials (SSE) content has been deployed. <strong>Verify:</strong> Check SSE app for content.</li>
+                        <li><strong>Risk if wrong:</strong> Unknown modifications can create unpredictable behavior, duplicates, or gaps.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT OOTB CONTENT ACTUALLY IS -->
+                <!-- ============================================== -->
+                <h2>What ES OOTB Content Actually Is</h2>
+
+                <p>When Splunk Enterprise Security is installed, it ships with a large body of pre-built security content across several categories. This is NOT a single monolithic set — it comes from multiple apps that layer on top of each other.</p>
+
+                <h3>Content Categories</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>What It Contains</th>
+                                <th>Source App(s)</th>
+                                <th>Approximate Count</th>
+                                <th>Risk Level</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Correlation Searches</strong></td>
+                                <td>Scheduled SPL that create notable events when conditions are met</td>
+                                <td>DA-ESS-AccessProtection, DA-ESS-EndpointProtection, DA-ESS-NetworkProtection, DA-ESS-ThreatIntelligence, DA-ESS-IdentityManagement</td>
+                                <td>~80-120+ searches</td>
+                                <td style="color: var(--accent-red);">🔴 HIGH</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data Models</strong></td>
+                                <td>Accelerated data structures for tstats-based detections</td>
+                                <td>Splunk_SA_CIM, DA-ESS-* apps</td>
+                                <td>~25-30 data models</td>
+                                <td style="color: var(--accent-orange);">🟡 MEDIUM</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Dashboards & Views</strong></td>
+                                <td>Security posture, incident review, investigation dashboards</td>
+                                <td>SplunkEnterpriseSecuritySuite</td>
+                                <td>~40-60 dashboards</td>
+                                <td style="color: var(--accent-green);">🟢 LOW</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Lookup Tables</strong></td>
+                                <td>Threat intel, asset lists, identity tables, urgency lookups</td>
+                                <td>SA-IdentityManagement, SA-ThreatIntelligence</td>
+                                <td>~20-40 lookups</td>
+                                <td style="color: var(--accent-orange);">🟡 MEDIUM</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Adaptive Response Actions</strong></td>
+                                <td>Actions triggered by correlation searches (email, notable, risk modify)</td>
+                                <td>SA-ThreatIntelligence, Splunk_SA_CIM</td>
+                                <td>~15-25 actions</td>
+                                <td style="color: var(--accent-red);">🔴 HIGH</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Saved Searches (Non-Correlation)</strong></td>
+                                <td>Report acceleration searches, summary indexing, context-gen searches</td>
+                                <td>Various DA-ESS and SA apps</td>
+                                <td>~50-100 searches</td>
+                                <td style="color: var(--accent-orange);">🟡 MEDIUM</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Common Misconception</div>
+                    <p><strong>"ES has X detections out of the box, so we're covered."</strong> This is dangerously wrong. The majority of OOTB correlation searches are:</p>
+                    <ul>
+                        <li>Disabled by default (for good reason)</li>
+                        <li>Written for generic environments, not retail</li>
+                        <li>Dependent on data models that may not be accelerated or populated</li>
+                        <li>Using thresholds that are either too sensitive or too broad for your data</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: OOTB DEFAULT STATES -->
+                <!-- ============================================== -->
+                <h2>What Is Enabled vs. Disabled by Default</h2>
+
+                <p>Understanding the default state of OOTB content is critical because some searches MAY already be running and consuming resources without anyone monitoring their output.</p>
+
+                <h3>Typically Enabled by Default</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Content Type</th>
+                                <th>Examples</th>
+                                <th>Risk</th>
+                                <th>Action Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Context-generating searches</strong></td>
+                                <td>Identity lookup gen, asset lookup gen, threat intel updates</td>
+                                <td>Low (background operations)</td>
+                                <td>Verify they run. Fix if broken. They feed everything.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model acceleration</strong></td>
+                                <td>Authentication, Network_Traffic, Endpoint, Web</td>
+                                <td>Medium (resource cost)</td>
+                                <td>Verify acceleration is building. Disable unused models.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Threat intelligence framework</strong></td>
+                                <td>Threat intel matching searches</td>
+                                <td>Medium (depends on intel quality)</td>
+                                <td>Review intel sources. Many default sources are stale.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Typically Disabled by Default</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Content Type</th>
+                                <th>Examples</th>
+                                <th>Why Disabled</th>
+                                <th>Action Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Most correlation searches</strong></td>
+                                <td>Brute Force Access Behavior, Excessive Failed Logins, Abnormally High HTTP Methods</td>
+                                <td>Noisy without tuning. Thresholds don't match real environments.</td>
+                                <td>Evaluate individually. See decision tree below.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Network-based detections</strong></td>
+                                <td>DNS tunneling, port scanning, lateral movement</td>
+                                <td>Requires specific network data that may not exist</td>
+                                <td>Only enable if data source exists AND is quality-validated.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Endpoint detections</strong></td>
+                                <td>Process injection, PowerShell obfuscation, unusual parent-child</td>
+                                <td>Requires EDR data (Sysmon, CrowdStrike, etc.)</td>
+                                <td>Only enable after Phase 1 endpoint onboarding complete.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Dangerous Without Tuning</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Correlation Search</th>
+                                <th>Why Dangerous in Retail</th>
+                                <th>What Happens If Enabled Blindly</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Brute Force Access Behavior Detected</strong></td>
+                                <td>Mobile apps + POS systems generate massive failed login volumes during normal operations</td>
+                                <td>Hundreds of notables per day. SOC drowns.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Abnormally High Number of HTTP Method Events</strong></td>
+                                <td>E-commerce traffic during promotions legitimately spikes by 10-50x</td>
+                                <td>Every promo day generates false positives.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Excessive DNS Queries</strong></td>
+                                <td>CDN resolution, IoT devices, store systems all generate high DNS volumes</td>
+                                <td>Constant noise from normal retail infrastructure.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Multiple Login Failures Followed by Success</strong></td>
+                                <td>Service accounts with password caching, mobile apps retrying auth</td>
+                                <td>Service accounts dominate results. Real attacks hidden in noise.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Anomalous Audit Trail Activity</strong></td>
+                                <td>Retail admin activity patterns don't match generic corporate baselines</td>
+                                <td>Legitimate admin work generates constant false alerts.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHY RETAIL AMPLIFIES NOISE -->
+                <!-- ============================================== -->
+                <h2>Why Retail Environments Amplify OOTB Noise</h2>
+
+                <p>OOTB correlation searches are designed for "average" corporate environments. Retail enterprises are NOT average. Every noise factor is amplified:</p>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-title">🛒 E-Commerce Traffic</div>
+                        <p>Web traffic spikes 10-50x during promotions. OOTB thresholds for "abnormal" HTTP activity are calibrated for steady-state corporate environments. Every sale day triggers volume-based detections.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">📱 Mobile App Behavior</div>
+                        <p>Millions of mobile app users generate authentication events constantly. Failed logins from token refresh, app updates, and session timeouts create massive volumes that look like brute force to OOTB detections.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">🏪 Store Systems & POS</div>
+                        <p>Thousands of store endpoints (POS, self-checkout, kiosks) generate repetitive patterns. Service accounts authenticate repeatedly. Normal store operations look like lateral movement to generic detections.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">🤖 Legitimate Bots</div>
+                        <p>Price comparison bots, SEO crawlers, and legitimate API integrations generate traffic patterns that OOTB web attack detections flag as malicious. Without bot classification, the SOC drowns in bot alerts.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">📅 Seasonal Patterns</div>
+                        <p>Retail has extreme seasonality: Black Friday, holiday shopping, back-to-school. Baselines calculated during quiet periods will generate false positives during EVERY busy period unless manually adjusted.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">🔑 Service Account Density</div>
+                        <p>Retail environments have hundreds of service accounts for POS, inventory, supply chain, and loyalty systems. OOTB identity-based detections flag service accounts as "suspicious" because they authenticate at unusual times — which is normal for service accounts.</p>
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: OOTB INVENTORY SPL -->
+                <!-- ============================================== -->
+                <h2>How to Inventory OOTB Content Safely</h2>
+
+                <p>Before making ANY decisions about OOTB content, you must understand what exists in this environment. Run these queries to build a complete inventory.</p>
+
+                <h3>Inventory All Correlation Searches</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Complete Correlation Search Inventory</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Run this FIRST to understand what OOTB content exists")`
+`comment("This lists ALL correlation searches, their state, and origin")`
+
+| rest /services/saved/searches splunk_server=local
+| search action.correlationsearch.enabled=1 OR action.correlationsearch.enabled=true
+| eval status = if(disabled=0, "ENABLED", "DISABLED")
+| eval is_scheduled = if(isnotnull(cron_schedule) AND cron_schedule!="", "Yes", "No")
+| eval origin = case(
+    match(eai:acl.app, "^DA-ESS"), "OOTB (Domain Add-on)",
+    match(eai:acl.app, "^SA-"), "OOTB (Supporting Add-on)",
+    match(eai:acl.app, "SplunkEnterpriseSecuritySuite"), "OOTB (ES Suite)",
+    match(eai:acl.app, "Splunk_SA"), "OOTB (SA App)",
+    true(), "CUSTOM (" . eai:acl.app . ")"
+)
+| eval last_modified = strftime(updated, "%Y-%m-%d %H:%M")
+| eval actions = if(isnotnull(actions), actions, "none")
+| table title, status, origin, eai:acl.app, cron_schedule, is_scheduled, 
+    actions, description, last_modified
+| sort origin, title</code></pre>
+                </div>
+
+                <h3>Check What Is Currently Running (and Consuming Resources)</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Currently Running Correlation Searches</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Shows searches that are actively scheduled and running")`
+`comment("IMPORTANT: These are consuming search concurrency slots")`
+
+| rest /services/saved/searches splunk_server=local
+| search action.correlationsearch.enabled=1 disabled=0 is_scheduled=1
+| eval cron_readable = case(
+    cron_schedule="*/5 * * * *", "Every 5 min",
+    cron_schedule="*/10 * * * *", "Every 10 min",
+    cron_schedule="*/15 * * * *", "Every 15 min",
+    cron_schedule="*/30 * * * *", "Every 30 min",
+    cron_schedule="0 * * * *", "Every hour",
+    true(), cron_schedule
+)
+| eval dispatch_window = if(isnotnull(dispatch.earliest_time), 
+    dispatch.earliest_time . " to " . dispatch.latest_time, "Not set")
+| table title, eai:acl.app, cron_readable, dispatch_window, actions
+| sort cron_readable, title</code></pre>
+                </div>
+
+                <h3>Check for Modified OOTB Content</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Detect Modified OOTB Searches</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Shows OOTB searches that have local overrides")`
+`comment("Modified OOTB = someone changed it. Find out who and why.")`
+
+| rest /services/saved/searches splunk_server=local
+| search eai:acl.app="DA-ESS-*" OR eai:acl.app="SA-*"
+| where isnotnull(updated)
+| eval has_local_override = if(match(eai:acl.sharing, "app") OR match(eai:acl.sharing, "user"), "YES", "Maybe")
+| eval last_change = strftime(updated, "%Y-%m-%d")
+| table title, eai:acl.app, has_local_override, last_change, eai:acl.owner
+| sort - last_change</code></pre>
+                </div>
+
+                <h3>Notable Event Volume by Source</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Correlation Search Notable Output Volume (30 days)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Shows which correlation searches are generating notables")`
+`comment("High volume = potential noise problem")`
+
+`notable`
+| stats count AS notable_count,
+    dc(src) AS unique_sources,
+    dc(dest) AS unique_destinations,
+    dc(user) AS unique_users,
+    latest(_time) AS last_fired,
+    earliest(_time) AS first_fired
+    BY search_name
+| eval daily_avg = round(notable_count / 30, 1)
+| eval noise_risk = case(
+    daily_avg > 50, "🔴 HIGH — Likely Noise",
+    daily_avg > 10, "🟡 MEDIUM — Review",
+    daily_avg > 0, "🟢 Normal",
+    true(), "⚪ Not Firing"
+)
+| sort - notable_count
+| table search_name, notable_count, daily_avg, noise_risk, 
+    unique_sources, unique_destinations, unique_users,
+    first_fired, last_fired</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: OOTB EVALUATION DECISION TREE -->
+                <!-- ============================================== -->
+                <h2>OOTB Evaluation Decision Tree</h2>
+
+                <p>Use this decision tree for EVERY OOTB correlation search. Do not skip steps. Do not batch-enable.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    START["🔍 Pick ONE OOTB<br/>Correlation Search"] --> Q1{"Does the required<br/>DATA SOURCE exist<br/>in this environment?"}
+    
+    Q1 -->|"No"| DISABLE_DATA["🔴 DISABLE<br/>Document: 'No data source'<br/>Re-evaluate when data available"]
+    
+    Q1 -->|"Yes"| Q2{"Is the data model<br/>ACCELERATED and<br/>POPULATED?"}
+    
+    Q2 -->|"No"| DISABLE_DM["🔴 DISABLE<br/>Document: 'Data model not ready'<br/>Fix in Phase 2 first"]
+    
+    Q2 -->|"Yes"| Q3{"Run BACKTEST:<br/>What does it return<br/>over 30 days?"}
+    
+    Q3 -->|"Zero results"| Q3A{"Is the detection<br/>RELEVANT to<br/>retail?"}
+    Q3A -->|"No"| DISABLE_IRRELEVANT["🔴 DISABLE<br/>Document: 'Not relevant<br/>to retail environment'"]
+    Q3A -->|"Yes"| INVESTIGATE["🟡 INVESTIGATE<br/>Data may be missing<br/>or detection logic may<br/>not match your data"]
+    
+    Q3 -->|"Reasonable volume<br/>(< 10/day avg)"| Q4{"Review sample<br/>results: Are >70%<br/>TRUE POSITIVES?"}
+    
+    Q3 -->|"High volume<br/>(> 50/day avg)"| CLONE_TUNE["🟡 CLONE & TUNE<br/>Volume too high for<br/>default thresholds"]
+    
+    Q4 -->|"Yes — mostly real"| ENABLE_MONITOR["🟢 ENABLE in<br/>MONITORING MODE<br/>Run 1-2 weeks<br/>before alerting"]
+    
+    Q4 -->|"No — mostly noise"| Q5{"Can thresholds be<br/>adjusted to reduce<br/>false positives?"}
+    
+    Q5 -->|"Yes"| CLONE_TUNE
+    Q5 -->|"No — fundamental<br/>logic doesn't fit"| CUSTOM["🔵 WRITE CUSTOM<br/>OOTB logic doesn't match<br/>retail reality"]
+    
+    ENABLE_MONITOR --> PROD_DECISION{"After 1-2 weeks:<br/>Is alert quality<br/>acceptable?"}
+    PROD_DECISION -->|"Yes"| ENABLE_PROD["✅ ENABLE<br/>PRODUCTION ALERTING<br/>Document decision"]
+    PROD_DECISION -->|"No"| CLONE_TUNE
+    
+    CLONE_TUNE --> CLONE_STEPS["1. Clone search<br/>2. Rename with prefix<br/>3. Adjust thresholds<br/>4. Run monitoring mode<br/>5. Disable original"]
+    
+    style DISABLE_DATA fill:#f85149,stroke:#da3633,color:#fff
+    style DISABLE_DM fill:#f85149,stroke:#da3633,color:#fff
+    style DISABLE_IRRELEVANT fill:#f85149,stroke:#da3633,color:#fff
+    style ENABLE_PROD fill:#238636,stroke:#2ea043,color:#fff
+    style ENABLE_MONITOR fill:#d29922,stroke:#bb8009,color:#fff
+    style CLONE_TUNE fill:#d29922,stroke:#bb8009,color:#fff
+    style CUSTOM fill:#58a6ff,stroke:#388bfd,color:#fff
+    style INVESTIGATE fill:#d29922,stroke:#bb8009,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: SAFE VS UNSAFE ENABLEMENT -->
+                <!-- ============================================== -->
+                <h2>Safe vs. Unsafe Enablement Flow</h2>
+
+                <p>This diagram shows the correct sequence for enabling ANY detection content in production. The unsafe path (bottom) shows what happens when shortcuts are taken.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart LR
+    subgraph SAFE["✅ SAFE ENABLEMENT PATH"]
+        direction LR
+        S1["Inventory<br/>OOTB content"] --> S2["Evaluate per<br/>decision tree"]
+        S2 --> S3["Backtest<br/>(30-day)"]
+        S3 --> S4["Monitoring mode<br/>(1-2 weeks)"]
+        S4 --> S5["SOC review<br/>& approval"]
+        S5 --> S6["Production<br/>enablement"]
+        S6 --> S7["Track metrics<br/>& tune"]
+    end
+
+    subgraph UNSAFE["❌ UNSAFE PATH — DO NOT DO THIS"]
+        direction LR
+        U1["See OOTB list"] --> U2["Enable many<br/>at once"]
+        U2 --> U3["Alert storm<br/>hits SOC"]
+        U3 --> U4["SOC ignores<br/>all ES alerts"]
+        U4 --> U5["Real attack<br/>missed"]
+        U5 --> U6["Incident /<br/>audit failure"]
+    end
+
+    style SAFE fill:#0d1117,stroke:#238636,color:#e6edf3
+    style UNSAFE fill:#0d1117,stroke:#f85149,color:#e6edf3
+    style S6 fill:#238636,stroke:#2ea043,color:#fff
+    style U6 fill:#f85149,stroke:#da3633,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: RULES FOR OOTB ENABLEMENT -->
+                <!-- ============================================== -->
+                <h2>Rules for OOTB Content Decisions</h2>
+
+                <h3>When OOTB Can Be Enabled As-Is</h3>
+                <p>An OOTB correlation search can be enabled without modification ONLY when ALL of the following are true:</p>
+                <ul>
+                    <li>The required data source exists and has been validated in Phase 1</li>
+                    <li>The data model is accelerated and populated (Phase 2)</li>
+                    <li>A 30-day backtest produces reasonable volume (< 10 per day average)</li>
+                    <li>Sample results show >70% true positive rate</li>
+                    <li>The detection has completed 1-2 weeks in monitoring mode</li>
+                    <li>SOC has reviewed sample results and agreed to triage</li>
+                    <li>A triage runbook has been created or mapped</li>
+                </ul>
+
+                <h3>When OOTB Must Be Cloned</h3>
+                <p>Clone the OOTB search and create a modified version when:</p>
+                <ul>
+                    <li>Thresholds need adjustment for retail traffic patterns</li>
+                    <li>Allowlists are needed for known service accounts or systems</li>
+                    <li>The detection needs retail-specific filtering (e.g., exclude POS IPs)</li>
+                    <li>You need to change the schedule or lookback window</li>
+                    <li>The original detection would be overwritten during ES upgrades</li>
+                </ul>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ CRITICAL Cloning Rule</div>
+                    <p><strong>When you clone an OOTB search, you MUST:</strong></p>
+                    <ul>
+                        <li>Use a naming convention: <code>CUSTOM - [Original Name] - [Company]</code></li>
+                        <li>Disable the original OOTB search</li>
+                        <li>Document what was changed and why</li>
+                        <li>Assign ownership to a person or team</li>
+                        <li>Know that ES upgrades will NOT update your clone</li>
+                    </ul>
+                </div>
+
+                <h3>When OOTB Must Remain Disabled</h3>
+                <p>Disable and document (do NOT delete) when:</p>
+                <ul>
+                    <li>The required data source does not exist in this environment</li>
+                    <li>The detection is not relevant to retail (e.g., SCADA-specific detections)</li>
+                    <li>The detection requires RBA (out of scope for this project)</li>
+                    <li>The detection has no triage runbook and the SOC cannot action it</li>
+                    <li>The detection fundamentally doesn't work with your data patterns</li>
+                </ul>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ACCEPTANCE CHECKLIST -->
+                <!-- ============================================== -->
+                <h2>Acceptance Checklist — Before Enabling ANY OOTB Detection</h2>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 MANDATORY — Complete Before Production Enablement</div>
+                    <p>This checklist applies to EVERY OOTB correlation search you enable. No exceptions.</p>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">✅</th>
+                                <th style="width: 50%;">Requirement</th>
+                                <th style="width: 45%;">Evidence</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>Data source exists and is validated</strong></td>
+                                <td>Phase 1 acceptance checklist complete for this source</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>Data model is accelerated and populated</strong></td>
+                                <td>tstats query returns results for relevant fields</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>30-day backtest completed</strong></td>
+                                <td>Screenshot of backtest results with volume and samples</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>False positive rate assessed</strong></td>
+                                <td>Document FP rate from backtest (target: <30%)</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>Thresholds appropriate for this environment</strong></td>
+                                <td>Document threshold values and rationale</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>1-2 week monitoring period completed</strong></td>
+                                <td>Summary of monitoring results, daily volumes, samples reviewed</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>SOC reviewed and agreed to triage</strong></td>
+                                <td>SOC sign-off (email, ticket, or meeting notes)</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>Triage runbook exists</strong></td>
+                                <td>Link to runbook or investigation steps documented</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>Throttle configured</strong></td>
+                                <td>Throttle fields and window documented</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>Kill switch tested</strong></td>
+                                <td>Confirmed: can disable search within 5 minutes</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>Rollback plan documented</strong></td>
+                                <td>Steps to disable and revert if issues occur</td>
+                            </tr>
+                            <tr>
+                                <td>☐</td>
+                                <td><strong>Decision documented</strong></td>
+                                <td>Why enabled / cloned / disabled — filed in change log</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>You discover OOTB searches running that nobody knows about.</strong> Escalate to Splunk admin. These may be consuming resources or generating unmonitored notables.</li>
+                        <li><strong>Modified OOTB content with no documentation.</strong> Escalate to previous admin. Someone changed something and you need to understand why before touching it.</li>
+                        <li><strong>Notable event volume exceeds 100/day from a single search.</strong> Disable immediately and investigate. This is a noise problem, not a detection.</li>
+                        <li><strong>OOTB content references lookups or macros that don't exist.</strong> The content pack may be incomplete or corrupted. Escalate to Splunk support.</li>
+                        <li><strong>ES upgrade is planned.</strong> Freeze all OOTB modifications until after upgrade. Upgrades can overwrite or conflict with local changes.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Enable all OOTB to show coverage"</strong></td>
+                                <td>Creates hundreds of noisy notables. SOC ignores everything. Auditors see volume but no quality.</td>
+                                <td>Enable selectively based on data availability and SOC capacity. 5 working detections > 50 noisy ones.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"We'll tune later"</strong></td>
+                                <td>"Later" never comes. SOC has already lost trust. Disabling after the fact looks like a step backward.</td>
+                                <td>Tune BEFORE enabling. Monitoring mode exists for this reason.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Delete OOTB we don't use"</strong></td>
+                                <td>ES upgrades recreate them. Audit trail is lost. Future enablement loses context.</td>
+                                <td>DISABLE, don't delete. Document reason for disabling.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Modify OOTB in place"</strong></td>
+                                <td>ES upgrades overwrite your changes. No diff history. Can't revert to original.</td>
+                                <td>CLONE, then modify the clone. Disable original. Use CUSTOM prefix.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"OOTB count = detection coverage"</strong></td>
+                                <td>Enabled ≠ working. A disabled detection with no data is 0% coverage regardless of what it "detects."</td>
+                                <td>Measure coverage by data sources actually monitored, not by enabled search count.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Full OOTB inventory</strong></td>
+                                <td>2 hours</td>
+                                <td>4 hours (includes cleanup of unknowns)</td>
+                                <td>1-2 days (modified content, missing documentation)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Evaluate single OOTB search</strong></td>
+                                <td>30 minutes</td>
+                                <td>1-2 hours (backtest, sample review)</td>
+                                <td>Half day (data issues, unclear logic)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Enable one detection end-to-end</strong></td>
+                                <td>1 week (monitoring mode)</td>
+                                <td>2-3 weeks (tune + re-monitor)</td>
+                                <td>4+ weeks (data quality issues, SOC unavailable)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Complete OOTB triage (all content)</strong></td>
+                                <td>2 weeks</td>
+                                <td>4-6 weeks</td>
+                                <td>8+ weeks (data gaps, priority changes)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE TO CAPTURE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Full OOTB inventory export</strong></td>
+                                <td>CSV from SPL query</td>
+                                <td>Project SharePoint / Confluence</td>
+                                <td>Before ANY changes</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Backtest results per search</strong></td>
+                                <td>Screenshot + CSV of results</td>
+                                <td>Change log per detection</td>
+                                <td>During evaluation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Decision record per search</strong></td>
+                                <td>Enable / Clone / Disable + rationale</td>
+                                <td>Detection registry (spreadsheet or wiki)</td>
+                                <td>After evaluation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SOC sign-off</strong></td>
+                                <td>Email, ticket, or meeting notes</td>
+                                <td>Change log per detection</td>
+                                <td>Before production enablement</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Monitoring mode results</strong></td>
+                                <td>Daily volume summary + FP analysis</td>
+                                <td>Change log per detection</td>
+                                <td>After monitoring period</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Next Steps -->
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="ootb-vs-custom.html" class="next-steps-link">OOTB vs Custom Detection Strategy →</a>
+                        <a href="correlation-lifecycle.html" class="next-steps-link">Correlation Search Lifecycle →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

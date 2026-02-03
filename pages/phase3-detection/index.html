@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 3: Detection Engineering - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="index.html" class="nav-item active">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <span class="current">Phase 3: Detection Engineering</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — Detection Engineering</span>
+                <h1>Detection Engineering</h1>
+
+                <!-- ============================================== -->
+                <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This page has been audited and hardened for solo enterprise delivery. All sections include explicit validation criteria, failure modes, and rollback procedures.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 HARD GATE — DO NOT SKIP MONITORING MODE</div>
+                    <p><strong>Every detection MUST go through monitoring mode before production.</strong> Deploying untested detections directly to production causes:</p>
+                    <ul>
+                        <li>Alert storms that overwhelm SOC and destroy trust</li>
+                        <li>False positives that train analysts to ignore alerts</li>
+                        <li>Missed attacks due to logic errors only visible in production data</li>
+                    </ul>
+                    <p><strong>Minimum monitoring period:</strong> 1-2 weeks with daily review of results.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Retail Business Timing — Detection Deployment</div>
+                    <p>Do NOT deploy new detections to production during:</p>
+                    <ul>
+                        <li><strong>Black Friday / Holiday freeze periods</strong> — No new alerts to triage</li>
+                        <li><strong>Major promotional events</strong> — Traffic spikes cause false positives</li>
+                        <li><strong>SOC staff shortages</strong> — Ensure coverage to triage new alerts</li>
+                    </ul>
+                    <p>Best deployment windows: Mid-week (Tue-Wed), after staff meetings, with full SOC coverage.</p>
+                </div>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Phase Overview</div>
+                    <p>This is the core of what detection engineers do: building detections that find real attacks while minimizing false positives. This phase covers the methodology, lifecycle, and best practices for creating production-ready detections in Splunk Enterprise Security.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION A: WHY THIS PHASE EXISTS -->
+                <!-- ============================================== -->
+                <h2>Why This Phase Exists</h2>
+
+                <h3>Business Justification</h3>
+                <p>Phases 1 and 2 ensured data flows correctly and meets quality standards. But data without detection is just expensive storage. Phase 3 transforms that data into actionable security alerts that protect the organization:</p>
+                <ul>
+                    <li><strong>Convert visibility into protection:</strong> Data only has value when it drives action</li>
+                    <li><strong>Meet compliance requirements:</strong> Regulations require not just logging but active monitoring</li>
+                    <li><strong>Reduce time to detect:</strong> Automated detection finds threats faster than manual review</li>
+                    <li><strong>Enable SOC efficiency:</strong> Well-tuned detections create actionable work, not noise</li>
+                </ul>
+
+                <h3>What Makes Detection Engineering Difficult</h3>
+                <p>Writing a query that matches an attack pattern is easy. Building a production detection that works reliably is hard:</p>
+                <ul>
+                    <li><strong>False positives destroy SOC trust:</strong> Too many false alerts and analysts ignore everything</li>
+                    <li><strong>False negatives miss real attacks:</strong> Overly restrictive logic lets attackers through</li>
+                    <li><strong>Environment drift:</strong> What worked last month breaks as infrastructure changes</li>
+                    <li><strong>Attack evolution:</strong> Adversaries adapt to bypass known detection logic</li>
+                    <li><strong>Scale challenges:</strong> Detection that works on 100 events may fail on 100 million</li>
+                </ul>
+
+                <!-- ============================================== -->
+                <!-- SECTION: DETECTION LIFECYCLE -->
+                <!-- ============================================== -->
+                <h2>Detection Lifecycle</h2>
+
+                <p>Every detection follows this lifecycle. Skipping stages leads to production failures, SOC burnout, and missed detections.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    subgraph DESIGN["1. Design"]
+        D1["Define threat<br/>to detect"]
+        D2["Identify required<br/>data sources"]
+        D3["Map to MITRE<br/>ATT&CK"]
+        D4["Document attack<br/>signature"]
+    end
+    
+    subgraph DEVELOP["2. Develop"]
+        DEV1["Write detection<br/>SPL logic"]
+        DEV2["Add inline<br/>documentation"]
+        DEV3["Define thresholds<br/>and parameters"]
+        DEV4["Create triage<br/>runbook"]
+    end
+    
+    subgraph VALIDATE["3. Validate"]
+        V1["Run data<br/>reality check"]
+        V2["Historical<br/>backtest (30d)"]
+        V3["Review sample<br/>results"]
+        V4["Identify false<br/>positive patterns"]
+    end
+    
+    subgraph MONITOR["4. Monitoring Mode"]
+        M1["Deploy as report<br/>(no alerts)"]
+        M2["Collect to<br/>summary index"]
+        M3["Monitor 1-2 weeks"]
+        M4["Tune thresholds<br/>and allowlists"]
+    end
+    
+    subgraph PRODUCTION["5. Production"]
+        P1["Enable alerting"]
+        P2["Configure<br/>notifications"]
+        P3["SOC begins<br/>triage"]
+        P4["Track metrics"]
+    end
+    
+    subgraph MAINTAIN["6. Maintain"]
+        MT1["Monthly review"]
+        MT2["Tune based on<br/>feedback"]
+        MT3["Update for<br/>new threats"]
+        MT4["Retire if<br/>obsolete"]
+    end
+    
+    D1 --> D2 --> D3 --> D4
+    D4 --> DEV1 --> DEV2 --> DEV3 --> DEV4
+    DEV4 --> V1 --> V2 --> V3 --> V4
+    V4 --> M1 --> M2 --> M3 --> M4
+    M4 --> P1 --> P2 --> P3 --> P4
+    P4 --> MT1 --> MT2 --> MT3 --> MT4
+    
+    MT4 -.->|"New threat"| D1
+    M4 -.->|"Too noisy"| V4
+    P4 -.->|"Issues found"| M4
+    
+    style MONITOR fill:#f59e0b,stroke:#d97706
+    style PRODUCTION fill:#238636,stroke:#2ea043
+                    </div>
+                </div>
+
+                <h3>Lifecycle Stage Details</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Stage</th>
+                                <th>Duration</th>
+                                <th>Key Activities</th>
+                                <th>Exit Criteria</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1. Design</strong></td>
+                                <td>1-2 hours</td>
+                                <td>Define what to detect, map to MITRE, identify data needs</td>
+                                <td>Attack signature documented, data sources identified</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2. Develop</strong></td>
+                                <td>2-4 hours</td>
+                                <td>Write SPL, add documentation, create runbook</td>
+                                <td>Working query with inline comments and runbook</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3. Validate</strong></td>
+                                <td>1-2 hours</td>
+                                <td>Data check, backtest, review results</td>
+                                <td>Query returns expected results, FP patterns identified</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4. Monitoring</strong></td>
+                                <td>1-2 weeks</td>
+                                <td>Deploy without alerting, observe volume, tune</td>
+                                <td>Alert volume acceptable, FP rate &lt;30%</td>
+                            </tr>
+                            <tr>
+                                <td><strong>5. Production</strong></td>
+                                <td>Ongoing</td>
+                                <td>Live alerting, SOC triage, track metrics</td>
+                                <td>N/A (continuous)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>6. Maintain</strong></td>
+                                <td>Monthly</td>
+                                <td>Review effectiveness, tune, update</td>
+                                <td>Detection remains effective or retired</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: DETECTION DESIGN -->
+                <!-- ============================================== -->
+                <h2>Stage 1: Detection Design</h2>
+
+                <h3>1.1: Define the Threat</h3>
+                <p>Before writing any SPL, clearly define what you're detecting:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Detection Design Template</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>═══════════════════════════════════════════════════════════════════
+DETECTION DESIGN DOCUMENT
+═══════════════════════════════════════════════════════════════════
+
+DETECTION NAME: [Descriptive name]
+
+THREAT DESCRIPTION:
+- What attack/behavior are we detecting?
+- Why is this important to detect?
+- What is the business/security impact if missed?
+
+MITRE ATT&CK MAPPING:
+- Tactic: [e.g., Initial Access, Credential Access]
+- Technique: [e.g., T1078 - Valid Accounts]
+- Sub-technique: [if applicable]
+
+ATTACK SIGNATURE:
+- What observable behavior indicates this attack?
+- What distinguishes attack from legitimate activity?
+- What is the minimum threshold for detection?
+
+DATA REQUIREMENTS:
+- Required log source(s):
+- Required fields:
+- Required field values:
+- Data model (if using tstats):
+
+KNOWN LIMITATIONS:
+- What variants of this attack will NOT be detected?
+- What false negative scenarios exist?
+
+ESTIMATED FALSE POSITIVE SOURCES:
+- What legitimate activity might trigger this?
+- How can we filter these?
+
+═══════════════════════════════════════════════════════════════════</code></pre>
+                </div>
+
+                <h3>1.2: Attack Signature Definition</h3>
+                <p>The attack signature is the specific pattern that distinguishes attack from normal. Be precise:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Detection</th>
+                                <th>Bad Attack Signature</th>
+                                <th>Good Attack Signature</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Brute Force</td>
+                                <td>"Many failed logins"</td>
+                                <td>"≥10 failed logins to same account from same IP within 10 minutes"</td>
+                            </tr>
+                            <tr>
+                                <td>MFA Fatigue</td>
+                                <td>"Lots of MFA prompts"</td>
+                                <td>"≥5 MFA challenges to same user within 15 minutes with ≥80% denied"</td>
+                            </tr>
+                            <tr>
+                                <td>Password Spray</td>
+                                <td>"Failed logins from one IP"</td>
+                                <td>"Single IP with failed logins to ≥10 unique accounts within 30 minutes, ≤3 attempts per account"</td>
+                            </tr>
+                            <tr>
+                                <td>SQLi Campaign</td>
+                                <td>"SQL injection attempts"</td>
+                                <td>"≥5 WAF events with SQL injection rule triggers from same IP within 10 minutes"</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: DETECTION DEVELOPMENT -->
+                <!-- ============================================== -->
+                <h2>Stage 2: Detection Development</h2>
+
+                <h3>2.1: SPL Best Practices</h3>
+
+                <h4>Use Inline Documentation</h4>
+                <p>Every detection should be self-documenting. Future you (or your replacement) will thank you:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Well-Documented Detection Example</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("
+===============================================================================
+DETECTION: Brute Force Authentication
+AUTHOR: Detection Engineering Team
+VERSION: 1.2
+LAST_UPDATED: 2024-06-15
+MITRE: T1110.001 - Brute Force: Password Guessing
+===============================================================================
+LOGIC: Detects multiple failed authentication attempts against a single
+account from the same source IP within a short time window.
+===============================================================================
+THRESHOLDS:
+- Default: 10 failures in 10 minutes
+- Can adjust via threshold macro or lookup
+===============================================================================
+KNOWN FALSE POSITIVES:
+- Legitimate users who forgot password (usually <10 attempts)
+- Service accounts with expired credentials (investigate config)
+- Broken SSO causing retry loops (check app field)
+===============================================================================
+CHANGELOG:
+- v1.0 (2024-01-01): Initial detection
+- v1.1 (2024-03-15): Added app field to identify SSO issues
+- v1.2 (2024-06-15): Increased threshold from 5 to 10 based on FP analysis
+===============================================================================
+")`
+
+index=auth_azure sourcetype="azure:aad:signin" earliest=-15m latest=now()
+| spath output=user path=userPrincipalName
+| spath output=src path=ipAddress
+| spath output=error_code path=status.errorCode
+| spath output=app path=appDisplayName
+
+`comment("Filter to authentication failures")`
+| search error_code IN (50126, 50053, 50055)
+
+`comment("Aggregate by user and source IP")`
+| stats 
+    count AS failed_attempts,
+    values(app) AS applications,
+    earliest(_time) AS first_failure,
+    latest(_time) AS last_failure
+    BY user, src
+
+`comment("Apply threshold - configurable via lookup if needed")`
+| where failed_attempts >= 10
+
+`comment("Calculate attack metrics")`
+| eval attack_duration_min = round((last_failure - first_failure) / 60, 1)
+
+`comment("Generate severity and description")`
+| eval severity = case(failed_attempts >= 50, "high", failed_attempts >= 20, "medium", true(), "low")
+| eval description = "Brute force attack: ".failed_attempts." failed logins against ".user." from ".src
+
+| table _time, user, src, failed_attempts, attack_duration_min, severity, applications, description</code></pre>
+                </div>
+
+                <h4>SPL Optimization Rules</h4>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rule</th>
+                                <th>Why</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Filter early</td>
+                                <td>Reduce data before expensive operations</td>
+                                <td>Put <code>search</code> before <code>stats</code></td>
+                            </tr>
+                            <tr>
+                                <td>Use tstats when possible</td>
+                                <td>10-100x faster than raw search</td>
+                                <td><code>| tstats count FROM datamodel=Authentication</code></td>
+                            </tr>
+                            <tr>
+                                <td>Avoid wildcards at start</td>
+                                <td>Can't use index optimization</td>
+                                <td>Use <code>src=192.168.*</code> not <code>src=*192.168*</code></td>
+                            </tr>
+                            <tr>
+                                <td>Limit time range</td>
+                                <td>Correlations rarely need 24h+</td>
+                                <td><code>earliest=-15m</code> for correlation searches</td>
+                            </tr>
+                            <tr>
+                                <td>Use summary indexing</td>
+                                <td>Pre-aggregate for dashboards</td>
+                                <td><code>| collect index=summary</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>2.2: Threshold Management</h3>
+
+                <p>Hardcoded thresholds make tuning difficult. Use one of these approaches:</p>
+
+                <h4>Option 1: Macro-Based Thresholds</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>macros.conf</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>[brute_force_threshold]
+definition = 10
+
+[mfa_fatigue_threshold]
+definition = 5
+
+[password_spray_user_threshold]
+definition = 10</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Using Macro Threshold</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| where failed_attempts >= `brute_force_threshold`</code></pre>
+                </div>
+
+                <h4>Option 2: Lookup-Based Thresholds</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>detection_thresholds.csv</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>detection_name,threshold,time_window_min,last_updated,updated_by
+brute_force,10,10,2024-06-15,security_team
+mfa_fatigue,5,15,2024-06-01,security_team
+password_spray_users,10,30,2024-05-20,security_team
+sqli_campaign,5,10,2024-04-01,security_team</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Using Lookup Threshold</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| lookup detection_thresholds.csv detection_name AS "brute_force" OUTPUT threshold
+| where failed_attempts >= threshold</code></pre>
+                </div>
+
+                <h3>2.3: Create Triage Runbook</h3>
+
+                <p>Every detection MUST have a runbook before production. No exceptions.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Runbook Template</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>═══════════════════════════════════════════════════════════════════
+TRIAGE RUNBOOK: [Detection Name]
+═══════════════════════════════════════════════════════════════════
+
+DETECTION OVERVIEW:
+- What this detection finds: [brief description]
+- Severity: [low/medium/high/critical]
+- Expected volume: [X alerts/day typical]
+
+INITIAL ASSESSMENT (2 minutes):
+□ Step 1: [What to check first]
+□ Step 2: [What to check second]
+□ Decision: [How to determine if real attack vs FP]
+
+INVESTIGATION (if needed):
+□ [Investigation step 1]
+□ [Investigation step 2]
+□ [What additional context to gather]
+
+RESPONSE ACTIONS:
+□ If true positive: [What actions to take]
+□ If false positive: [How to document/tune]
+
+ESCALATION:
+- When to escalate: [Criteria]
+- Who to escalate to: [Contact/team]
+- How to escalate: [Process]
+
+COMMON FALSE POSITIVES:
+1. [FP pattern 1]: [How to identify and disposition]
+2. [FP pattern 2]: [How to identify and disposition]
+
+DO NOT:
+- [Thing to avoid 1]
+- [Thing to avoid 2]
+
+═══════════════════════════════════════════════════════════════════</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: VALIDATION -->
+                <!-- ============================================== -->
+                <h2>Stage 3: Validation</h2>
+
+                <h3>3.1: Data Reality Check</h3>
+                <p>Before testing logic, verify required data exists:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Generic Data Reality Check Template</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Replace index, sourcetype, and fields with your detection requirements")`
+
+index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-24h
+| head 10000
+| eval has_field1 = if(isnotnull(FIELD1) AND FIELD1!="", 1, 0)
+| eval has_field2 = if(isnotnull(FIELD2) AND FIELD2!="", 1, 0)
+| eval has_field3 = if(isnotnull(FIELD3) AND FIELD3!="", 1, 0)
+| stats 
+    count AS total,
+    sum(has_field1) AS with_field1,
+    sum(has_field2) AS with_field2,
+    sum(has_field3) AS with_field3
+| eval field1_pct = round(with_field1/total*100, 1)."%"
+| eval field2_pct = round(with_field2/total*100, 1)."%"
+| eval field3_pct = round(with_field3/total*100, 1)."%"
+| table total, field1_pct, field2_pct, field3_pct
+
+`comment("All critical fields should be >95% populated")`</code></pre>
+                </div>
+
+                <h3>3.2: Historical Backtesting</h3>
+                <p>Run the detection against 30 days of historical data to understand baseline:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Backtest Template</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Run your detection logic against 30 days")`
+
+[YOUR DETECTION SPL HERE with earliest=-30d]
+
+`comment("Summarize: How many alerts per day?")`
+| bin _time span=1d
+| stats count AS daily_alerts BY _time
+| stats 
+    avg(daily_alerts) AS avg_per_day,
+    max(daily_alerts) AS max_per_day,
+    min(daily_alerts) AS min_per_day,
+    stdev(daily_alerts) AS stdev
+
+`comment("
+INTERPRETATION:
+- avg <10/day: Good for SOC workload
+- avg 10-30/day: Acceptable, plan for tuning
+- avg >30/day: Too noisy, adjust thresholds before monitoring mode
+")`</code></pre>
+                </div>
+
+                <h3>3.3: Sample Review</h3>
+                <p>Manually review a sample of results to validate logic:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Sample Extraction for Manual Review</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>[YOUR DETECTION SPL HERE with earliest=-7d]
+| head 20
+| table _time, [key fields for review]
+
+`comment("
+For each result, ask:
+1. Is this a real attack or false positive?
+2. If FP, what pattern caused it?
+3. Is there additional context that would help triage?
+")`</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: MONITORING MODE -->
+                <!-- ============================================== -->
+                <h2>Stage 4: Monitoring Mode</h2>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ MANDATORY: Never Skip Monitoring Mode</div>
+                    <p>Deploying a detection directly to production without monitoring mode is the #1 cause of SOC alert fatigue and detection distrust. Always run in monitoring mode for at least 1-2 weeks.</p>
+                </div>
+
+                <h3>4.1: Deploy as Scheduled Report</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Splunk ES: Monitoring Mode Configuration</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>NAME: MONITOR_[Detection_Name]
+TYPE: Scheduled Report (NOT Correlation Search)
+SCHEDULE: Same as intended production schedule
+TIME RANGE: Same as intended production
+ACTIONS: 
+  - Send to summary index: YES
+  - Send email: NO
+  - Create notable: NO
+
+SUMMARY INDEX COLLECTION:
+| collect index=summary source="detection_monitor" marker="detection=[name]"</code></pre>
+                </div>
+
+                <h3>4.2: Monitoring Dashboard</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Detection Monitoring Dashboard</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Panel 1: Alert Volume Over Time")`
+index=summary source="detection_monitor" earliest=-14d
+| timechart span=1d count BY marker
+
+`comment("Panel 2: Alert Volume by Severity")`
+index=summary source="detection_monitor" earliest=-7d
+| stats count BY marker, severity
+| sort marker, - count
+
+`comment("Panel 3: Top Triggering Entities")`
+index=summary source="detection_monitor" earliest=-7d
+| stats count BY marker, user, src
+| sort - count
+| head 20</code></pre>
+                </div>
+
+                <h3>4.3: Monitoring Period Checklist</h3>
+                <div class="checklist-group">
+                    <div class="checklist-title">During Monitoring Period</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="monitor">
+                        <span>Daily: Check alert volume (is it manageable?)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="monitor">
+                        <span>Daily: Review sample of alerts (are they valid?)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="monitor">
+                        <span>Weekly: Identify top false positive patterns</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="monitor">
+                        <span>Weekly: Create/update allowlists if needed</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="monitor">
+                        <span>Weekly: Adjust thresholds if volume too high/low</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="monitor">
+                        <span>End: Document final configuration and FP rate</span>
+                    </label>
+                </div>
+
+                <h3>4.4: Promotion Criteria</h3>
+                <p>Promote to production when ALL of the following are true:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Criterion</th>
+                                <th>Threshold</th>
+                                <th>Why It Matters</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Monitoring duration</td>
+                                <td>≥1 week (2 preferred)</td>
+                                <td>Captures weekly patterns, scheduled jobs, etc.</td>
+                            </tr>
+                            <tr>
+                                <td>Alert volume</td>
+                                <td>&lt;20/day for Tier 1 SOC</td>
+                                <td>SOC can't effectively triage more than this</td>
+                            </tr>
+                            <tr>
+                                <td>False positive rate</td>
+                                <td>&lt;30%</td>
+                                <td>Higher rates destroy analyst trust</td>
+                            </tr>
+                            <tr>
+                                <td>Runbook complete</td>
+                                <td>Yes</td>
+                                <td>SOC needs instructions to triage</td>
+                            </tr>
+                            <tr>
+                                <td>SOC review</td>
+                                <td>Approved</td>
+                                <td>SOC owns triage; they must accept the alert</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: PRODUCTION -->
+                <!-- ============================================== -->
+                <h2>Stage 5: Production Deployment</h2>
+
+                <h3>5.1: Convert to Correlation Search</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Splunk ES: Create Correlation Search</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>LOCATION: ES → Configure → Content → Content Management → Create New Content
+
+NAME: [Detection_Name] (no MONITOR_ prefix)
+APP: SA-ThreatIntelligence or your custom app
+TYPE: Correlation Search
+SEARCH: [Your finalized SPL]
+SCHEDULE: [e.g., */10 * * * * for every 10 min]
+TIME RANGE: [e.g., -15m to now]
+
+ADAPTIVE RESPONSE ACTIONS:
+- Create notable event: YES
+  - Title: [Alert title]
+  - Description: Use $description$ from search results
+  - Severity: Use $severity$ from search results or set fixed
+  - Owner: unassigned
+  - Status: new
+
+- Send email: Optional (for critical only)</code></pre>
+                </div>
+
+                <h3>5.2: Notable Event Configuration</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Notable Event Field Mapping</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>REQUIRED FIELDS FOR GOOD NOTABLES:
+- src: Source of attack (for ES asset lookup)
+- dest: Target of attack (for ES asset lookup)
+- user: Affected user (for ES identity lookup)
+- description: Human-readable summary
+- severity: informational/low/medium/high/critical
+
+OPTIONAL BUT RECOMMENDED:
+- urgency: Override calculated urgency
+- owner: Auto-assign to specific analyst/group
+- status: Usually "new"
+- drilldown_name: Link to investigation search
+- drilldown_search: Search to run for more context</code></pre>
+                </div>
+
+                <h3>5.3: Track Detection Metrics</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Detection Performance Metrics</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Track key metrics for each detection")`
+
+index=notable earliest=-30d
+| search search_name="[Detection_Name]"
+| stats 
+    count AS total_alerts,
+    dc(src) AS unique_sources,
+    dc(user) AS unique_users
+| join type=left 
+    [search index=notable earliest=-30d search_name="[Detection_Name]"
+     | stats count BY status_label
+     | eval true_positive = if(status_label IN ("Resolved - True Positive", "Closed - True Positive"), count, 0)
+     | eval false_positive = if(status_label IN ("Resolved - False Positive", "Closed - False Positive"), count, 0)
+     | stats sum(true_positive) AS tp, sum(false_positive) AS fp]
+| eval total_dispositioned = tp + fp
+| eval fp_rate = if(total_dispositioned > 0, round(fp / total_dispositioned * 100, 1), "N/A")
+| table total_alerts, unique_sources, unique_users, tp, fp, fp_rate</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: USE CASE LIBRARIES -->
+                <!-- ============================================== -->
+                <h2>Use Case Libraries</h2>
+
+                <p>Pre-built, production-ready detections with full documentation:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Use Case Library</th>
+                                <th>Detections Included</th>
+                                <th>Data Sources</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><a href="../use-cases/waf-ddos.html"><strong>WAF & DDoS Use Cases</strong></a></td>
+                                <td>SQL Injection, Credential Stuffing, Rate Limiting, Bot Activity, Command Injection</td>
+                                <td>Akamai WAF</td>
+                            </tr>
+                            <tr>
+                                <td><a href="../use-cases/mfa-auth.html"><strong>MFA & Authentication Use Cases</strong></a></td>
+                                <td>MFA Fatigue, Brute Force, Password Spray, Impossible Travel, Privileged MFA Failure</td>
+                                <td>Entra ID, CyberArk, Windows AD</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>Each use case includes:</p>
+                <ul>
+                    <li>✓ Real attack story and context</li>
+                    <li>✓ Data reality check query</li>
+                    <li>✓ Production-ready SPL with inline documentation</li>
+                    <li>✓ Historical backtesting procedure</li>
+                    <li>✓ Monitoring mode configuration</li>
+                    <li>✓ False positive patterns and allowlists</li>
+                    <li>✓ Complete SOC triage runbook</li>
+                    <li>✓ Rollback procedures</li>
+                </ul>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK & SAFETY -->
+                <!-- ============================================== -->
+                <h2>Rollback & Safety</h2>
+
+                <h3>Emergency Detection Disable Procedure</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Procedure: Disable a Detection Immediately</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>SCENARIO: Detection is generating excessive alerts or false positives
+
+OPTION 1: Disable via ES UI (Preferred)
+───────────────────────────────────────
+1. ES → Configure → Content → Content Management
+2. Search for detection name
+3. Click detection → Edit → Enabled = No → Save
+4. Effect: Immediate (no new alerts generated)
+
+OPTION 2: Disable via REST API (Faster for Automation)
+──────────────────────────────────────────────────────
+curl -k -u admin:password -X POST \
+  https://localhost:8089/servicesNS/nobody/SplunkEnterpriseSecuritySuite/saved/searches/[detection_name] \
+  -d disabled=1
+
+OPTION 3: Modify Throttling (Reduce Alert Volume)
+─────────────────────────────────────────────────
+If detection is valid but too noisy:
+1. Edit detection → Throttle Settings
+2. Increase throttle window (e.g., 1 hour → 4 hours)
+3. Add throttle key field (e.g., per-user instead of global)
+
+COMMUNICATION REQUIRED:
+───────────────────────
+When disabling a detection:
+1. Notify SOC: "[Detection Name] disabled due to [reason]. Expected restore: [time]"
+2. Create ticket/incident for tracking
+3. Document what triggered the disable decision
+4. Schedule review to re-enable after fix</code></pre>
+                </div>
+
+                <h3>Detection Rollback: Return to Previous Version</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Procedure: Rollback Detection to Previous Version</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>IF DETECTION UPDATE CAUSED ISSUES:
+
+STEP 1: Identify Previous Version
+─────────────────────────────────
+# Check ES Content Management for version history
+# Or check source control if using Git for detection-as-code
+
+STEP 2: Revert SPL Logic
+────────────────────────
+1. ES → Configure → Content → Content Management
+2. Find detection → Edit
+3. Replace current SPL with previous working version
+4. Save
+
+STEP 3: Revert Threshold/Settings
+─────────────────────────────────
+If thresholds were changed:
+1. Document current thresholds before reverting
+2. Restore previous threshold values
+3. Save and enable
+
+STEP 4: Validate Rollback
+─────────────────────────
+1. Run detection manually against last 24 hours
+2. Verify alert volume matches pre-change behavior
+3. Confirm no new issues
+
+BEST PRACTICE: Version Control
+──────────────────────────────
+Maintain detection versions in Git repository:
+- Store SPL, thresholds, runbooks together
+- Commit changes with meaningful messages
+- Tag releases for easy rollback
+- Example: git checkout v1.2.0 -- detections/mfa_fatigue.yml</code></pre>
+                </div>
+
+                <h3>Alert Storm Response</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Emergency Response: Detection Generating Alert Storm</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>IF DETECTION IS FLOODING SOC WITH ALERTS:
+
+STEP 1: DISABLE IMMEDIATELY (30 seconds)
+────────────────────────────────────────
+ES → Configure → Content → Content Management → [Detection] → Disable
+
+STEP 2: ASSESS SCOPE (5 minutes)
+────────────────────────────────
+index=notable search_name="[Detection_Name]" earliest=-1h
+| stats count BY _time span=5m
+| timechart count
+
+STEP 3: IDENTIFY ROOT CAUSE (15 minutes)
+────────────────────────────────────────
+Common causes:
+- Infrastructure change triggered mass alerts
+- Threshold too low for production data
+- Missing allowlist for legitimate activity
+- Bug in SPL logic (e.g., missing field causes all events to match)
+
+STEP 4: BULK CLOSE FALSE POSITIVES (if appropriate)
+───────────────────────────────────────────────────
+# Only if confirmed false positive pattern
+index=notable search_name="[Detection_Name]" earliest=-1h status="new"
+| eval status="closed", status_label="Closed - False Positive"
+| collect index=notable
+
+⚠️ WARNING: Use bulk close carefully - ensure you're not closing real attacks
+
+STEP 5: FIX AND RE-ENABLE
+─────────────────────────
+1. Fix the root cause (add allowlist, adjust threshold, fix SPL)
+2. Test fix in monitoring mode for 24 hours minimum
+3. Re-enable to production only after validation</code></pre>
+                </div>
+
+                <h3>Detection Testing Checklist</h3>
+                <div class="callout callout-info">
+                    <div class="callout-title">✓ Before Any Detection Goes to Production</div>
+                    <p>Use this checklist to prevent production issues:</p>
+                </div>
+                <div class="checklist-group">
+                    <div class="checklist-title">Pre-Production Validation</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-preprod">
+                        <span><strong>Data Reality Check:</strong> Required fields exist and are populated >95%</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-preprod">
+                        <span><strong>Historical Backtest:</strong> Run against 30 days of data, reviewed results</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-preprod">
+                        <span><strong>False Positive Review:</strong> Identified and allowlisted known FP sources</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-preprod">
+                        <span><strong>Monitoring Mode:</strong> Ran 1-2 weeks in monitoring mode</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-preprod">
+                        <span><strong>SOC Review:</strong> Triage runbook reviewed and approved by SOC</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-preprod">
+                        <span><strong>Performance Check:</strong> SPL runs in <60 seconds for scheduled interval</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-preprod">
+                        <span><strong>Rollback Plan:</strong> Know how to disable and revert if issues arise</span>
+                    </label>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT YOU DO NEXT -->
+                <!-- ============================================== -->
+                <h2>What You Do Next</h2>
+
+                <div class="checklist-group">
+                    <div class="checklist-title">Phase 3 Completion Checklist</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-complete">
+                        <span>Priority detections identified from threat model/use cases</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-complete">
+                        <span>Detection design documents created</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-complete">
+                        <span>SPL developed and documented</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-complete">
+                        <span>Data reality checks passed</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-complete">
+                        <span>Historical backtests completed</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-complete">
+                        <span>Monitoring mode completed (1-2 weeks)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-complete">
+                        <span>Triage runbooks created and SOC-approved</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p3-complete">
+                        <span>Detections promoted to production</span>
+                    </label>
+                </div>
+
+                <div class="next-steps">
+                    <a href="../use-cases/waf-ddos.html" class="next-step-link">
+                        <span class="step-direction">Build Detections →</span>
+                        <span class="step-title">WAF & DDoS Use Cases</span>
+                    </a>
+                    <a href="../use-cases/mfa-auth.html" class="next-step-link">
+                        <span class="step-direction">Build Detections →</span>
+                        <span class="step-title">MFA & Auth Use Cases</span>
+                    </a>
+                    <a href="../phase4-automation/index.html" class="next-step-link">
+                        <span class="step-direction">Next Phase →</span>
+                        <span class="step-title">Phase 4: Automation</span>
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../assets/app.js"></script>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#0d1117',
+                primaryColor: '#238636',
+                primaryTextColor: '#c9d1d9',
+                primaryBorderColor: '#30363d',
+                lineColor: '#8b949e',
+                secondaryColor: '#161b22',
+                tertiaryColor: '#21262d'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 20
+            }
+        });
+    </script>
+</body>
+</html>

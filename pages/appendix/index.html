@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appendix Overview | Splunk ES Detection Engineering Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
+                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
+                    <a href="../onboarding-primary/syslog-devices.html" class="nav-item nav-item-sub">Syslog Devices</a>
+                    <a href="../onboarding-primary/endpoint-logs.html" class="nav-item nav-item-sub">Endpoint Logs</a>
+                    <a href="../onboarding-primary/custom-apps-hec.html" class="nav-item nav-item-sub">Custom Apps (HEC)</a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Alternate Onboarding</div>
+                    <a href="../onboarding-alternate/index.html" class="nav-item">Overview</a>
+                    <a href="../onboarding-alternate/akamai-external.html" class="nav-item nav-item-sub">Akamai via Collector</a>
+                    <a href="../onboarding-alternate/entra-api.html" class="nav-item nav-item-sub">Entra ID via API</a>
+                    <a href="../onboarding-alternate/cyberark-mobile.html" class="nav-item nav-item-sub">CyberArk Mobile</a>
+                    <a href="../onboarding-alternate/azure-event-hubs.html" class="nav-item nav-item-sub">Azure Event Hubs</a>
+                    <a href="../onboarding-alternate/kafka.html" class="nav-item nav-item-sub">Kafka</a>
+                    <a href="../onboarding-alternate/db-connect.html" class="nav-item nav-item-sub">DB Connect</a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="index.html" class="nav-item active">Appendix Overview</a>
+                    <a href="spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-wrapper">
+                <nav class="breadcrumb">
+                    <a href="../../index.html">Home</a>
+                    <span class="separator">/</span>
+                    <span>Appendix</span>
+                </nav>
+
+                <div class="content-header">
+                    <h1>Appendix</h1>
+                    <p class="content-subtitle">Reference materials, reusable patterns, and quick-access resources for detection engineering delivery</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>The Appendix contains reference materials. Individual reference pages (SPL Library, Troubleshooting, Checklists) have their own hardened procedures.</p>
+                </div>
+
+                <!-- Quick Navigation Cards -->
+                <section class="section">
+                    <h2>Reference Materials</h2>
+                    <div class="card-grid">
+                        <a href="spl-library.html" class="card card-link">
+                            <div class="card-icon">📖</div>
+                            <h3>SPL Library</h3>
+                            <p>Reusable SPL patterns for data discovery, quality validation, tstats queries, lookups, notable creation, and performance optimization.</p>
+                            <div class="card-meta">
+                                <span class="badge badge-blue">50+ Patterns</span>
+                                <span class="badge badge-green">Copy-Paste Ready</span>
+                            </div>
+                        </a>
+
+                        <a href="troubleshooting.html" class="card card-link">
+                            <div class="card-icon">🔧</div>
+                            <h3>Troubleshooting Guide</h3>
+                            <p>Common issues and solutions for data onboarding, data models, detections, notable events, performance, and integrations.</p>
+                            <div class="card-meta">
+                                <span class="badge badge-yellow">Diagnostic SPL</span>
+                                <span class="badge badge-purple">Root Cause Analysis</span>
+                            </div>
+                        </a>
+
+                        <a href="checklists.html" class="card card-link">
+                            <div class="card-icon">✅</div>
+                            <h3>Master Checklists</h3>
+                            <p>Consolidated acceptance criteria and quality gates for all phases. Interactive checklists with progress tracking.</p>
+                            <div class="card-meta">
+                                <span class="badge badge-green">Interactive</span>
+                                <span class="badge badge-blue">All Phases</span>
+                            </div>
+                        </a>
+                    </div>
+                </section>
+
+                <!-- Quick Reference Section -->
+                <section class="section">
+                    <h2>Quick Reference</h2>
+                    
+                    <div class="card">
+                        <h3>Key Index Patterns</h3>
+                        <p>Common index naming conventions used throughout this handbook:</p>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Data Source</th>
+                                        <th>Index</th>
+                                        <th>Sourcetype</th>
+                                        <th>Data Model</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Akamai WAF</td>
+                                        <td><code>akamai</code></td>
+                                        <td><code>akamai:waf</code></td>
+                                        <td>Web</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Entra ID Sign-ins</td>
+                                        <td><code>azure</code></td>
+                                        <td><code>azure:aad:signin</code></td>
+                                        <td>Authentication</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Entra ID Audit</td>
+                                        <td><code>azure</code></td>
+                                        <td><code>azure:aad:audit</code></td>
+                                        <td>Change</td>
+                                    </tr>
+                                    <tr>
+                                        <td>CyberArk MFA</td>
+                                        <td><code>cyberark</code></td>
+                                        <td><code>cyberark:mfa</code></td>
+                                        <td>Authentication</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Endpoint EDR</td>
+                                        <td><code>edr</code></td>
+                                        <td><code>*:endpoint</code></td>
+                                        <td>Endpoint</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Network Devices</td>
+                                        <td><code>network</code></td>
+                                        <td><code>syslog</code></td>
+                                        <td>Network_Traffic</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Phase Timeline Reference</h3>
+                        <p>Typical duration for each phase in a solo delivery engagement:</p>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Phase</th>
+                                        <th>Focus</th>
+                                        <th>Duration</th>
+                                        <th>Dependencies</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="badge phase-1">P1</span> Log Coverage</td>
+                                        <td>Data onboarding, ingestion validation</td>
+                                        <td>2-4 weeks</td>
+                                        <td>Source system access</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge phase-2">P2</span> Data Quality</td>
+                                        <td>CIM mapping, data model acceleration</td>
+                                        <td>1-2 weeks</td>
+                                        <td>P1 complete</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge phase-3">P3</span> Detection</td>
+                                        <td>Correlation searches, notable events</td>
+                                        <td>2-4 weeks</td>
+                                        <td>P2 complete</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge phase-4">P4</span> Automation</td>
+                                        <td>Enrichment, ticketing, SOAR (optional)</td>
+                                        <td>1-2 weeks</td>
+                                        <td>P3 complete</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge phase-5">P5</span> RBA</td>
+                                        <td>Risk-based alerting (future)</td>
+                                        <td>12-18 months</td>
+                                        <td>Organizational maturity</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>MITRE ATT&CK Coverage</h3>
+                        <p>Techniques covered by detections in this handbook:</p>
+                        <div class="grid-2">
+                            <div>
+                                <h4>WAF / DDoS Detections</h4>
+                                <ul class="checklist-static">
+                                    <li><code>T1190</code> - Exploit Public-Facing Application</li>
+                                    <li><code>T1059</code> - Command and Scripting Interpreter</li>
+                                    <li><code>T1498</code> - Network Denial of Service</li>
+                                    <li><code>T1110.004</code> - Credential Stuffing</li>
+                                    <li><code>T1071</code> - Application Layer Protocol</li>
+                                    <li><code>T1106</code> - Native API</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4>MFA / Auth Detections</h4>
+                                <ul class="checklist-static">
+                                    <li><code>T1621</code> - Multi-Factor Authentication Request Generation</li>
+                                    <li><code>T1078</code> - Valid Accounts</li>
+                                    <li><code>T1110.003</code> - Password Spraying</li>
+                                    <li><code>T1078.004</code> - Cloud Accounts</li>
+                                    <li><code>T1110</code> - Brute Force</li>
+                                    <li><code>T1556</code> - Modify Authentication Process</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- External Resources -->
+                <section class="section">
+                    <h2>External Resources</h2>
+                    <div class="card">
+                        <h3>Splunk Documentation</h3>
+                        <ul class="link-list">
+                            <li><a href="https://docs.splunk.com/Documentation/ES" target="_blank">Splunk Enterprise Security Documentation</a></li>
+                            <li><a href="https://docs.splunk.com/Documentation/CIM" target="_blank">Common Information Model (CIM) Reference</a></li>
+                            <li><a href="https://docs.splunk.com/Documentation/Splunk/latest/SearchReference" target="_blank">SPL Search Reference</a></li>
+                            <li><a href="https://lantern.splunk.com/" target="_blank">Splunk Lantern (Use Case Library)</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>Security Resources</h3>
+                        <ul class="link-list">
+                            <li><a href="https://attack.mitre.org/" target="_blank">MITRE ATT&CK Framework</a></li>
+                            <li><a href="https://research.splunk.com/" target="_blank">Splunk Security Research</a></li>
+                            <li><a href="https://github.com/splunk/security_content" target="_blank">Splunk Security Content (GitHub)</a></li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Page Navigation -->
+                <div class="page-nav">
+                    <a href="../phase5-rba/index.html" class="page-nav-btn">
+                        <span class="page-nav-direction">Previous</span>
+                        <span class="page-nav-title">← RBA (Future)</span>
+                    </a>
+                    <a href="spl-library.html" class="page-nav-btn">
+                        <span class="page-nav-direction">Next</span>
+                        <span class="page-nav-title">SPL Library →</span>
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

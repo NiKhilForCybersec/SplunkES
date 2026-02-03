@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correlation Search Enablement Mechanics - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="../es-content-management/tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="../es-content-management/change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="../es-content-management/health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="../es-content-management/governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                    <a href="../es-content-management/escu-overview.html" class="nav-item nav-item-sub">ESCU Overview</a>
+                    <a href="../es-content-management/escu-operationalize.html" class="nav-item nav-item-sub">Operationalizing ESCU</a>
+                    <a href="../es-content-management/escu-log-mapping.html" class="nav-item nav-item-sub">ESCU Log Mapping</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="notable-suppression.html" class="nav-item nav-item-sub">Notable Suppression</a>
+                    <a href="investigations-evidence.html" class="nav-item nav-item-sub">Investigations & Evidence</a>
+                    <a href="enablement-mechanics.html" class="nav-item nav-item-sub active">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">Correlation Search Enablement Mechanics</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — ES Operations</span>
+                <h1>Correlation Search Enablement Mechanics</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES OPERATIONS</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> Exact UI-level procedures for enabling, cloning, and configuring correlation searches to produce notable events. This is the mechanical "how-to" — the strategy for WHAT to enable is covered in <a href="../es-content-management/ootb-vs-custom.html">OOTB vs Custom Strategy</a> and the lifecycle governance is in <a href="../es-content-management/correlation-lifecycle.html">Correlation Search Lifecycle</a>.</p>
+                    <p><strong>Ownership:</strong> Detection Engineering (execution) + SOC Lead (sign-off per <a href="../es-content-management/change-management.html">Change Management</a>)</p>
+                    <p><strong>Preconditions:</strong> ES is installed and operational. User has <code>ess_admin</code> or <code>sc_admin</code> role. Data sources required by the correlation search exist and are healthy.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> You're working in ES Content Management (not the legacy Saved Searches view). <strong>Verify:</strong> Navigate to <code>Enterprise Security → Configure → Content → Content Management</code>. You should see a list with Type, App, and Status columns.</li>
+                        <li><strong>Assumption:</strong> Search concurrency is not at its limit. <strong>Verify:</strong> Run the concurrency check from <a href="../es-content-management/health-performance.html">Health & Performance</a>. If near limit, enabling additional searches may cause skips.</li>
+                        <li><strong>Assumption:</strong> Data models used by the correlation search are accelerated (if it uses <code>tstats</code>). <strong>Risk if wrong:</strong> Search returns no results even though data exists. See <a href="../es-content-management/health-performance.html">Health & Performance — DM acceleration check</a>.</li>
+                        <li><strong>Assumption:</strong> You have verified the detection through the lifecycle (backtest → monitoring → production). <strong>Risk if wrong:</strong> Enabling untested detections goes directly to SOC — noise, confusion, trust damage. See <a href="../es-content-management/correlation-lifecycle.html">Lifecycle</a>.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ENABLEMENT DECISION FLOW -->
+                <!-- ============================================== -->
+                <h2>Enablement Decision Flow</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    START["Decision: Enable a<br/>Correlation Search"] --> Q1{"Is this an<br/>OOTB search or<br/>a Custom search?"}
+    
+    Q1 -->|"OOTB"| Q2{"Do you need to<br/>modify the logic<br/>or thresholds?"}
+    Q2 -->|"No — OOTB<br/>works as-is"| ENABLE_OOTB["Enable OOTB directly<br/>(rare — verify first)"]
+    Q2 -->|"Yes — needs<br/>tuning for environment"| CLONE["CLONE the OOTB search<br/>→ Modify the clone<br/>→ Enable the clone<br/>→ Leave original DISABLED"]
+    
+    Q1 -->|"Custom"| Q3{"Has it passed<br/>lifecycle stages?<br/>(backtest + monitoring)"}
+    Q3 -->|"Yes"| ENABLE_CUSTOM["Enable custom search"]
+    Q3 -->|"No"| STOP["🛑 STOP<br/>Complete lifecycle first<br/>Do NOT skip to production"]
+    
+    ENABLE_OOTB --> Q4{"Is notable action<br/>configured?"}
+    CLONE --> Q4
+    ENABLE_CUSTOM --> Q4
+    
+    Q4 -->|"No — search runs<br/>but no notables"| CONFIG_NOTABLE["Configure Notable<br/>Action (see steps below)"]
+    Q4 -->|"Yes — notable<br/>action is active"| VERIFY["VERIFY<br/>Run search manually<br/>Check Incident Review<br/>Confirm notable appears"]
+    
+    CONFIG_NOTABLE --> VERIFY
+    
+    VERIFY --> Q5{"Notable appeared<br/>in Incident Review?"}
+    Q5 -->|"Yes ✅"| DONE["SUCCESS<br/>Detection is live<br/>Monitor for 24-48h<br/>Check volume"]
+    Q5 -->|"No ❌"| TROUBLE["TROUBLESHOOT<br/>See 'No Notables Appear'<br/>section below"]
+    
+    style STOP fill:#f85149,stroke:#da3633,color:#fff
+    style DONE fill:#238636,stroke:#2ea043,color:#fff
+    style CLONE fill:#58a6ff,stroke:#388bfd,color:#fff
+    style TROUBLE fill:#d29922,stroke:#bb8009,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ENABLING A SEARCH -->
+                <!-- ============================================== -->
+                <h2>Enabling a Correlation Search — Exact Steps</h2>
+
+                <h3>Step-by-Step: Enable via Content Management</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Step</th>
+                                <th>Action</th>
+                                <th>Exact UI Navigation</th>
+                                <th>What to Verify</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1. Navigate</strong></td>
+                                <td>Open Content Management</td>
+                                <td><code>Enterprise Security → Configure → Content → Content Management</code></td>
+                                <td>Page loads with list of all content objects</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2. Find</strong></td>
+                                <td>Locate the correlation search</td>
+                                <td>Use the <strong>Type</strong> filter → Select <strong>Correlation Search</strong>. Use the search bar to filter by name. Or filter by <strong>App</strong> to find searches from a specific DA/SA.</td>
+                                <td>Search appears in the list with current status (Enabled/Disabled)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3. Open</strong></td>
+                                <td>Open the search configuration</td>
+                                <td>Click the search name to open its detail page</td>
+                                <td>Configuration page loads with Search, Time Range, Scheduling, and Actions tabs/sections</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4. Review SPL</strong></td>
+                                <td>Read and understand the search logic</td>
+                                <td>In the <strong>Search</strong> field, review the SPL. Check: what indexes does it query? What data models does it use? What are the threshold conditions?</td>
+                                <td>You understand what this detection does, what data it needs, and what conditions trigger it</td>
+                            </tr>
+                            <tr>
+                                <td><strong>5. Check Schedule</strong></td>
+                                <td>Verify cron and lookback</td>
+                                <td><strong>Cron Schedule:</strong> Verify the interval (e.g., <code>*/15 * * * *</code>). <strong>Earliest Time / Latest Time:</strong> Verify the lookback window.</td>
+                                <td>Lookback > cron interval + 1 minute buffer. See <a href="../es-content-management/correlation-lifecycle.html">Lifecycle — Scheduling</a>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>6. Check Actions</strong></td>
+                                <td>Verify Notable Event action is configured</td>
+                                <td>Scroll to <strong>Adaptive Response Actions</strong> section (or <strong>Actions</strong> tab). Look for <strong>Notable</strong> or <strong>Create Notable Event</strong>.</td>
+                                <td>Notable action exists with severity set. If missing, add it (see below).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>7. Enable</strong></td>
+                                <td>Turn on the search</td>
+                                <td>Toggle the <strong>Enabled</strong> switch to ON (or change Status dropdown to Enabled). Click <strong>Save</strong>.</td>
+                                <td>Status changes to "Enabled". Search will run at next cron interval.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>8. Verify</strong></td>
+                                <td>Confirm the search runs and produces notables</td>
+                                <td>Wait one cron interval, then check: <code>`notable` | search search_name="YOUR_SEARCH_NAME" | head 5</code></td>
+                                <td>Notables appear in the notable index AND in Incident Review</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: CLONING SAFELY -->
+                <!-- ============================================== -->
+                <h2>Cloning an OOTB Search — Safely</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Why Clone Instead of Edit OOTB?</div>
+                    <p>If you modify an OOTB search directly, <strong>the next ES Content Update will overwrite your changes without warning.</strong> Cloning preserves your customizations in a separate search that ES updates won't touch. Always clone, never edit OOTB in place.</p>
+                </div>
+
+                <h3>Clone Procedure</h3>
+                <ol>
+                    <li><strong>Navigate</strong> to the OOTB search in Content Management</li>
+                    <li><strong>Click</strong> the search name to open it</li>
+                    <li><strong>Copy the SPL</strong> from the Search field (select all, copy to clipboard or text editor)</li>
+                    <li><strong>Create a new correlation search:</strong>
+                        <ul>
+                            <li>Go to <code>Configure → Content → Content Management</code></li>
+                            <li>Click <strong>Create New Content</strong> → Select <strong>Correlation Search</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>Name the clone</strong> following convention: <code>CUSTOM - [Original Name] - [Your Org] Tuned</code>
+                        <br/>Example: <code>CUSTOM - Brute Force Access Behavior Detected - Retail Tuned</code></li>
+                    <li><strong>Paste the SPL</strong> into the Search field</li>
+                    <li><strong>Modify</strong> as needed (thresholds, filters, field additions)</li>
+                    <li><strong>Configure Schedule:</strong> Set cron and lookback (review <a href="../es-content-management/correlation-lifecycle.html">Lifecycle — Scheduling</a>)</li>
+                    <li><strong>Configure Notable Action:</strong> Add the Notable adaptive response action with appropriate severity</li>
+                    <li><strong>Add version header</strong> to the SPL as an inline comment:
+                        <div class="code-block">
+                            <div class="code-header"><span>Version Header Template</span><button class="copy-btn">Copy</button></div>
+                            <pre><code>`comment("CUSTOM - Brute Force - Retail Tuned")`
+`comment("Version: 1.0 | Created: 2024-02-15 | Author: [Name]")`
+`comment("Cloned from: Brute Force Access Behavior Detected (OOTB)")`
+`comment("Changes: Threshold raised to 25, POS subnet excluded")`</code></pre>
+                        </div>
+                    </li>
+                    <li><strong>Save</strong> the new search (save as DISABLED initially)</li>
+                    <li><strong>Verify the OOTB original remains DISABLED</strong> — you don't want both running</li>
+                    <li><strong>Enable the clone</strong> after backtest and monitoring lifecycle stages are complete</li>
+                </ol>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Clone Checklist — Don't Forget</div>
+                    <ul>
+                        <li>☐ OOTB original is disabled (not both running simultaneously)</li>
+                        <li>☐ Clone has <code>CUSTOM -</code> prefix in the name</li>
+                        <li>☐ Clone has version header in SPL</li>
+                        <li>☐ Notable action is configured on the clone (it does NOT copy automatically)</li>
+                        <li>☐ Clone is saved in the correct app context (typically <code>SplunkEnterpriseSecuritySuite</code> or your custom app)</li>
+                        <li>☐ Clone is added to the detection registry</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: NOTABLE ACTION CONFIG -->
+                <!-- ============================================== -->
+                <h2>Configuring the Notable Event Action</h2>
+
+                <p>A correlation search can run successfully but produce <strong>zero notables</strong> if the Notable adaptive response action isn't configured. This is the most common reason for "I enabled the search but nothing appears."</p>
+
+                <h3>Adding Notable Action to a Correlation Search</h3>
+                <ol>
+                    <li>Open the correlation search in Content Management</li>
+                    <li>Scroll to the <strong>Adaptive Response Actions</strong> section</li>
+                    <li>Click <strong>Add New Response Action</strong> → Select <strong>Notable</strong> (or <strong>Create Notable Event</strong>)</li>
+                    <li>Configure these fields:
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Setting</th>
+                                        <th>Guidance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Title</strong></td>
+                                        <td>Notable event title shown in Incident Review</td>
+                                        <td>Make it descriptive: <code>Brute Force Detected — $src$ targeting $dest$</code>. Use field tokens (<code>$field$</code>) for dynamic values.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Description</strong></td>
+                                        <td>Details shown in notable detail pane</td>
+                                        <td>Include: what was detected, key fields, suggested triage steps</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Severity</strong></td>
+                                        <td>Informational / Low / Medium / High / Critical</td>
+                                        <td>Aligns with your severity matrix. Don't default to Critical — use <a href="../es-content-management/correlation-lifecycle.html">Lifecycle</a> guidance.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Security Domain</strong></td>
+                                        <td>Access, Endpoint, Network, Threat, Identity, Audit</td>
+                                        <td>Choose the primary domain. WAF = Network or Threat. MFA = Access or Identity.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Default Owner</strong></td>
+                                        <td>unassigned (typically)</td>
+                                        <td>Leave as unassigned unless you have auto-assignment rules</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Default Status</strong></td>
+                                        <td>New</td>
+                                        <td>Always New. SOC sets In Progress when they claim it.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Drill-down</strong></td>
+                                        <td>Search that runs when analyst clicks "View Contributing Events"</td>
+                                        <td>Make this useful. Should return the raw events that triggered the detection.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </li>
+                    <li>Click <strong>Save</strong></li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: NO NOTABLES APPEAR -->
+                <!-- ============================================== -->
+                <h2>Troubleshooting: "No Notables Appear"</h2>
+
+                <p>This is the most common issue after enabling a correlation search. Work through these checks in order — each is a distinct failure point.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    PROBLEM["No notables appear<br/>after enabling<br/>correlation search"] --> C1["Check 1:<br/>Is the search<br/>actually enabled?"]
+    
+    C1 -->|"Disabled"| FIX1["FIX: Enable the search<br/>in Content Management"]
+    C1 -->|"Enabled"| C2["Check 2:<br/>Has the cron interval<br/>passed? (wait for it)"]
+    
+    C2 -->|"Not yet"| FIX2["FIX: Wait one cron interval<br/>then check again"]
+    C2 -->|"Yes, enough<br/>time passed"| C3["Check 3:<br/>Is the search running<br/>at all?"]
+    
+    C3 -->|"Skipped / not<br/>scheduled"| FIX3["FIX: Check search scheduler<br/>Run concurrency check<br/>Verify cron syntax"]
+    C3 -->|"Running"| C4["Check 4:<br/>Does the search<br/>return any results?"]
+    
+    C4 -->|"Zero results"| C4A{"Data source<br/>issue or<br/>logic issue?"}
+    C4A -->|"No data<br/>in index"| FIX4A["FIX: Check data source<br/>Verify index exists<br/>Check sourcetype"]
+    C4A -->|"Data exists but<br/>search doesn't match"| FIX4B["FIX: Review SPL logic<br/>Check field names<br/>Check DM acceleration<br/>Test with broader search"]
+    
+    C4 -->|"Returns results"| C5["Check 5:<br/>Is the Notable<br/>action configured?"]
+    
+    C5 -->|"No Notable<br/>action exists"| FIX5["FIX: Add Notable<br/>adaptive response action<br/>(see section above)"]
+    C5 -->|"Notable action<br/>exists"| C6["Check 6:<br/>Is throttle<br/>suppressing all?"]
+    
+    C6 -->|"Throttle too<br/>aggressive"| FIX6["FIX: Review throttle<br/>settings. Window too long?<br/>Key fields too broad?"]
+    C6 -->|"Throttle is fine"| C7["Check 7:<br/>Is there a suppression<br/>rule hiding them?"]
+    
+    C7 -->|"Suppression<br/>matches"| FIX7["FIX: Review/remove<br/>the suppression rule"]
+    C7 -->|"No suppression"| C8["Check 8:<br/>Permissions issue?<br/>Check app context."]
+    
+    style PROBLEM fill:#f85149,stroke:#da3633,color:#fff
+    style FIX1 fill:#238636,stroke:#2ea043,color:#fff
+    style FIX2 fill:#238636,stroke:#2ea043,color:#fff
+    style FIX3 fill:#238636,stroke:#2ea043,color:#fff
+    style FIX4A fill:#238636,stroke:#2ea043,color:#fff
+    style FIX4B fill:#238636,stroke:#2ea043,color:#fff
+    style FIX5 fill:#238636,stroke:#2ea043,color:#fff
+    style FIX6 fill:#238636,stroke:#2ea043,color:#fff
+    style FIX7 fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <h3>Diagnostic SPL Queries</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check 1 — Is the Search Enabled?</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| rest /services/saved/searches splunk_server=local
+| search title="YOUR_SEARCH_NAME"
+| table title, disabled, action.correlationsearch.enabled,
+    cron_schedule, next_scheduled_time, eai:acl.app
+| eval status = if(disabled=0, "✅ ENABLED", "❌ DISABLED")</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check 3 — Is the Search Running? (Scheduler Log)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=_internal sourcetype=scheduler savedsearch_name="YOUR_SEARCH_NAME"
+| stats latest(_time) AS last_run,
+    latest(status) AS last_status,
+    latest(run_time) AS last_runtime_sec
+| eval last_run_human = strftime(last_run, "%Y-%m-%d %H:%M:%S")
+| eval health = case(
+    isnull(last_run), "🔴 NEVER RAN — check scheduling",
+    last_status="skipped", "🔴 SKIPPED — concurrency issue",
+    last_status="success", "🟢 Running normally",
+    true(), "🟡 Check status: " . last_status
+)
+| table last_run_human, last_status, last_runtime_sec, health</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check 4 — Does the Search Return Results? (Run Manually)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Copy the exact SPL from the correlation search")`
+`comment("Paste it in the Splunk Search bar")`
+`comment("Set the time range to match the search's lookback window")`
+`comment("If zero results: data source or logic issue")`
+`comment("If results exist: notable action or throttle issue")`
+
+`comment("Quick data source check for a specific index/sourcetype:")`
+index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-1h
+| stats count
+| eval status = if(count > 0, "✅ Data exists", "❌ No data — check ingestion")</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check 5 — Is Notable Action Configured?</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| rest /services/saved/searches splunk_server=local
+| search title="YOUR_SEARCH_NAME"
+| table title, action.notable, action.notable.param.severity,
+    action.notable.param.security_domain
+| eval notable_configured = if(action.notable=1, "✅ Yes", "❌ No — add Notable action")</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check 6 — Is Throttle Blocking Everything?</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| rest /services/saved/searches splunk_server=local
+| search title="YOUR_SEARCH_NAME"
+| table title, alert.suppress, alert.suppress.period,
+    alert.suppress.fields
+| eval throttle_status = case(
+    alert.suppress=0, "No throttle configured",
+    alert.suppress.period="86400s", "⚠️ 24h throttle — very aggressive",
+    true(), "Throttle: " . alert.suppress.period . " on fields: " . alert.suppress.fields
+)</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check 7 — Is a Suppression Rule Hiding the Notables?</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`notable`
+| search search_name="YOUR_SEARCH_NAME"
+| stats count BY is_suppressed
+| eval note = if(is_suppressed=1, "⚠️ Notables exist but are SUPPRESSED", "Notables visible")</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FAILURE MODES -->
+                <!-- ============================================== -->
+                <h2>Failure Modes</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Failure Mode</th>
+                                <th>Symptom</th>
+                                <th>Root Cause</th>
+                                <th>Impact</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Both OOTB and clone enabled</strong></td>
+                                <td>Duplicate notables for every event (2x volume)</td>
+                                <td>Cloned search enabled without disabling the original</td>
+                                <td>SOC sees duplicates. Metrics are inflated. Concurrency wasted.</td>
+                                <td>Disable the OOTB original immediately. Only the clone should run.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Clone saved in wrong app context</strong></td>
+                                <td>Clone not visible in ES Content Management, or permissions errors</td>
+                                <td>Saved in <code>search</code> app instead of ES app</td>
+                                <td>Search may run but notable may not appear in Incident Review. May break on SHC replication.</td>
+                                <td>Recreate the clone in the correct app context (typically <code>SplunkEnterpriseSecuritySuite</code>).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>tstats search with no acceleration</strong></td>
+                                <td>Search returns zero results even though raw data exists</td>
+                                <td>Correlation search uses <code>| tstats</code> but the required data model is not accelerated</td>
+                                <td>Detection appears enabled but has zero coverage</td>
+                                <td>Check DM acceleration status. Accelerate the required data model. Wait for backfill to complete.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Field name mismatch after CIM update</strong></td>
+                                <td>Search stops matching events after ES or TA update</td>
+                                <td>CIM field names changed or TA field extractions updated</td>
+                                <td>Silent detection failure — search runs, finds nothing</td>
+                                <td>After any ES or TA update, verify all custom searches still produce results. Run manual test.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Enabled without lifecycle</strong></td>
+                                <td>New detection fires immediately to SOC with unknown FP rate</td>
+                                <td>Skipped backtest and monitoring stages</td>
+                                <td>SOC flooded with alerts they don't understand. Trust damaged.</td>
+                                <td>Disable immediately. Complete lifecycle stages. Re-enable only after monitoring period passes.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Severity misconfigured</strong></td>
+                                <td>Informational alerts set to Critical, overwhelming high-urgency queue</td>
+                                <td>Default severity not adjusted during enablement</td>
+                                <td>SOC priority is distorted. Analysts waste time on false-critical alerts.</td>
+                                <td>Review severity against your classification matrix. Adjust and communicate the change to SOC.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: VALIDATION SPL -->
+                <!-- ============================================== -->
+                <h2>Validation SPL & Expected Output</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Full Enablement Validation (Run After Enable)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Replace YOUR_SEARCH_NAME with the exact search title")`
+`comment("Run this 2 cron intervals after enabling")`
+
+| rest /services/saved/searches splunk_server=local
+| search title="YOUR_SEARCH_NAME"
+| eval enabled = if(disabled=0, "✅", "❌")
+| eval has_notable = if(action.notable=1, "✅", "❌")
+| eval severity = coalesce(action.notable.param.severity, "NOT SET ❌")
+| table title, enabled, has_notable, severity, cron_schedule
+| append [
+    search `notable`
+    | search search_name="YOUR_SEARCH_NAME"
+    | stats count AS notable_count, 
+        earliest(_time) AS first_notable,
+        latest(_time) AS last_notable
+    | eval first_notable = strftime(first_notable, "%Y-%m-%d %H:%M"),
+        last_notable = strftime(last_notable, "%Y-%m-%d %H:%M")
+]</code></pre>
+                </div>
+
+                <p><strong>Expected healthy output:</strong> <code>enabled=✅</code>, <code>has_notable=✅</code>, <code>severity</code> is set, <code>notable_count > 0</code>.</p>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK -->
+                <!-- ============================================== -->
+                <h2>Rollback Steps</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Scenario</th>
+                                <th>Steps</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Detection causing alert storm</strong></td>
+                                <td>1. Content Management → Find the search → Disable immediately. 2. Bulk-close storm notables with comment. 3. Notify SOC. 4. Root-cause the volume spike.</td>
+                                <td>< 5 min</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Clone needs to revert to OOTB</strong></td>
+                                <td>1. Disable the clone. 2. Re-enable the OOTB original (if needed). 3. Update registry. 4. Notify SOC of the change.</td>
+                                <td>< 10 min</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Accidentally enabled wrong search</strong></td>
+                                <td>1. Disable immediately. 2. Close any notables it generated with comment: "Enabled in error — disabling." 3. Enable the correct search.</td>
+                                <td>< 10 min</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Severity set too high</strong></td>
+                                <td>1. Edit the Notable action → Lower severity. 2. Existing notables keep old severity; new ones will use the corrected value. 3. Notify SOC of the change.</td>
+                                <td>< 5 min</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>Enabling a search triggers >50 notables in the first hour.</strong> Disable immediately. The threshold is wrong or data patterns weren't understood. Do NOT leave it running while you investigate.</li>
+                        <li><strong>Search concurrency is at limit and you need to enable another search.</strong> Do NOT enable — it will cause skips for existing searches. Escalate to Splunk admin for capacity review.</li>
+                        <li><strong>You can't determine what data source the search needs.</strong> Stop. Don't enable blindly. Trace the SPL to identify required indexes and sourcetypes. If the data doesn't exist, the detection will silently fail.</li>
+                        <li><strong>OOTB search references a deprecated field or data model.</strong> Do NOT enable. Check the Splunk ES release notes for migration guidance. Clone and update to current field names.</li>
+                        <li><strong>The search was enabled without lifecycle approval (backtest/monitoring skipped).</strong> Disable immediately. Return to the lifecycle process. No exceptions.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"Enable everything and see what happens"</strong></td>
+                                <td>Instant SOC flood. Hundreds of untested notables. Trust destroyed in one day. Searches competing for concurrency.</td>
+                                <td>Enable one detection at a time. Complete lifecycle for each. Monitor volume before enabling the next.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Edit the OOTB search directly"</strong></td>
+                                <td>Next ES content update will overwrite your changes silently. No version history. No rollback path.</td>
+                                <td>Always clone. Always prefix with <code>CUSTOM -</code>. Disable the original.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Enable on Friday afternoon"</strong></td>
+                                <td>If the detection has issues, the weekend SOC skeleton crew will bear the impact with minimal support.</td>
+                                <td>Enable Tuesday–Thursday, morning preferred. Monitor for at least 4-8 hours before end of day. Never before a change freeze.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Skip the notable action — we'll add it later"</strong></td>
+                                <td>Search runs, burns concurrency, but nobody sees results. When you finally add the notable action, you've wasted days of monitoring time.</td>
+                                <td>Configure the notable action BEFORE enabling the search. Always.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"It worked in my test — ship it"</strong></td>
+                                <td>Test environments have different data volumes, user populations, and timing patterns than production.</td>
+                                <td>Complete the full lifecycle: backtest on production data → monitoring-only → production enablement.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Enable one OOTB search (already tested)</strong></td>
+                                <td>10 minutes</td>
+                                <td>30 minutes (review + verify)</td>
+                                <td>1 hour (troubleshooting "no notables")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Clone + customize + enable</strong></td>
+                                <td>30 minutes</td>
+                                <td>1-2 hours</td>
+                                <td>Half day (complex SPL modifications)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Troubleshoot "no notables appear"</strong></td>
+                                <td>15 minutes (obvious issue)</td>
+                                <td>1 hour (multiple checks needed)</td>
+                                <td>2-4 hours (data source or DM issue)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Post-enablement monitoring (first 24h)</strong></td>
+                                <td>3 check-ins × 5 min</td>
+                                <td>Hourly checks for first 4 hours + next day review</td>
+                                <td>Continuous monitoring if volume is unexpected</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Emergency disable + cleanup</strong></td>
+                                <td>5 minutes</td>
+                                <td>15 minutes (disable + bulk close + notify)</td>
+                                <td>1 hour (cascading issues)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Pre-enablement validation</strong></td>
+                                <td>SPL output: search enabled, notable action configured, data source verified</td>
+                                <td>Change log / ticket</td>
+                                <td>Before enabling</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Post-enablement verification</strong></td>
+                                <td>SPL output: notables appearing, volume within expected range</td>
+                                <td>Change log / ticket</td>
+                                <td>2 cron intervals after enabling</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Clone documentation</strong></td>
+                                <td>Version header in SPL + registry entry</td>
+                                <td>Detection registry</td>
+                                <td>When cloning any OOTB search</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SOC notification</strong></td>
+                                <td>Pre-deployment notification (from <a href="../es-content-management/change-management.html">Change Management</a>)</td>
+                                <td>Communication channel / email</td>
+                                <td>Before enabling to production</td>
+                            </tr>
+                            <tr>
+                                <td><strong>24-hour volume check</strong></td>
+                                <td>SPL: notable count by search name for first 24 hours</td>
+                                <td>Change log</td>
+                                <td>24 hours after enablement</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="../es-content-management/correlation-lifecycle.html" class="next-steps-link">Correlation Search Lifecycle (full governance) →</a>
+                        <a href="incident-review.html" class="next-steps-link">← Incident Review & Triage (work the notables)</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

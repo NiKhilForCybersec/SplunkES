@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP Event Collector (HEC) | Splunk ES Detection Engineering</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+    </button>
+
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1><a href="../../index.html">Splunk ES</a></h1>
+            <span class="version">Detection Engineering</span>
+        </div>
+        <ul class="nav-tree">
+            <li><a href="../delivery-model/index.html">Delivery Model</a></li>
+            <li><a href="../planning/index.html">Planning & Scoping</a></li>
+            <li>
+                <span class="nav-section">Phase 1: Log Coverage</span>
+                <ul>
+                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
+                    <li><a href="../universal-onboarding/index.html">Universal Framework</a></li>
+                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
+                    <li>
+                        <span class="nav-section">Primary Paths</span>
+                        <ul>
+                            <li><a href="index.html">Overview</a></li>
+                            <li><a href="akamai-waf.html">Akamai WAF</a></li>
+                            <li><a href="authentication-mfa.html">Authentication & MFA</a></li>
+                            <li><a href="syslog-hf.html">Syslog via HF</a></li>
+                            <li><a href="endpoint-telemetry.html">Endpoint Telemetry</a></li>
+                            <li><a href="hec-ingestion.html" class="active">HEC Ingestion</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="../onboarding-alternate/index.html">Alternate Paths</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase2-data-quality/index.html">Phase 2: Data Quality</a></li>
+            <li><a href="../phase3-detection/index.html">Phase 3: Detection</a></li>
+            <li>
+                <span class="nav-section">Use Case Library</span>
+                <ul>
+                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS</a></li>
+                    <li><a href="../use-cases/mfa-auth.html">MFA & Authentication</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase4-automation/index.html">Phase 4: Automation</a></li>
+            <li><a href="../phase5-rba/index.html">Phase 5: RBA</a> <span class="badge badge-future">Future</span></li>
+            <li>
+                <span class="nav-section">Appendix</span>
+                <ul>
+                    <li><a href="../appendix/spl-library.html">SPL Library</a></li>
+                    <li><a href="../appendix/troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="../appendix/checklists.html">Checklists</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <nav class="breadcrumb">
+            <a href="../../index.html">Home</a>
+            <span class="separator">›</span>
+            <a href="../phase1-log-coverage/index.html">Phase 1</a>
+            <span class="separator">›</span>
+            <a href="index.html">Primary Paths</a>
+            <span class="separator">›</span>
+            <span class="current">HEC Ingestion</span>
+        </nav>
+
+        <header class="page-header">
+            <div class="phase-indicator phase-1">Phase 1: Log Coverage</div>
+            <h1>HTTP Event Collector (HEC)</h1>
+            <p class="page-subtitle">REST API-based log ingestion for cloud applications, custom integrations, and modern data sources</p>
+        </header>
+
+        <!-- ============================================== -->
+        <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <div class="callout callout-info">
+                <div class="callout-title">📋 Page Status: HARDENED</div>
+                <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                <p>This page includes token security guidance, volume management, and enterprise-scale considerations.</p>
+            </div>
+
+            <div class="callout callout-danger">
+                <div class="callout-title">🚨 CRITICAL: HEC Token Security</div>
+                <p><strong>HEC tokens are API keys that grant write access to Splunk.</strong> A compromised token can be used to inject malicious data or exhaust license. Follow these rules:</p>
+                <ul>
+                    <li><strong>NEVER commit tokens to source control</strong> (Git, etc.)</li>
+                    <li><strong>ALWAYS use secrets managers</strong> (AWS Secrets Manager, Azure Key Vault, HashiCorp Vault)</li>
+                    <li><strong>ALWAYS restrict tokens to specific indexes</strong> (never allow "all indexes")</li>
+                    <li><strong>ROTATE tokens quarterly</strong> and immediately after any suspected compromise</li>
+                </ul>
+            </div>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">⚠️ Splunk Cloud Token Management</div>
+                <p>In Splunk Cloud, HEC token creation requires coordination:</p>
+                <ul>
+                    <li><strong>Token creation:</strong> May require Splunk Cloud support ticket (depending on stack config)</li>
+                    <li><strong>Lead time:</strong> Allow 1-3 business days for new token requests</li>
+                    <li><strong>Index permissions:</strong> Tokens can only access indexes that exist in cloud</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Overview</h2>
+            <p>HTTP Event Collector (HEC) enables applications and services to send data directly to Splunk via HTTPS. It's the preferred method for cloud-native applications, serverless functions, containers, and any source that can make HTTP requests. HEC is native to Splunk Cloud and requires no additional infrastructure.</p>
+
+            <div class="callout callout-info">
+                <div class="callout-title">Architecture Pattern</div>
+                <p>Source Application → HTTPS POST → Splunk Cloud HEC Endpoint → Indexers. No forwarders required. Each HEC token controls index, sourcetype, and access permissions.</p>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Architecture</h2>
+            <div class="mermaid-wrapper">
+                <pre class="mermaid">
+flowchart LR
+    subgraph Sources["Data Sources"]
+        APP[Custom Apps]
+        LAMBDA[AWS Lambda]
+        AZ[Azure Functions]
+        K8S[Kubernetes]
+        IOT[IoT Devices]
+    end
+
+    subgraph HEC["Splunk Cloud HEC"]
+        EP["HEC Endpoint<br/>https://inputs.splunkcloud.com:443"]
+        TOK[Token Auth]
+    end
+
+    subgraph Cloud["Splunk Cloud"]
+        IDX[Indexers]
+        ES[Enterprise Security]
+    end
+
+    Sources -->|HTTPS POST| EP
+    EP --> TOK
+    TOK --> IDX
+    IDX --> ES
+
+    style EP fill:#238636,stroke:#2ea043
+    style TOK fill:#1f6feb,stroke:#388bfd
+                </pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Common HEC Use Cases</h2>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Source Type</th>
+                            <th>Example Sources</th>
+                            <th>Typical Sourcetype</th>
+                            <th>Index</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Cloud Platforms</td>
+                            <td>AWS CloudWatch, Azure Monitor, GCP Logging</td>
+                            <td>aws:cloudwatch:*, azure:monitor</td>
+                            <td>cloud</td>
+                        </tr>
+                        <tr>
+                            <td>Container Logs</td>
+                            <td>Docker, Kubernetes, ECS</td>
+                            <td>kube:container:*, docker</td>
+                            <td>containers</td>
+                        </tr>
+                        <tr>
+                            <td>Serverless</td>
+                            <td>Lambda, Azure Functions, Cloud Functions</td>
+                            <td>aws:lambda, azure:function</td>
+                            <td>serverless</td>
+                        </tr>
+                        <tr>
+                            <td>Custom Applications</td>
+                            <td>Internal apps, microservices</td>
+                            <td>app:&lt;appname&gt;</td>
+                            <td>application</td>
+                        </tr>
+                        <tr>
+                            <td>Security Products</td>
+                            <td>CASB, SaaS security, Cloud WAF</td>
+                            <td>Vendor-specific</td>
+                            <td>security</td>
+                        </tr>
+                        <tr>
+                            <td>CI/CD Pipelines</td>
+                            <td>Jenkins, GitHub Actions, GitLab</td>
+                            <td>cicd:&lt;tool&gt;</td>
+                            <td>devops</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Prerequisites</h2>
+
+            <div class="checklist">
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="hec-admin">
+                    <span>Splunk Cloud admin access to create HEC tokens</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="hec-indexes">
+                    <span>Target indexes created in Splunk Cloud</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="hec-network">
+                    <span>Source can reach Splunk Cloud HEC endpoint (HTTPS 443)</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="hec-sourcetype">
+                    <span>Sourcetype naming convention agreed</span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" data-key="hec-secret">
+                    <span>Secret management solution for token storage</span>
+                </label>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>HEC Token Configuration</h2>
+
+            <h3>Token Best Practices</h3>
+            <div class="callout callout-warning">
+                <div class="callout-title">One Token Per Source</div>
+                <p>Create dedicated HEC tokens per application/source. This enables granular access control, easier troubleshooting, and token rotation without affecting other sources.</p>
+            </div>
+
+            <h3>Token Settings</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Setting</th>
+                            <th>Recommendation</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Name</td>
+                            <td>Descriptive: <code>hec_&lt;app&gt;_&lt;env&gt;</code></td>
+                            <td>e.g., hec_webapp_prod</td>
+                        </tr>
+                        <tr>
+                            <td>Source Type</td>
+                            <td>Set default if source doesn't specify</td>
+                            <td>Can override per-event</td>
+                        </tr>
+                        <tr>
+                            <td>Index</td>
+                            <td>Restrict to allowed indexes</td>
+                            <td>Limit blast radius</td>
+                        </tr>
+                        <tr>
+                            <td>Acknowledgment</td>
+                            <td>Enable for critical sources</td>
+                            <td>Confirms delivery</td>
+                        </tr>
+                        <tr>
+                            <td>Allow Query String Auth</td>
+                            <td>Disable unless required</td>
+                            <td>Token in URL is less secure</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Create Token via UI</h3>
+            <ol>
+                <li>Settings → Data Inputs → HTTP Event Collector</li>
+                <li>Click "New Token"</li>
+                <li>Configure name, sourcetype, and allowed indexes</li>
+                <li>Copy token value immediately (shown only once)</li>
+                <li>Store token in secrets manager</li>
+            </ol>
+        </section>
+
+        <section class="content-section">
+            <h2>Sending Data to HEC</h2>
+
+            <h3>HEC Endpoint Format</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Endpoint URL</span>
+                    <button class="copy-btn" data-copy="hec-endpoint">Copy</button>
+                </div>
+                <pre><code id="hec-endpoint"># Splunk Cloud HEC Endpoint
+https://inputs.&lt;your-stack&gt;.splunkcloud.com:443/services/collector/event
+
+# With indexer acknowledgment
+https://inputs.&lt;your-stack&gt;.splunkcloud.com:443/services/collector/event?channel=&lt;channel-guid&gt;
+
+# Raw endpoint (unstructured data)
+https://inputs.&lt;your-stack&gt;.splunkcloud.com:443/services/collector/raw</code></pre>
+            </div>
+
+            <h3>cURL Example - Single Event</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">bash</span>
+                    <button class="copy-btn" data-copy="hec-curl-single">Copy</button>
+                </div>
+                <pre><code id="hec-curl-single">curl -k https://inputs.your-stack.splunkcloud.com:443/services/collector/event \
+  -H "Authorization: Splunk YOUR-HEC-TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": {
+      "message": "User login successful",
+      "user": "jsmith",
+      "src_ip": "10.0.1.50",
+      "action": "login"
+    },
+    "sourcetype": "app:auth",
+    "index": "application",
+    "host": "webapp01",
+    "time": 1709251200
+  }'</code></pre>
+            </div>
+
+            <h3>cURL Example - Batch Events</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">bash</span>
+                    <button class="copy-btn" data-copy="hec-curl-batch">Copy</button>
+                </div>
+                <pre><code id="hec-curl-batch"># Multiple events in single request (no array, just concatenated JSON objects)
+curl -k https://inputs.your-stack.splunkcloud.com:443/services/collector/event \
+  -H "Authorization: Splunk YOUR-HEC-TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"event": {"action": "login", "user": "alice"}, "sourcetype": "app:auth"}
+{"event": {"action": "logout", "user": "bob"}, "sourcetype": "app:auth"}
+{"event": {"action": "failed_login", "user": "charlie"}, "sourcetype": "app:auth"}'</code></pre>
+            </div>
+
+            <h3>Python Example</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">python</span>
+                    <button class="copy-btn" data-copy="hec-python">Copy</button>
+                </div>
+                <pre><code id="hec-python">import requests
+import json
+import time
+
+HEC_URL = "https://inputs.your-stack.splunkcloud.com:443/services/collector/event"
+HEC_TOKEN = "YOUR-HEC-TOKEN"  # Store in secrets manager!
+
+def send_to_splunk(event_data, sourcetype="app:custom", index="application"):
+    """Send event to Splunk HEC"""
+    headers = {
+        "Authorization": f"Splunk {HEC_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "event": event_data,
+        "sourcetype": sourcetype,
+        "index": index,
+        "time": time.time()
+    }
+    
+    response = requests.post(
+        HEC_URL,
+        headers=headers,
+        data=json.dumps(payload),
+        verify=True  # Enable SSL verification in production
+    )
+    
+    if response.status_code != 200:
+        raise Exception(f"HEC Error: {response.status_code} - {response.text}")
+    
+    return response.json()
+
+# Usage
+event = {
+    "action": "file_download",
+    "user": "jsmith",
+    "filename": "sensitive_report.pdf",
+    "src_ip": "10.0.1.50"
+}
+
+send_to_splunk(event, sourcetype="app:fileaccess", index="application")</code></pre>
+            </div>
+
+            <h3>AWS Lambda Example</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">python</span>
+                    <button class="copy-btn" data-copy="hec-lambda">Copy</button>
+                </div>
+                <pre><code id="hec-lambda">import json
+import urllib3
+import os
+
+# Get token from environment variable (set via Secrets Manager)
+HEC_TOKEN = os.environ['SPLUNK_HEC_TOKEN']
+HEC_URL = os.environ['SPLUNK_HEC_URL']
+
+http = urllib3.PoolManager()
+
+def lambda_handler(event, context):
+    """Forward CloudWatch Logs to Splunk"""
+    
+    # Decode CloudWatch Logs event
+    import base64
+    import gzip
+    
+    payload = base64.b64decode(event['awslogs']['data'])
+    log_data = json.loads(gzip.decompress(payload))
+    
+    # Build HEC events
+    hec_events = []
+    for log_event in log_data['logEvents']:
+        hec_event = {
+            "event": log_event['message'],
+            "sourcetype": "aws:cloudwatch:logs",
+            "index": "aws",
+            "source": log_data['logGroup'],
+            "host": log_data['logStream'],
+            "time": log_event['timestamp'] / 1000  # Convert ms to seconds
+        }
+        hec_events.append(json.dumps(hec_event))
+    
+    # Send to HEC
+    response = http.request(
+        'POST',
+        HEC_URL,
+        body='\n'.join(hec_events),
+        headers={
+            'Authorization': f'Splunk {HEC_TOKEN}',
+            'Content-Type': 'application/json'
+        }
+    )
+    
+    return {
+        'statusCode': response.status,
+        'body': response.data.decode('utf-8')
+    }</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>HEC Event Format</h2>
+
+            <h3>Event Fields Reference</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Required</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>event</code></td>
+                            <td>Yes</td>
+                            <td>Event data (string or JSON object)</td>
+                        </tr>
+                        <tr>
+                            <td><code>time</code></td>
+                            <td>No</td>
+                            <td>Epoch timestamp (defaults to receipt time)</td>
+                        </tr>
+                        <tr>
+                            <td><code>host</code></td>
+                            <td>No</td>
+                            <td>Hostname (defaults to sending IP)</td>
+                        </tr>
+                        <tr>
+                            <td><code>source</code></td>
+                            <td>No</td>
+                            <td>Source identifier</td>
+                        </tr>
+                        <tr>
+                            <td><code>sourcetype</code></td>
+                            <td>No</td>
+                            <td>Sourcetype (defaults to token setting)</td>
+                        </tr>
+                        <tr>
+                            <td><code>index</code></td>
+                            <td>No</td>
+                            <td>Target index (must be allowed by token)</td>
+                        </tr>
+                        <tr>
+                            <td><code>fields</code></td>
+                            <td>No</td>
+                            <td>Custom indexed fields (key-value pairs)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Structured vs Unstructured Events</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">JSON - Structured (Recommended)</span>
+                    <button class="copy-btn" data-copy="hec-structured">Copy</button>
+                </div>
+                <pre><code id="hec-structured">{
+  "event": {
+    "action": "login",
+    "user": "jsmith",
+    "src_ip": "10.0.1.50",
+    "result": "success"
+  },
+  "sourcetype": "app:auth",
+  "index": "application"
+}</code></pre>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">JSON - Unstructured (Raw String)</span>
+                    <button class="copy-btn" data-copy="hec-unstructured">Copy</button>
+                </div>
+                <pre><code id="hec-unstructured">{
+  "event": "2024-02-29 10:30:00 INFO [webapp] User jsmith logged in from 10.0.1.50",
+  "sourcetype": "app:log",
+  "index": "application"
+}</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Validation</h2>
+
+            <h3>Test HEC Connectivity</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">bash</span>
+                    <button class="copy-btn" data-copy="hec-test">Copy</button>
+                </div>
+                <pre><code id="hec-test"># Test HEC endpoint health
+curl -k https://inputs.your-stack.splunkcloud.com:443/services/collector/health
+
+# Test token authentication (should return {"text":"Success","code":0})
+curl -k https://inputs.your-stack.splunkcloud.com:443/services/collector/event \
+  -H "Authorization: Splunk YOUR-HEC-TOKEN" \
+  -d '{"event": "test"}'</code></pre>
+            </div>
+
+            <h3>Validation SPL</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">SPL</span>
+                    <button class="copy-btn" data-copy="hec-validate-spl">Copy</button>
+                </div>
+                <pre><code id="hec-validate-spl">| HEC Data Arrival Check
+index=* sourcetype=app:* OR sourcetype=aws:* OR sourcetype=azure:*
+| stats count by index, sourcetype, source
+| sort - count
+
+| HEC Token Usage (internal logs)
+index=_internal sourcetype=splunkd component=HttpInputDataHandler
+| stats count by token_name, status
+| sort - count
+
+| Event Latency Check
+index=application sourcetype=app:*
+| eval latency = _indextime - _time
+| stats avg(latency) as avg_latency_sec, max(latency) as max_latency_sec by sourcetype
+| where avg_latency_sec > 60
+
+| HEC Errors
+index=_internal sourcetype=splunkd component=HttpInputDataHandler status!=200
+| stats count by token_name, status, message
+| sort - count</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Troubleshooting</h2>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">HTTP 401 - Unauthorized</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Verify token value is correct (no trailing spaces)</li>
+                        <li>Check Authorization header format: <code>Splunk &lt;token&gt;</code></li>
+                        <li>Ensure token is enabled in Splunk Cloud</li>
+                        <li>Verify token hasn't been rotated</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">HTTP 400 - Bad Request</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Validate JSON syntax (use <code>jq .</code> to check)</li>
+                        <li>Ensure <code>event</code> field is present</li>
+                        <li>Check for invalid characters in event data</li>
+                        <li>Verify Content-Type header is <code>application/json</code></li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">HTTP 403 - Index not allowed</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Verify token has access to target index</li>
+                        <li>Check token's "Allowed Indexes" setting</li>
+                        <li>Ensure index exists in Splunk Cloud</li>
+                        <li>Remove index field to use token's default</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">Data arriving but not searchable</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Check index - search with <code>index=*</code> first</li>
+                        <li>Verify sourcetype assignment</li>
+                        <li>Check timestamp extraction (future dates won't appear)</li>
+                        <li>Look for parsing errors in <code>_internal</code></li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <button class="collapsible-trigger">High latency or dropped events</button>
+                <div class="collapsible-content">
+                    <ol>
+                        <li>Implement batching (multiple events per request)</li>
+                        <li>Enable HTTP keep-alive connections</li>
+                        <li>Check for network issues between source and Splunk Cloud</li>
+                        <li>Consider enabling indexer acknowledgment for reliability</li>
+                        <li>Monitor HEC queue size in Splunk Cloud</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Security Considerations</h2>
+
+            <div class="callout callout-danger">
+                <div class="callout-title">Token Security</div>
+                <p>HEC tokens are API keys. Treat them as secrets: never commit to source control, rotate periodically, and store in secrets managers (AWS Secrets Manager, Azure Key Vault, HashiCorp Vault).</p>
+            </div>
+
+            <h3>Security Best Practices</h3>
+            <ul>
+                <li><strong>Token Rotation:</strong> Rotate tokens quarterly or after any suspected compromise</li>
+                <li><strong>Least Privilege:</strong> Restrict tokens to specific indexes</li>
+                <li><strong>Network Security:</strong> Use IP allowlisting where possible</li>
+                <li><strong>Monitoring:</strong> Alert on unusual HEC activity patterns</li>
+                <li><strong>Disable Unused:</strong> Disable or delete tokens no longer in use</li>
+            </ul>
+        </section>
+
+        <section class="content-section">
+            <h2>Acceptance Criteria</h2>
+
+            <div class="acceptance-criteria">
+                <h3>Phase 1 Gate Requirements</h3>
+                <div class="checklist">
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="hec-accept-flow">
+                        <span>Data flowing from all configured HEC sources</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="hec-accept-tokens">
+                        <span>Dedicated tokens created per source/application</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="hec-accept-index">
+                        <span>Correct index and sourcetype assignment</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="hec-accept-timestamp">
+                        <span>Timestamps extracted correctly</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="hec-accept-secret">
+                        <span>Tokens stored in secrets manager (not hardcoded)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-key="hec-accept-error">
+                        <span>Error handling implemented in sending applications</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- SECTION: ROLLBACK & SAFETY -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <h2>Rollback & Safety</h2>
+
+            <h3>Emergency: Disable HEC Token</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Emergency Procedure</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: HEC token compromised, causing volume spike, or source misbehaving
+
+OPTION 1: Disable Token (Immediate - Preferred)
+───────────────────────────────────────────────
+Splunk Cloud:
+1. Settings → Data Inputs → HTTP Event Collector
+2. Find token by name
+3. Click token → Edit → Enabled = No → Save
+4. Effect: Immediate (source receives 403 Forbidden)
+
+On-Prem Splunk:
+1. Settings → Data Inputs → HTTP Event Collector
+2. Disable token
+3. Alternatively: Edit inputs.conf [http://token_name] disabled = 1
+
+OPTION 2: Rotate Token (If Compromise Suspected)
+────────────────────────────────────────────────
+1. Create NEW token with same settings
+2. Update source application with new token
+3. Verify data flowing with new token
+4. DELETE old token (not just disable)
+
+OPTION 3: Block Source IP (If Known Attacker)
+─────────────────────────────────────────────
+Configure IP allowlist on HEC token:
+1. Edit token → Allowed Hosts
+2. Remove offending IP or restrict to known-good IPs
+
+COMMUNICATION:
+- If legitimate source disabled, notify application owner
+- If compromise suspected, notify Security team
+- Document incident for post-mortem</code></pre>
+            </div>
+
+            <h3>Token Rotation Procedure (Zero Downtime)</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Safe Token Rotation</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCHEDULED TOKEN ROTATION (Quarterly Best Practice)
+
+STEP 1: Create New Token
+────────────────────────
+1. Settings → Data Inputs → HTTP Event Collector → New Token
+2. Use same settings as existing token (index, sourcetype, etc.)
+3. Name: [original_name]_v2 (or append date)
+4. Save and note new token value
+
+STEP 2: Update Source Application
+─────────────────────────────────
+1. Update secrets manager with new token
+2. Deploy configuration change to application
+3. Application restarts with new token
+
+STEP 3: Verify New Token Working
+────────────────────────────────
+index=_internal sourcetype=splunkd component=HttpInputDataHandler
+| search token_name="*v2*" status=200
+| stats count
+`comment("Should show events arriving via new token")`
+
+STEP 4: Monitor Parallel Operation
+──────────────────────────────────
+Run both tokens for 24-48 hours to ensure all instances updated
+
+STEP 5: Disable Old Token
+─────────────────────────
+1. Verify NO traffic on old token:
+   index=_internal component=HttpInputDataHandler token_name="old_token" earliest=-24h | stats count
+2. If count = 0, disable old token
+3. Delete old token after 7 days (grace period)
+
+ROLLBACK: If issues with new token, re-enable old token immediately</code></pre>
+            </div>
+
+            <h3>HEC Volume Spike Response</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">Emergency: Unexpected Volume</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: HEC source suddenly sending 10x+ normal volume
+
+STEP 1: Identify Source
+───────────────────────
+index=_internal sourcetype=splunkd component=HttpInputDataHandler
+| stats count by token_name, source_ip
+| sort - count
+| head 10
+
+STEP 2: Assess Impact
+─────────────────────
+# Check license impact
+index=_internal source=*license_usage.log type=RolloverSummary
+| stats sum(b) AS bytes by pool
+| eval GB = round(bytes/1024/1024/1024, 2)
+
+STEP 3: Decide Action
+─────────────────────
+IF LEGITIMATE (new feature, business event):
+- Coordinate with source team
+- May need license increase
+- Consider filtering low-value events
+
+IF ILLEGITIMATE (bug, loop, attack):
+- Disable token immediately
+- Contact source owner
+- Do not re-enable until root cause fixed
+
+IF UNSURE:
+- Disable token (err on side of caution)
+- Investigate before re-enabling</code></pre>
+            </div>
+
+            <h3>HEC Health Monitoring Query</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-lang">SPL: Monitor HEC Token Health</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>`comment("Create dashboard or scheduled alert for HEC monitoring")`
+
+`comment("Token Usage Summary")`
+index=_internal sourcetype=splunkd component=HttpInputDataHandler earliest=-24h
+| stats count, dc(source_ip) AS unique_sources, 
+        sum(eval(if(status=200, 1, 0))) AS success,
+        sum(eval(if(status!=200, 1, 0))) AS errors
+        BY token_name
+| eval success_rate = round(success / count * 100, 1)."%"
+| eval status = if(success_rate < 95, "⚠️ Check Errors", "✓ Healthy")
+| table token_name, count, unique_sources, success_rate, errors, status
+
+`comment("Alert on Error Spike")`
+index=_internal sourcetype=splunkd component=HttpInputDataHandler status!=200 earliest=-1h
+| stats count BY token_name, status, message
+| where count > 100
+| eval alert = "🔴 HIGH ERROR RATE on HEC token"</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section next-steps">
+            <h2>Next Steps</h2>
+            <div class="next-steps-grid">
+                <a href="../onboarding-alternate/index.html" class="next-step-card">
+                    <span class="next-step-label">More Options</span>
+                    <span class="next-step-title">Alternate Paths →</span>
+                </a>
+                <a href="../phase2-data-quality/index.html" class="next-step-card">
+                    <span class="next-step-label">After Log Coverage</span>
+                    <span class="next-step-title">Phase 2: Data Quality →</span>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

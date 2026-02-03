@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DB Connect Integration | Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>Splunk ES</h1>
+            <span class="version">Detection Engineering</span>
+        </div>
+        <ul class="nav-tree">
+            <li><a href="../../index.html"><span class="nav-icon">◈</span> Home</a></li>
+            <li><a href="../delivery-model/index.html"><span class="nav-icon">◆</span> Delivery Model</a></li>
+            <li><a href="../planning/index.html"><span class="nav-icon">◇</span> Planning & Scoping</a></li>
+            <li class="nav-section">
+                <span class="section-title">Phase 1: Log Coverage</span>
+                <ul>
+                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
+                    <li><a href="../universal-onboarding/index.html">Universal Onboarding</a></li>
+                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
+                </ul>
+            </li>
+            <li class="nav-section">
+                <span class="section-title">Onboarding - Primary</span>
+                <ul>
+                    <li><a href="../onboarding-primary/index.html">Overview</a></li>
+                    <li><a href="../onboarding-primary/akamai-waf.html">Akamai WAF</a></li>
+                    <li><a href="../onboarding-primary/authentication-mfa.html">Authentication/MFA</a></li>
+                    <li><a href="../onboarding-primary/syslog-hf.html">Syslog via HF</a></li>
+                    <li><a href="../onboarding-primary/endpoint-telemetry.html">Endpoint Telemetry</a></li>
+                    <li><a href="../onboarding-primary/hec-ingestion.html">HEC Ingestion</a></li>
+                </ul>
+            </li>
+            <li class="nav-section">
+                <span class="section-title">Onboarding - Alternate</span>
+                <ul>
+                    <li><a href="index.html">Overview</a></li>
+                    <li><a href="azure-event-hubs.html">Azure Event Hubs</a></li>
+                    <li><a href="kafka-connect.html">Kafka Connect</a></li>
+                    <li><a href="db-connect.html" class="active">DB Connect</a></li>
+                    <li><a href="scripted-inputs.html">Scripted Inputs</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase2-data-quality/index.html"><span class="nav-icon">◆</span> Phase 2: Data Quality</a></li>
+            <li><a href="../phase3-detection/index.html"><span class="nav-icon">◇</span> Phase 3: Detection</a></li>
+            <li class="nav-section">
+                <span class="section-title">Use Cases</span>
+                <ul>
+                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS Detection</a></li>
+                    <li><a href="../use-cases/mfa-auth.html">MFA Authentication</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase4-automation/index.html"><span class="nav-icon">◈</span> Phase 4: Automation</a></li>
+            <li><a href="../phase5-rba/index.html"><span class="nav-icon">◇</span> Phase 5: RBA <span class="badge future">Future</span></a></li>
+            <li class="nav-section">
+                <span class="section-title">Appendix</span>
+                <ul>
+                    <li><a href="../appendix/index.html">Reference Index</a></li>
+                    <li><a href="../appendix/spl-library.html">SPL Library</a></li>
+                    <li><a href="../appendix/troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="../appendix/checklists.html">Checklists</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <nav class="breadcrumb">
+            <a href="../../index.html">Home</a>
+            <span class="separator">›</span>
+            <a href="index.html">Onboarding - Alternate</a>
+            <span class="separator">›</span>
+            <span class="current">DB Connect</span>
+        </nav>
+
+        <header class="page-header">
+            <div class="phase-indicator">Phase 1 · Alternate Path</div>
+            <h1>DB Connect Integration</h1>
+            <p class="subtitle">Query databases directly for audit logs, application data, and configuration tables using Splunk DB Connect</p>
+        </header>
+
+        <!-- ============================================== -->
+        <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <div class="callout callout-info">
+                <div class="callout-title">📋 Page Status: HARDENED</div>
+                <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                <p>This page includes database-specific operational guidance, security requirements, and rollback procedures.</p>
+            </div>
+
+            <div class="callout callout-danger">
+                <div class="callout-title">🚨 CRITICAL: DB Connect Can Impact Production Databases</div>
+                <p><strong>Poorly tuned queries can degrade database performance.</strong> Before implementing:</p>
+                <ul>
+                    <li><strong>DBA approval REQUIRED:</strong> Get written approval from DBA team for all queries</li>
+                    <li><strong>Read-only accounts ONLY:</strong> Never use accounts with write permissions</li>
+                    <li><strong>Query optimization:</strong> All queries must have execution plans reviewed by DBA</li>
+                    <li><strong>Connection limits:</strong> Respect database connection pool limits</li>
+                </ul>
+            </div>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">⚠️ Database Credential Security</div>
+                <p>DB Connect credentials are high-value targets:</p>
+                <ul>
+                    <li><strong>No shared accounts:</strong> Create dedicated service accounts per database</li>
+                    <li><strong>Password rotation:</strong> Implement 90-day rotation with Splunk credential update</li>
+                    <li><strong>Audit access:</strong> Ensure database audit logs capture Splunk service account activity</li>
+                    <li><strong>Network segmentation:</strong> Heavy Forwarder must be in appropriate network zone for database access</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Architecture Overview -->
+        <section class="content-section">
+            <h2>Architecture Overview</h2>
+            <p>Splunk DB Connect enables direct JDBC connections to relational databases, allowing you to ingest audit logs, application events, and security-relevant data that doesn't support syslog or API export. This is ideal for legacy applications, database audit trails, and application-specific security events stored in RDBMS.</p>
+
+            <div class="mermaid-container">
+                <div class="mermaid">
+flowchart LR
+    subgraph Sources["Database Sources"]
+        direction TB
+        MSSQL["SQL Server<br/>Audit Logs"]
+        ORA["Oracle<br/>Unified Audit"]
+        MySQL["MySQL<br/>General Log"]
+        PG["PostgreSQL<br/>pg_audit"]
+        APP["Application<br/>Event Tables"]
+    end
+    
+    subgraph DBC["DB Connect Layer"]
+        direction TB
+        HF["Heavy Forwarder<br/>+ DB Connect 3.x"]
+        JDBC["JDBC Drivers"]
+        CP["Connection Pool"]
+    end
+    
+    subgraph Splunk["Splunk Infrastructure"]
+        direction TB
+        IDX["Indexer Cluster"]
+        SH["Search Head<br/>+ ES"]
+    end
+    
+    MSSQL --> HF
+    ORA --> HF
+    MySQL --> HF
+    PG --> HF
+    APP --> HF
+    
+    HF --> JDBC --> CP
+    CP --> IDX --> SH
+    
+    style Sources fill:#336791,color:#fff
+    style DBC fill:#f5a623,color:#000
+    style Splunk fill:#65a637,color:#fff
+                </div>
+            </div>
+
+            <div class="callout info">
+                <div class="callout-title">When to Use DB Connect</div>
+                <p>DB Connect is best for: database-native audit logs (SQL Server Audit, Oracle Unified Audit), legacy applications without API/syslog export, enrichment lookup tables, and compliance data stored in RDBMS. For high-volume transaction logs, consider database replication to a dedicated logging database first.</p>
+            </div>
+        </section>
+
+        <!-- Prerequisites -->
+        <section class="content-section">
+            <h2>Prerequisites</h2>
+            
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Requirement</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Splunk DB Connect</strong></td>
+                            <td>Version 3.x (current: 3.16+)</td>
+                            <td>Install on Heavy Forwarder</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Java Runtime</strong></td>
+                            <td>OpenJDK 11 or Oracle JDK 11</td>
+                            <td>64-bit required; set JAVA_HOME</td>
+                        </tr>
+                        <tr>
+                            <td><strong>JDBC Drivers</strong></td>
+                            <td>Database-specific drivers</td>
+                            <td>Place in $SPLUNK_HOME/etc/apps/splunk_app_db_connect/drivers/</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Heavy Forwarder</strong></td>
+                            <td>8+ GB RAM, 4+ CPU cores</td>
+                            <td>Java heap requires additional memory</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Database Account</strong></td>
+                            <td>Read-only service account</td>
+                            <td>Minimum privileges: SELECT on audit tables</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Network</strong></td>
+                            <td>TCP access to database ports</td>
+                            <td>1433 (MSSQL), 1521 (Oracle), 3306 (MySQL), 5432 (PostgreSQL)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Supported Databases -->
+        <section class="content-section">
+            <h2>Supported Database Platforms</h2>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Database</th>
+                            <th>JDBC Driver</th>
+                            <th>Security Use Cases</th>
+                            <th>Connection String Format</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>SQL Server</strong></td>
+                            <td>mssql-jdbc-12.x.jar</td>
+                            <td>SQL Server Audit, login events, permission changes</td>
+                            <td><code>jdbc:sqlserver://host:1433;databaseName=audit</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Oracle</strong></td>
+                            <td>ojdbc11.jar</td>
+                            <td>Unified Audit trail, Fine-Grained Audit</td>
+                            <td><code>jdbc:oracle:thin:@//host:1521/service</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>MySQL/MariaDB</strong></td>
+                            <td>mysql-connector-j-8.x.jar</td>
+                            <td>General log, slow query log, audit plugin</td>
+                            <td><code>jdbc:mysql://host:3306/audit?useSSL=true</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>PostgreSQL</strong></td>
+                            <td>postgresql-42.x.jar</td>
+                            <td>pg_audit extension, connection logs</td>
+                            <td><code>jdbc:postgresql://host:5432/audit?ssl=true</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>IBM DB2</strong></td>
+                            <td>jcc-11.x.jar</td>
+                            <td>DB2 audit facility, authorization events</td>
+                            <td><code>jdbc:db2://host:50000/audit</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Step 1: Install and Configure DB Connect -->
+        <section class="content-section">
+            <h2>Step 1: Install DB Connect</h2>
+
+            <h3>Install Java Runtime</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Linux (RHEL/CentOS)</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Install OpenJDK 11
+sudo yum install java-11-openjdk java-11-openjdk-devel -y
+
+# Set JAVA_HOME
+echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk' >> /opt/splunk/.bashrc
+echo 'export PATH=$JAVA_HOME/bin:$PATH' >> /opt/splunk/.bashrc
+
+# Verify installation
+java -version</code></pre>
+            </div>
+
+            <h3>Install DB Connect App</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>CLI Installation</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Download from Splunkbase or use CLI
+/opt/splunk/bin/splunk install app splunk-db-connect_3xx.tgz -auth admin:password
+
+# Restart Splunk
+/opt/splunk/bin/splunk restart</code></pre>
+            </div>
+
+            <h3>Configure Java Settings</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>$SPLUNK_HOME/etc/apps/splunk_app_db_connect/local/db_connect_settings.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>[db_connect_settings]
+# Java home path
+javaHome = /usr/lib/jvm/java-11-openjdk
+
+# JVM heap settings (adjust based on workload)
+jvmOptions = -Xms512m -Xmx2048m -XX:+UseG1GC
+
+# Task server settings
+taskServerPort = 9998
+
+# Connection validation query interval (seconds)
+connectionValidationInterval = 300</code></pre>
+            </div>
+        </section>
+
+        <!-- Step 2: Add JDBC Drivers -->
+        <section class="content-section">
+            <h2>Step 2: Install JDBC Drivers</h2>
+
+            <div class="callout warning">
+                <div class="callout-title">License Compliance</div>
+                <p>Ensure you have appropriate licenses for commercial JDBC drivers (Oracle, DB2). Open-source drivers (PostgreSQL, MySQL Connector/J) are freely distributable.</p>
+            </div>
+
+            <h3>Driver Installation</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Driver Installation</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Create drivers directory if not exists
+mkdir -p /opt/splunk/etc/apps/splunk_app_db_connect/drivers
+
+# Copy JDBC drivers
+cp mssql-jdbc-12.4.2.jre11.jar /opt/splunk/etc/apps/splunk_app_db_connect/drivers/
+cp postgresql-42.6.0.jar /opt/splunk/etc/apps/splunk_app_db_connect/drivers/
+cp mysql-connector-j-8.1.0.jar /opt/splunk/etc/apps/splunk_app_db_connect/drivers/
+
+# Set ownership
+chown -R splunk:splunk /opt/splunk/etc/apps/splunk_app_db_connect/drivers/
+
+# Restart Splunk to load drivers
+/opt/splunk/bin/splunk restart</code></pre>
+            </div>
+
+            <h3>Driver Configuration</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>$SPLUNK_HOME/etc/apps/splunk_app_db_connect/local/db_connection_types.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># SQL Server configuration
+[mssql]
+displayName = Microsoft SQL Server
+serviceClass = com.splunk.dbx2.MssqlJdbc
+jdbcDriverClass = com.microsoft.sqlserver.jdbc.SQLServerDriver
+defaultPort = 1433
+jdbcUrlFormat = jdbc:sqlserver://<host>:<port>;databaseName=<database>
+jdbcUrlSSLFormat = jdbc:sqlserver://<host>:<port>;databaseName=<database>;encrypt=true;trustServerCertificate=false
+
+# PostgreSQL configuration
+[postgresql]
+displayName = PostgreSQL
+serviceClass = com.splunk.dbx2.DefaultConnection
+jdbcDriverClass = org.postgresql.Driver
+defaultPort = 5432
+jdbcUrlFormat = jdbc:postgresql://<host>:<port>/<database>
+jdbcUrlSSLFormat = jdbc:postgresql://<host>:<port>/<database>?ssl=true&sslmode=verify-full
+
+# MySQL configuration
+[mysql]
+displayName = MySQL
+serviceClass = com.splunk.dbx2.DefaultConnection
+jdbcDriverClass = com.mysql.cj.jdbc.Driver
+defaultPort = 3306
+jdbcUrlFormat = jdbc:mysql://<host>:<port>/<database>
+jdbcUrlSSLFormat = jdbc:mysql://<host>:<port>/<database>?useSSL=true&requireSSL=true</code></pre>
+            </div>
+        </section>
+
+        <!-- Step 3: Create Database Identities -->
+        <section class="content-section">
+            <h2>Step 3: Configure Database Identities</h2>
+
+            <p>Database identities store credentials securely in Splunk's credential manager. Create separate identities for each database or environment.</p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span>$SPLUNK_HOME/etc/apps/splunk_app_db_connect/local/db_identities.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># SQL Server audit identity
+[sqlserver_audit_prod]
+username = splunk_audit_reader
+
+# PostgreSQL identity
+[postgres_audit_prod]
+username = splunk_audit_reader
+
+# MySQL identity
+[mysql_audit_prod]
+username = splunk_audit_reader</code></pre>
+            </div>
+
+            <div class="callout info">
+                <div class="callout-title">Credential Storage</div>
+                <p>Passwords are stored via the Splunk UI or REST API and encrypted in passwords.conf. Never store plaintext passwords in configuration files.</p>
+            </div>
+
+            <h3>Set Password via REST API</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Store Credential via REST</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>curl -k -u admin:password \
+  https://localhost:8089/servicesNS/nobody/splunk_app_db_connect/storage/passwords \
+  -d name=sqlserver_audit_prod \
+  -d password='YourSecurePassword123!'</code></pre>
+            </div>
+        </section>
+
+        <!-- Step 4: Create Database Connections -->
+        <section class="content-section">
+            <h2>Step 4: Create Database Connections</h2>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span>$SPLUNK_HOME/etc/apps/splunk_app_db_connect/local/db_connections.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># SQL Server Audit Database Connection
+[sqlserver_audit]
+connection_type = mssql
+host = sqlaudit-prod.internal.corp
+port = 1433
+database = AuditDB
+identity = sqlserver_audit_prod
+readonly = true
+fetch_size = 1000
+max_rows = 0
+timezone = UTC
+enable_ssl = true
+
+# PostgreSQL Audit Connection
+[postgres_audit]
+connection_type = postgresql
+host = pgaudit-prod.internal.corp
+port = 5432
+database = auditlog
+identity = postgres_audit_prod
+readonly = true
+fetch_size = 1000
+max_rows = 0
+timezone = UTC
+enable_ssl = true
+
+# MySQL Application Audit Connection
+[mysql_app_audit]
+connection_type = mysql
+host = mysql-prod.internal.corp
+port = 3306
+database = app_audit
+identity = mysql_audit_prod
+readonly = true
+fetch_size = 1000
+timezone = UTC
+enable_ssl = true</code></pre>
+            </div>
+
+            <h3>Test Connection</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Connection Test via REST API</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>curl -k -u admin:password \
+  https://localhost:8089/servicesNS/nobody/splunk_app_db_connect/db_connect/connections/sqlserver_audit/test_connection \
+  -X POST</code></pre>
+            </div>
+        </section>
+
+        <!-- Step 5: Create Database Inputs -->
+        <section class="content-section">
+            <h2>Step 5: Configure Database Inputs</h2>
+
+            <p>Database inputs define the SQL queries and scheduling for data collection. Use rising column or tail mode for incremental collection to avoid duplicate data.</p>
+
+            <h3>SQL Server Audit Log Input</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>$SPLUNK_HOME/etc/apps/splunk_app_db_connect/local/db_inputs.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># SQL Server Audit Events - Rising Column Mode
+[sqlserver_audit_events]
+connection = sqlserver_audit
+index = db_audit
+sourcetype = mssql:audit
+interval = 60
+mode = rising
+query = SELECT \
+    event_time, \
+    action_id, \
+    succeeded, \
+    session_server_principal_name as user_name, \
+    server_principal_name as target_user, \
+    database_name, \
+    schema_name, \
+    object_name, \
+    statement, \
+    client_ip, \
+    application_name, \
+    host_name \
+FROM sys.fn_get_audit_file('/var/opt/mssql/audit/*.sqlaudit', DEFAULT, DEFAULT) \
+WHERE event_time > ?
+
+# Column to track for incremental loads
+input_timestamp_column_name = event_time
+input_timestamp_column_type = timestamp
+
+# Checkpoint settings
+tail_rising_column_checkpoint_dir = $SPLUNK_HOME/var/lib/splunk/dbx/checkpoints</code></pre>
+            </div>
+
+            <h3>Oracle Unified Audit Input</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Oracle Unified Audit Configuration</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Oracle Unified Audit - Rising Column Mode
+[oracle_unified_audit]
+connection = oracle_audit
+index = db_audit
+sourcetype = oracle:audit:unified
+interval = 60
+mode = rising
+query = SELECT \
+    EVENT_TIMESTAMP, \
+    DBUSERNAME, \
+    OS_USERNAME, \
+    USERHOST, \
+    TERMINAL, \
+    ACTION_NAME, \
+    OBJECT_SCHEMA, \
+    OBJECT_NAME, \
+    SQL_TEXT, \
+    RETURN_CODE, \
+    AUTHENTICATION_TYPE, \
+    CLIENT_PROGRAM_NAME \
+FROM UNIFIED_AUDIT_TRAIL \
+WHERE EVENT_TIMESTAMP > ?
+
+input_timestamp_column_name = EVENT_TIMESTAMP
+input_timestamp_column_type = timestamp</code></pre>
+            </div>
+
+            <h3>PostgreSQL pg_audit Input</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>PostgreSQL pg_audit Configuration</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># PostgreSQL Audit via pg_audit extension
+[postgres_pgaudit]
+connection = postgres_audit
+index = db_audit
+sourcetype = postgresql:audit
+interval = 60
+mode = rising
+query = SELECT \
+    log_time, \
+    user_name, \
+    database_name, \
+    connection_from, \
+    command_tag, \
+    session_id, \
+    session_line_num, \
+    virtual_transaction_id, \
+    message, \
+    detail, \
+    hint, \
+    internal_query, \
+    error_severity, \
+    sql_state_code, \
+    query \
+FROM audit_log \
+WHERE log_time > ?
+
+input_timestamp_column_name = log_time
+input_timestamp_column_type = timestamp</code></pre>
+            </div>
+
+            <h3>Application Security Events Input</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Custom Application Audit Table</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># Custom Application Security Events
+[app_security_events]
+connection = mysql_app_audit
+index = app_audit
+sourcetype = app:security:events
+interval = 30
+mode = rising
+query = SELECT \
+    id, \
+    event_timestamp, \
+    event_type, \
+    user_id, \
+    username, \
+    source_ip, \
+    user_agent, \
+    action, \
+    resource, \
+    result, \
+    error_message, \
+    session_id, \
+    metadata_json \
+FROM security_events \
+WHERE id > ?
+
+input_timestamp_column_name = id
+input_timestamp_column_type = number</code></pre>
+            </div>
+        </section>
+
+        <!-- Security Queries Reference -->
+        <section class="content-section">
+            <h2>Security-Focused SQL Queries</h2>
+
+            <h3>SQL Server - Failed Login Attempts</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SQL Server Failed Logins</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>SELECT 
+    event_time,
+    'failed_login' as event_type,
+    session_server_principal_name as user_name,
+    client_ip as src_ip,
+    application_name,
+    host_name as src_host,
+    'Login failed: ' + CAST(succeeded as VARCHAR) as message
+FROM sys.fn_get_audit_file('/var/opt/mssql/audit/*.sqlaudit', DEFAULT, DEFAULT)
+WHERE action_id IN ('LGIF', 'LGFL')  -- Login Failed
+AND event_time > ?
+ORDER BY event_time</code></pre>
+            </div>
+
+            <h3>SQL Server - Permission Changes</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SQL Server Permission Audit</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>SELECT 
+    event_time,
+    action_id,
+    session_server_principal_name as changed_by,
+    server_principal_name as target_principal,
+    database_name,
+    schema_name,
+    object_name,
+    statement as permission_statement,
+    client_ip as src_ip
+FROM sys.fn_get_audit_file('/var/opt/mssql/audit/*.sqlaudit', DEFAULT, DEFAULT)
+WHERE action_id IN ('G', 'R', 'D', 'AL', 'DR')  -- Grant, Revoke, Deny, Alter, Drop
+AND event_time > ?
+ORDER BY event_time</code></pre>
+            </div>
+
+            <h3>Oracle - Privileged User Activity</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Oracle DBA Activity Monitoring</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>SELECT 
+    EVENT_TIMESTAMP,
+    DBUSERNAME,
+    OS_USERNAME,
+    USERHOST,
+    ACTION_NAME,
+    OBJECT_SCHEMA,
+    OBJECT_NAME,
+    SQL_TEXT,
+    RETURN_CODE
+FROM UNIFIED_AUDIT_TRAIL
+WHERE DBUSERNAME IN (
+    SELECT USERNAME FROM DBA_ROLE_PRIVS 
+    WHERE GRANTED_ROLE = 'DBA'
+)
+AND EVENT_TIMESTAMP > ?
+ORDER BY EVENT_TIMESTAMP</code></pre>
+            </div>
+
+            <h3>MySQL - DDL Changes</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>MySQL Schema Changes</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>SELECT 
+    event_time,
+    user_host,
+    thread_id,
+    command_type,
+    argument as sql_statement
+FROM mysql.general_log
+WHERE command_type IN ('Query')
+AND (argument LIKE 'CREATE%' 
+    OR argument LIKE 'ALTER%' 
+    OR argument LIKE 'DROP%'
+    OR argument LIKE 'GRANT%'
+    OR argument LIKE 'REVOKE%')
+AND event_time > ?
+ORDER BY event_time</code></pre>
+            </div>
+        </section>
+
+        <!-- Data Model Mapping -->
+        <section class="content-section">
+            <h2>CIM Data Model Mapping</h2>
+
+            <p>Configure field aliases and extractions to map database audit logs to Splunk CIM data models.</p>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <span>$SPLUNK_HOME/etc/apps/SA-db_audit/local/props.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code># SQL Server Audit CIM Mapping
+[mssql:audit]
+SHOULD_LINEMERGE = false
+TIME_PREFIX = event_time
+TIME_FORMAT = %Y-%m-%d %H:%M:%S
+MAX_TIMESTAMP_LOOKAHEAD = 30
+TZ = UTC
+
+# Field Aliases for Authentication Data Model
+FIELDALIAS-user = session_server_principal_name AS user
+FIELDALIAS-src = client_ip AS src
+FIELDALIAS-dest = host_name AS dest
+FIELDALIAS-app = application_name AS app
+FIELDALIAS-action = action_id AS action
+
+# Calculated Field for action type
+EVAL-vendor_action = case(
+    action_id=="LGIS", "success",
+    action_id=="LGIF", "failure",
+    action_id=="LGFL", "failure",
+    action_id=="G", "grant",
+    action_id=="R", "revoke",
+    1==1, action_id
+)
+
+EVAL-vendor_product = "Microsoft SQL Server"
+EVAL-vendor = "Microsoft"
+
+# Oracle Unified Audit CIM Mapping
+[oracle:audit:unified]
+SHOULD_LINEMERGE = false
+TIME_PREFIX = EVENT_TIMESTAMP
+TIME_FORMAT = %Y-%m-%d %H:%M:%S
+TZ = UTC
+
+FIELDALIAS-user = DBUSERNAME AS user
+FIELDALIAS-src_user = OS_USERNAME AS src_user
+FIELDALIAS-src = USERHOST AS src
+FIELDALIAS-action = ACTION_NAME AS action
+FIELDALIAS-object = OBJECT_NAME AS object
+
+EVAL-vendor_product = "Oracle Database"
+EVAL-vendor = "Oracle"
+
+# PostgreSQL Audit CIM Mapping
+[postgresql:audit]
+SHOULD_LINEMERGE = false
+TIME_PREFIX = log_time
+TIME_FORMAT = %Y-%m-%d %H:%M:%S
+TZ = UTC
+
+FIELDALIAS-user = user_name AS user
+FIELDALIAS-src = connection_from AS src
+FIELDALIAS-dest = database_name AS dest
+FIELDALIAS-action = command_tag AS action
+
+EVAL-vendor_product = "PostgreSQL"
+EVAL-vendor = "PostgreSQL"</code></pre>
+            </div>
+
+            <h3>Tags Configuration</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>$SPLUNK_HOME/etc/apps/SA-db_audit/local/tags.conf</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>[sourcetype=mssql:audit]
+authentication = enabled
+database = enabled
+change = enabled
+
+[sourcetype=oracle:audit:unified]
+authentication = enabled
+database = enabled
+change = enabled
+
+[sourcetype=postgresql:audit]
+authentication = enabled
+database = enabled
+change = enabled</code></pre>
+            </div>
+        </section>
+
+        <!-- Validation Queries -->
+        <section class="content-section">
+            <h2>Validation Queries</h2>
+
+            <h3>Verify Data Ingestion</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL - Data Arrival Validation</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>| tstats count WHERE index=db_audit BY sourcetype, index, _time span=1h
+| timechart span=1h count BY sourcetype</code></pre>
+            </div>
+
+            <h3>Check Input Health</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL - DB Connect Input Status</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>index=_internal sourcetype=splunkd component=DbxInputProcessor
+| stats latest(_time) as last_run, 
+        values(status) as status,
+        sum(events_processed) as total_events
+BY input_name
+| eval time_since_last = now() - last_run
+| eval health = if(time_since_last < 300, "healthy", "stale")
+| table input_name, last_run, status, total_events, health</code></pre>
+            </div>
+
+            <h3>Latency Check</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL - Ingestion Latency</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>index=db_audit sourcetype=mssql:audit
+| eval indexing_latency = _indextime - _time
+| stats avg(indexing_latency) as avg_latency_sec,
+        max(indexing_latency) as max_latency_sec,
+        perc95(indexing_latency) as p95_latency_sec
+BY sourcetype
+| eval avg_latency_min = round(avg_latency_sec/60, 2)
+| table sourcetype, avg_latency_min, max_latency_sec, p95_latency_sec</code></pre>
+            </div>
+
+            <h3>CIM Compliance Check</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL - CIM Field Validation</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>| datamodel Authentication Successful_Authentication search
+| search sourcetype=mssql:audit OR sourcetype=oracle:audit:unified
+| stats count BY sourcetype
+| eval cim_mapped = if(count > 0, "yes", "no")
+| table sourcetype, cim_mapped, count</code></pre>
+            </div>
+        </section>
+
+        <!-- Performance Tuning -->
+        <section class="content-section">
+            <h2>Performance Optimization</h2>
+
+            <div class="callout warning">
+                <div class="callout-title">Database Impact</div>
+                <p>DB Connect queries run directly against production databases. Always test query performance, use read replicas when possible, and schedule collection during off-peak hours for high-volume queries.</p>
+            </div>
+
+            <h3>Query Optimization Tips</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Optimization</th>
+                            <th>Implementation</th>
+                            <th>Impact</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Index Rising Columns</strong></td>
+                            <td>Create indexes on timestamp/ID columns used in WHERE clauses</td>
+                            <td>Reduces query execution time significantly</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Limit Columns</strong></td>
+                            <td>SELECT only required columns, avoid SELECT *</td>
+                            <td>Reduces data transfer and memory usage</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Batch Size</strong></td>
+                            <td>Set appropriate fetch_size (default 1000)</td>
+                            <td>Balances memory vs round-trips</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Connection Pooling</strong></td>
+                            <td>Use shared connections for multiple inputs</td>
+                            <td>Reduces database connection overhead</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Read Replicas</strong></td>
+                            <td>Point queries to read replicas instead of primary</td>
+                            <td>Eliminates production database impact</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>JVM Tuning</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>High-Volume JVM Settings</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>[db_connect_settings]
+# For high-volume ingestion (10+ inputs, 1M+ events/day)
+jvmOptions = -Xms1024m -Xmx4096m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ParallelRefProcEnabled
+
+# Connection pool settings
+maxConnectionPoolSize = 50
+connectionTimeout = 30000
+idleTimeout = 600000</code></pre>
+            </div>
+        </section>
+
+        <!-- Troubleshooting -->
+        <section class="content-section">
+            <h2>Troubleshooting</h2>
+
+            <details class="collapsible">
+                <summary>Connection Failed: Authentication Error</summary>
+                <div class="collapsible-content">
+                    <p><strong>Symptoms:</strong> "Login failed for user" or "Access denied"</p>
+                    <p><strong>Resolution:</strong></p>
+                    <ul>
+                        <li>Verify credentials in Splunk identity configuration</li>
+                        <li>Test connection from Heavy Forwarder: <code>sqlcmd -S host -U user -P password</code></li>
+                        <li>Check database account permissions: must have SELECT on audit tables</li>
+                        <li>For SQL Server integrated auth, verify Kerberos configuration</li>
+                        <li>Check for password expiration or account lockout</li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="collapsible">
+                <summary>JDBC Driver Not Found</summary>
+                <div class="collapsible-content">
+                    <p><strong>Symptoms:</strong> "No suitable driver found" or "ClassNotFoundException"</p>
+                    <p><strong>Resolution:</strong></p>
+                    <ul>
+                        <li>Verify driver JAR is in <code>$SPLUNK_HOME/etc/apps/splunk_app_db_connect/drivers/</code></li>
+                        <li>Check driver file permissions: readable by splunk user</li>
+                        <li>Restart Splunk after adding drivers</li>
+                        <li>Verify driver version compatibility with Java version</li>
+                        <li>Check logs: <code>index=_internal sourcetype=splunkd dbconnect driver</code></li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="collapsible">
+                <summary>Duplicate Events</summary>
+                <div class="collapsible-content">
+                    <p><strong>Symptoms:</strong> Same events appearing multiple times in Splunk</p>
+                    <p><strong>Resolution:</strong></p>
+                    <ul>
+                        <li>Verify rising column mode is configured correctly</li>
+                        <li>Check checkpoint file integrity in <code>$SPLUNK_HOME/var/lib/splunk/dbx/checkpoints/</code></li>
+                        <li>Ensure timestamp column has unique, increasing values</li>
+                        <li>For batch mode, verify query time boundaries</li>
+                        <li>Clear checkpoint and re-ingest if needed: delete checkpoint file and restart input</li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="collapsible">
+                <summary>High Memory Usage</summary>
+                <div class="collapsible-content">
+                    <p><strong>Symptoms:</strong> Heavy Forwarder memory exhaustion, OutOfMemoryError</p>
+                    <p><strong>Resolution:</strong></p>
+                    <ul>
+                        <li>Reduce <code>fetch_size</code> parameter (default 1000, try 500)</li>
+                        <li>Increase JVM heap: <code>-Xmx4096m</code></li>
+                        <li>Limit <code>max_rows</code> per query execution</li>
+                        <li>Add LIMIT clause to queries for testing</li>
+                        <li>Monitor JVM stats:
+                            <div class="code-block">
+                                <pre><code>index=_internal sourcetype=splunkd component=DbxJava
+| stats avg(heap_used_mb) as avg_heap BY host</code></pre>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="collapsible">
+                <summary>Slow Query Performance</summary>
+                <div class="collapsible-content">
+                    <p><strong>Symptoms:</strong> Long collection intervals, input timeout</p>
+                    <p><strong>Resolution:</strong></p>
+                    <ul>
+                        <li>Add index on rising column in database</li>
+                        <li>Review query execution plan: <code>EXPLAIN ANALYZE</code></li>
+                        <li>Reduce collection interval to smaller batches</li>
+                        <li>Point to read replica database</li>
+                        <li>Consider partitioning large audit tables</li>
+                        <li>Monitor query time:
+                            <div class="code-block">
+                                <pre><code>index=_internal sourcetype=splunkd component=DbxInputProcessor
+| stats avg(query_time_ms) as avg_query_time BY input_name</code></pre>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </details>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- SECTION: ROLLBACK & SAFETY -->
+        <!-- ============================================== -->
+        <section class="content-section">
+            <h2>Rollback & Safety</h2>
+
+            <h3>Emergency: Disable DB Connect Input</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Emergency Procedure</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: DB Connect query impacting database performance
+
+OPTION 1: Disable Input via Splunk Web (Preferred)
+──────────────────────────────────────────────────
+1. Settings → Data Inputs → Splunk DB Connect → Inputs
+2. Find problematic input → Edit → Status = Disabled
+3. Save
+
+OPTION 2: Disable via Configuration File
+────────────────────────────────────────
+1. SSH to Heavy Forwarder
+2. Edit: $SPLUNK_HOME/etc/apps/splunk_app_db_connect/local/db_inputs.conf
+3. Add: disabled = 1 to the input stanza
+4. Restart: $SPLUNK_HOME/bin/splunk restart splunk_app_db_connect
+
+OPTION 3: Kill Active Query (Database Side - Emergency)
+───────────────────────────────────────────────────────
+If query is running and impacting production:
+
+SQL Server:
+KILL [session_id]  -- Get from sys.dm_exec_sessions
+
+Oracle:
+ALTER SYSTEM KILL SESSION 'sid,serial#';
+
+PostgreSQL:
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename='splunk_service';
+
+⚠️ WARNING: Killing queries may corrupt checkpoint. Reset checkpoint after resolution.
+
+COMMUNICATION:
+- Notify DBA team immediately (they may need to take action)
+- Notify SOC (data gap occurring)
+- Document incident for post-mortem</code></pre>
+            </div>
+
+            <h3>Database Credential Rotation Procedure</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Zero-Downtime Password Rotation</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Scheduled password rotation for DB Connect service account
+
+STEP 1: Coordinate with DBA Team
+────────────────────────────────
+1. Schedule maintenance window
+2. DBA prepares new password
+
+STEP 2: Update Splunk Credential
+────────────────────────────────
+1. Splunk Web → Settings → Data Inputs → Splunk DB Connect → Configuration → Identities
+2. Edit the identity for the database
+3. Update password field
+4. Save
+
+STEP 3: Test Connection
+───────────────────────
+1. Splunk DB Connect → Configuration → Databases
+2. Select database → Test Connection
+3. Verify "Connection successful"
+
+STEP 4: Validate Data Flow
+──────────────────────────
+index=_internal sourcetype=splunkd component=DbxInputProcessor input_name="*"
+| stats latest(_time) AS last_run, count BY input_name
+# Verify inputs are running successfully
+
+STEP 5: DBA Expires Old Password
+────────────────────────────────
+After validation, DBA can expire/disable old credentials
+
+NOTE: If step 3 fails, DBA should NOT expire old password until resolved</code></pre>
+            </div>
+
+            <h3>Checkpoint Recovery Procedure</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>Reset Checkpoint After Issue</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>SCENARIO: Need to reset checkpoint (duplicate data or missed data)
+
+⚠️ WARNING: Resetting checkpoint will re-ingest data from the rising column start value
+
+STEP 1: Disable Input
+─────────────────────
+Disable the input via Splunk Web (see above)
+
+STEP 2: Locate Checkpoint File
+──────────────────────────────
+ls -la $SPLUNK_HOME/var/lib/splunk/dbx/checkpoints/
+# Find file matching your input name
+
+STEP 3: Backup Checkpoint (Optional)
+────────────────────────────────────
+cp checkpoint_file checkpoint_file.backup
+
+STEP 4: Delete or Edit Checkpoint
+─────────────────────────────────
+# To re-ingest all data: delete file
+rm checkpoint_file
+
+# To re-ingest from specific point: edit rising column value
+# (Requires understanding of checkpoint format)
+
+STEP 5: Re-enable Input
+───────────────────────
+Enable input via Splunk Web
+
+STEP 6: Monitor for Duplicates
+──────────────────────────────
+index=[target_index] sourcetype=[db_sourcetype] earliest=-1h
+| stats count BY [primary_key_field]
+| where count > 1
+# Should return 0 results (no duplicates)</code></pre>
+            </div>
+
+            <h3>DB Connect Health Monitoring Query</h3>
+            <div class="code-block">
+                <div class="code-header">
+                    <span>SPL: Monitor DB Connect Input Health</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <pre><code>`comment("Create scheduled alert to detect DB Connect failures")`
+
+index=_internal sourcetype=splunkd component=DbxInputProcessor earliest=-1h
+| stats 
+    latest(_time) AS last_run,
+    avg(query_time_ms) AS avg_query_ms,
+    sum(eval(if(status="success", 1, 0))) AS success_count,
+    sum(eval(if(status="error", 1, 0))) AS error_count
+    BY input_name
+| eval hours_since = round((now() - last_run)/3600, 1)
+| eval status = case(
+    error_count > 0, "🔴 ERRORS - Check logs",
+    hours_since > 2, "🟠 STALE - No activity >2h",
+    avg_query_ms > 30000, "🟡 SLOW - Query >30s",
+    true(), "✅ Healthy"
+)
+| table input_name, status, last_run, avg_query_ms, success_count, error_count
+
+`comment("Alert when status contains 🔴 or 🟠")`</code></pre>
+            </div>
+        </section>
+
+        <!-- Acceptance Criteria -->
+        <section class="content-section">
+            <h2>Acceptance Criteria</h2>
+            
+            <div class="checklist" data-id="dbconnect-acceptance">
+                <div class="checklist-item">
+                    <input type="checkbox" id="db-acc-1">
+                    <label for="db-acc-1">JDBC drivers installed and verified for all target databases</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="db-acc-2">
+                    <label for="db-acc-2">Database service accounts created with read-only permissions</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="db-acc-3">
+                    <label for="db-acc-3">DB Connect connections tested and validated</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="db-acc-4">
+                    <label for="db-acc-4">Rising column inputs configured for incremental collection</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="db-acc-5">
+                    <label for="db-acc-5">Data arriving in Splunk with < 5 minute latency</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="db-acc-6">
+                    <label for="db-acc-6">CIM field mappings configured and validated</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="db-acc-7">
+                    <label for="db-acc-7">No duplicate events detected in validation testing</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="db-acc-8">
+                    <label for="db-acc-8">Query performance validated (< 30 sec execution time)</label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Next Steps -->
+        <section class="content-section">
+            <h2>Next Steps</h2>
+            <div class="next-steps">
+                <a href="scripted-inputs.html" class="next-step-link">
+                    <span class="step-label">Next Page</span>
+                    <span class="step-title">Scripted Inputs →</span>
+                </a>
+                <a href="../phase2-data-quality/index.html" class="next-step-link">
+                    <span class="step-label">After Onboarding</span>
+                    <span class="step-title">Phase 2: Data Quality →</span>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validating ES Data & Data Models - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Data Layer & CIM ⚠️</div>
+                    <a href="how-es-uses-data.html" class="nav-item nav-item-sub">How ES Uses Data</a>
+                    <a href="cim-fundamentals.html" class="nav-item nav-item-sub">CIM Fundamentals for ES</a>
+                    <a href="data-models-deep-dive.html" class="nav-item nav-item-sub">Data Models Deep Dive</a>
+                    <a href="validating-es-data.html" class="nav-item nav-item-sub active">Validating ES Data ⛔</a>
+                    <a href="missing-fields.html" class="nav-item nav-item-sub">Missing Fields After Add-ons</a>
+                    <a href="safe-addon-tuning.html" class="nav-item nav-item-sub">Safe Add-on Tuning</a>
+                    <a href="safe-correlation-path.html" class="nav-item nav-item-sub">Data Model → Correlation</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="how-es-uses-data.html">ES Data Layer</a>
+                <span class="separator">/</span>
+                <span class="current">Validating ES Data & Data Models</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-2">⛔ HARD GATE — DO NOT SKIP</span>
+                <h1>Validating ES Data & Data Models</h1>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">⛔ THIS PAGE IS A HARD GATE</div>
+                    <p><strong>If the checks on this page fail, DO NOT create or enable correlation searches.</strong></p>
+                    <p>Enabling detections against unvalidated data creates false confidence: the SOC believes it has coverage that doesn't actually exist. Auditors see enabled searches and assume protection. But zero notables fire because the data pipeline is broken. This is worse than having no detections at all — because at least with no detections, you know you're blind.</p>
+                    <p>Complete this validation for every data model you plan to use. Capture evidence. Get sign-off. Then proceed.</p>
+                </div>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES DATA LAYER</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> Step-by-step validation procedure with exact SPL, numeric acceptance criteria, and clear PASS/FAIL gates for each check. This is the checklist you run before enabling any detection content.</p>
+                    <p><strong>Ownership:</strong> Detection Engineering (must execute before enabling any search)</p>
+                    <p><strong>Preconditions:</strong> You've read the previous three pages (ES pipeline, CIM fundamentals, data models). You have identified which data models and data sources your planned detections require.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> You have a list of detections you plan to enable. <strong>If not:</strong> Go to <a href="../es-content-management/escu-overview.html">ESCU Overview</a> or <a href="../es-content-management/ootb-content.html">OOTB Content</a> first to identify your target detections.</li>
+                        <li><strong>Assumption:</strong> All SPL on this page is safe and read-only. None modifies any configuration, data, or search.</li>
+                        <li><strong>Assumption:</strong> You will run these checks from the ES search head (or SHC member). Running from a different search head may give different results if TAs are not deployed consistently.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: VALIDATION WORKFLOW -->
+                <!-- ============================================== -->
+                <h2>The Validation Workflow</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    START["Start: You want to<br/>enable a detection"] --> V1["GATE 1<br/>Data Model Acceleration"]
+    
+    V1 --> V1Q{"Acceleration ON<br/>and current?"}
+    V1Q -->|"❌ FAIL"| V1F["⛔ STOP<br/>Escalate to Splunk admin.<br/>Cannot proceed."]
+    V1Q -->|"✅ PASS"| V2["GATE 2<br/>Data Model Population"]
+    
+    V2 --> V2Q{"Model has events<br/>from expected sources?"}
+    V2Q -->|"❌ FAIL"| V2F["⛔ STOP<br/>Check tags on sourcetype.<br/>Fix tags, then recheck."]
+    V2Q -->|"✅ PASS"| V3["GATE 3<br/>CIM Field Population"]
+    
+    V3 --> V3Q{"Required fields<br/>populated ≥ 90%?"}
+    V3Q -->|"❌ FAIL"| V3F["⛔ STOP<br/>Fix field aliases/evals.<br/>See Safe Add-on Tuning."]
+    V3Q -->|"✅ PASS"| V4["GATE 4<br/>Time Coverage"]
+    
+    V4 --> V4Q{"Data present for<br/>≥ 24h continuous?"}
+    V4Q -->|"❌ FAIL"| V4F["⛔ STOP<br/>Data gaps will cause<br/>missed detections.<br/>Investigate source."]
+    V4Q -->|"✅ PASS"| V5["GATE 5<br/>Detection-Specific<br/>Field Verification"]
+    
+    V5 --> V5Q{"ALL fields referenced<br/>in the detection SPL<br/>are populated?"}
+    V5Q -->|"❌ FAIL"| V5F["⛔ STOP<br/>This specific detection<br/>cannot work. Fix fields<br/>or choose different detection."]
+    V5Q -->|"✅ PASS"| APPROVED["✅ APPROVED<br/>Capture evidence.<br/>Proceed to detection<br/>enablement lifecycle."]
+    
+    style V1F fill:#f85149,stroke:#da3633,color:#fff
+    style V2F fill:#f85149,stroke:#da3633,color:#fff
+    style V3F fill:#f85149,stroke:#da3633,color:#fff
+    style V4F fill:#f85149,stroke:#da3633,color:#fff
+    style V5F fill:#f85149,stroke:#da3633,color:#fff
+    style APPROVED fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- GATE 1: DATA MODEL ACCELERATION -->
+                <!-- ============================================== -->
+                <h2>Gate 1: Data Model Acceleration</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check Data Model Acceleration Status (All Models)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only query")`
+`comment("Checks acceleration status for all data models")`
+
+| rest /services/datamodel/model splunk_server=local
+| table title, acceleration, "acceleration.earliest_time", eai:acl.app
+| eval status = case(
+    acceleration="1", "✅ ON",
+    acceleration="0", "❌ OFF",
+    true(), "❓ Unknown"
+)
+| sort title
+| rename title AS "Data Model",
+    status AS "Acceleration",
+    acceleration.earliest_time AS "Accel Window",
+    eai:acl.app AS "App"</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check Acceleration Backlog & Health</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only")`
+`comment("Shows if acceleration is current or backlogged")`
+
+| rest /services/admin/summarization splunk_server=local
+| search title="*DM_*" OR title="*datamodel*"
+| table title, summary.is_inprogress, summary.latest_time, summary.complete,
+    summary.access_count, summary.size
+| eval is_current = case(
+    'summary.complete' > 0.95, "✅ Current (>95%)",
+    'summary.complete' > 0.50, "🟡 Catching up (" . round('summary.complete'*100) . "%)",
+    'summary.complete' > 0, "🔴 Significantly behind (" . round('summary.complete'*100) . "%)",
+    true(), "❌ No acceleration data"
+)
+| sort title</code></pre>
+                </div>
+
+                <h3>Gate 1 Acceptance Criteria</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Check</th>
+                                <th>✅ PASS</th>
+                                <th>❌ FAIL</th>
+                                <th>Action on Fail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Acceleration enabled</td>
+                                <td><code>acceleration=1</code> for the target data model</td>
+                                <td><code>acceleration=0</code></td>
+                                <td>⛔ STOP. Escalate to Splunk admin to enable acceleration. You cannot validate further until acceleration is on.</td>
+                            </tr>
+                            <tr>
+                                <td>Acceleration current</td>
+                                <td><code>summary.complete > 0.95</code> (95%+ complete)</td>
+                                <td><code>summary.complete < 0.95</code></td>
+                                <td>If recently enabled: wait for catch-up (may take hours to days). If persistently behind: escalate — may need more resources.</td>
+                            </tr>
+                            <tr>
+                                <td>Acceleration window covers detection lookback</td>
+                                <td><code>acceleration.earliest_time</code> covers at least the detection's scheduled lookback (e.g., -24h)</td>
+                                <td>Acceleration window is shorter than detection lookback</td>
+                                <td>Adjust acceleration window or adjust detection lookback. Typically acceleration should cover at least 7 days.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- GATE 2: DATA MODEL POPULATION -->
+                <!-- ============================================== -->
+                <h2>Gate 2: Data Model Population</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify Data Model Has Events from Expected Sources</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only")`
+`comment("Replace DATAMODEL_NAME with: Authentication, Network_Traffic, Web, or Endpoint")`
+`comment("Shows which sourcetypes contribute events and how many")`
+
+| tstats count FROM datamodel=DATAMODEL_NAME
+    WHERE earliest=-24h latest=now
+    BY sourcetype
+| sort - count
+| eval status = if(count > 100, "✅ Good volume", if(count > 0, "🟡 Low volume", "❌ No events"))
+| table sourcetype, count, status</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Compare Data Model Population vs Raw Index Population</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only")`
+`comment("This comparison reveals events that exist in raw but are NOT in the data model")`
+`comment("Replace INDEX and SOURCETYPE with your data source values")`
+
+| tstats count AS dm_count FROM datamodel=DATAMODEL_NAME
+    WHERE sourcetype=YOUR_SOURCETYPE earliest=-4h latest=now
+
+| appendcols [
+    | tstats count AS raw_count WHERE index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE
+        earliest=-4h latest=now
+]
+
+| eval coverage_pct = round((dm_count / raw_count) * 100, 1) . "%"
+| eval gap = raw_count - dm_count
+| eval status = case(
+    coverage_pct >= 95, "✅ PASS — ≥95% of raw events in data model",
+    coverage_pct >= 50, "🟡 PARTIAL — Significant gap. Some events not tagged.",
+    coverage_pct > 0, "🔴 LOW — Most events missing from data model. Tag issue.",
+    dm_count=0, "❌ FAIL — Zero events in data model despite raw data existing."
+)
+| table raw_count, dm_count, gap, coverage_pct, status</code></pre>
+                </div>
+
+                <h3>Gate 2 Acceptance Criteria</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Check</th>
+                                <th>✅ PASS</th>
+                                <th>❌ FAIL</th>
+                                <th>Action on Fail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Expected sourcetypes present</td>
+                                <td>All sourcetypes you expect to feed this model appear in the sourcetype contribution query</td>
+                                <td>One or more expected sourcetypes missing</td>
+                                <td>⛔ STOP for that source. Check tag assignment. See <a href="missing-fields.html">Missing Fields</a>.</td>
+                            </tr>
+                            <tr>
+                                <td>Coverage percentage</td>
+                                <td>≥ 90% of raw events appear in the data model</td>
+                                <td>< 90% coverage</td>
+                                <td>Investigate. Some event subtypes may lack tags. Not all events need to be in the model — but you need to understand why the gap exists.</td>
+                            </tr>
+                            <tr>
+                                <td>Non-zero event count</td>
+                                <td>dm_count > 0</td>
+                                <td>dm_count = 0</td>
+                                <td>⛔ STOP. Data model is empty for this source. Tags missing. Fix before proceeding.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- GATE 3: CIM FIELD POPULATION -->
+                <!-- ============================================== -->
+                <h2>Gate 3: CIM Field Population</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: CIM Field Population — Per Data Model</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only")`
+`comment("Authentication Model — Check field population percentages")`
+`comment("Adapt BY clause and field names for other data models")`
+
+| tstats count AS total,
+    dc(Authentication.action) AS action_vals,
+    dc(Authentication.user) AS user_vals,
+    dc(Authentication.src) AS src_vals,
+    dc(Authentication.dest) AS dest_vals,
+    dc(Authentication.app) AS app_vals
+    FROM datamodel=Authentication
+    WHERE earliest=-4h latest=now
+    BY sourcetype
+
+| eval action_status = if(action_vals > 0, "✅", "❌"),
+    user_status = if(user_vals > 0, "✅", "❌"),
+    src_status = if(src_vals > 0, "✅", "❌"),
+    dest_status = if(dest_vals > 0, "✅", "❌"),
+    app_status = if(app_vals > 0, "✅", "❌")
+
+| eval required_pass = if(action_status="✅" AND user_status="✅" AND src_status="✅", "✅ REQUIRED PASS", "❌ REQUIRED FAIL")
+
+| table sourcetype, total, action_status, user_status, src_status, dest_status, app_status, required_pass
+| sort - total</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Detailed Field Population Percentage (Per Sourcetype)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only")`
+`comment("Shows exact population percentage for each field")`
+`comment("Replace INDEX and SOURCETYPE with your data source")`
+
+index=YOUR_INDEX sourcetype=YOUR_SOURCETYPE earliest=-4h latest=now
+| head 5000
+| eval f_action = if(isnotnull(action) AND action!="" AND action!="unknown", 1, 0),
+    f_user = if(isnotnull(user) AND user!="" AND user!="-", 1, 0),
+    f_src = if(isnotnull(src) AND src!="" AND src!="0.0.0.0", 1, 0),
+    f_dest = if(isnotnull(dest) AND dest!="" AND dest!="0.0.0.0", 1, 0),
+    f_app = if(isnotnull(app) AND app!="", 1, 0),
+    f_dest_port = if(isnotnull(dest_port) AND dest_port!="" AND dest_port!="0", 1, 0),
+    f_transport = if(isnotnull(transport) AND transport!="", 1, 0),
+    f_url = if(isnotnull(url) AND url!="", 1, 0),
+    f_status = if(isnotnull(status) AND status!="", 1, 0)
+| stats count AS total,
+    sum(f_action) AS action_pop,
+    sum(f_user) AS user_pop,
+    sum(f_src) AS src_pop,
+    sum(f_dest) AS dest_pop,
+    sum(f_app) AS app_pop,
+    sum(f_dest_port) AS dest_port_pop,
+    sum(f_transport) AS transport_pop,
+    sum(f_url) AS url_pop,
+    sum(f_status) AS status_pop
+| foreach *_pop [eval <<FIELD>>_pct = round((<<FIELD>> / total) * 100, 1)]
+| table total,
+    action_pop_pct, user_pop_pct, src_pop_pct, dest_pop_pct,
+    app_pop_pct, dest_port_pop_pct, transport_pop_pct,
+    url_pop_pct, status_pop_pct</code></pre>
+                </div>
+
+                <h3>Gate 3 Acceptance Criteria</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Check</th>
+                                <th>✅ PASS</th>
+                                <th>❌ FAIL</th>
+                                <th>Action on Fail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>REQUIRED fields (action, user/src depending on model)</td>
+                                <td>Population ≥ 90% for each REQUIRED field</td>
+                                <td>Any REQUIRED field < 90%</td>
+                                <td>⛔ STOP. Fix field alias or calculated field in TA local/props.conf. See <a href="safe-addon-tuning.html">Safe Add-on Tuning</a>.</td>
+                            </tr>
+                            <tr>
+                                <td>HIGH fields</td>
+                                <td>Population ≥ 50% for each HIGH field</td>
+                                <td>HIGH field < 50%</td>
+                                <td>Document gap. Detections needing this field have reduced effectiveness. Fix if possible; accept with risk if not.</td>
+                            </tr>
+                            <tr>
+                                <td>No bogus values</td>
+                                <td>Field values are meaningful (not "unknown", "N/A", "0.0.0.0" everywhere)</td>
+                                <td>Most values are placeholders or garbage</td>
+                                <td>Field is technically populated but useless. Treat as ❌ FAIL. Investigate extraction logic.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- GATE 4: TIME COVERAGE -->
+                <!-- ============================================== -->
+                <h2>Gate 4: Time Coverage</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check for Gaps in Data Flow (Time Continuity)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("SAFE: Read-only")`
+`comment("Shows event volume per hour over the last 24 hours")`
+`comment("Gaps (hours with 0 events) indicate data flow interruptions")`
+
+| tstats count FROM datamodel=DATAMODEL_NAME
+    WHERE sourcetype=YOUR_SOURCETYPE earliest=-24h latest=now
+    BY _time span=1h
+| timechart span=1h count
+| eval status = if(count > 0, "✅ Data present", "❌ GAP — No events this hour")</code></pre>
+                </div>
+
+                <h3>Gate 4 Acceptance Criteria</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Check</th>
+                                <th>✅ PASS</th>
+                                <th>❌ FAIL</th>
+                                <th>Action on Fail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Continuous data flow (24h)</td>
+                                <td>Every hour in the last 24h has events (or expected low-volume hours, e.g., overnight, are documented)</td>
+                                <td>Multiple consecutive hours with zero events</td>
+                                <td>Investigate. Could be: forwarder down, data source offline, ingestion pipeline issue. Fix before enabling time-sensitive detections.</td>
+                            </tr>
+                            <tr>
+                                <td>Volume consistency</td>
+                                <td>Hourly volume is roughly consistent (no sudden 90%+ drops)</td>
+                                <td>Volume drops to near-zero and recovers</td>
+                                <td>Intermittent data flow. Detections during gaps will miss events. Document. May need infrastructure fix.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- GATE 5: DETECTION-SPECIFIC VERIFICATION -->
+                <!-- ============================================== -->
+                <h2>Gate 5: Detection-Specific Field Verification</h2>
+
+                <p>This gate is unique to each detection. Before enabling a specific correlation search, verify that every field it references is populated in the data model.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Procedure: Verify Fields for a Specific Correlation Search</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Step 1: Read the correlation search SPL")`
+`comment("Find the search in: Settings > Searches, Reports, Alerts")`
+`comment("Or: | rest /services/saved/searches | search title='YOUR_SEARCH_NAME' | table search")`
+
+`comment("Step 2: Identify EVERY field the SPL references")`
+`comment("Look for fields in: WHERE clauses, BY clauses, eval, stats, rename")`
+`comment("Example: | tstats count FROM datamodel=Authentication")`
+`comment("  WHERE Authentication.action='failure'")`
+`comment("  BY Authentication.user, Authentication.src")`
+`comment("→ Fields needed: action, user, src")`
+
+`comment("Step 3: For EACH field, verify it's populated:")`
+
+| tstats dc(Authentication.user) AS user_values,
+    dc(Authentication.src) AS src_values,
+    dc(Authentication.action) AS action_values
+    FROM datamodel=Authentication
+    WHERE Authentication.action="failure" earliest=-4h latest=now
+
+| eval user_ok = if(user_values > 0, "✅", "❌"),
+    src_ok = if(src_values > 0, "✅", "❌"),
+    action_ok = if(action_values > 0, "✅", "❌")
+| eval gate5_result = if(user_ok="✅" AND src_ok="✅" AND action_ok="✅",
+    "✅ ALL FIELDS PASS — Detection can be enabled",
+    "❌ FIELD(S) MISSING — DO NOT enable this detection")
+| table user_ok, src_ok, action_ok, gate5_result</code></pre>
+                </div>
+
+                <h3>Gate 5 Acceptance Criteria</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Check</th>
+                                <th>✅ PASS</th>
+                                <th>❌ FAIL</th>
+                                <th>Action on Fail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>All fields in the search SPL are populated</td>
+                                <td>Every field referenced in the correlation search has > 0 distinct values in the data model for the relevant time range</td>
+                                <td>Any field returns dc=0</td>
+                                <td>⛔ DO NOT enable this detection. Options: (1) Fix the missing field, (2) Modify the detection to work without it, (3) Defer the detection and document.</td>
+                            </tr>
+                            <tr>
+                                <td>Filter values exist</td>
+                                <td>If the detection filters on a specific value (e.g., <code>action="failure"</code>), that value exists in the data</td>
+                                <td>Filter value doesn't exist (e.g., data has "fail" instead of "failure")</td>
+                                <td>Fix the CIM field mapping (e.g., EVAL-action to normalize to "failure"), or adjust the detection SPL.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE SIGN-OFF -->
+                <!-- ============================================== -->
+                <h2>Capturing Evidence for Sign-Off</h2>
+
+                <p>After passing all 5 gates, capture evidence before proceeding. This evidence serves three purposes: it proves the data layer is ready, it provides a baseline for detecting future regressions, and it satisfies audit requirements.</p>
+
+                <h3>Validation Sign-Off Record</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Template: Data Validation Sign-Off</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>## Data Validation Sign-Off
+
+**Date:** [date]
+**Validated By:** [analyst name]
+**Data Model:** [Authentication / Network_Traffic / Web / Endpoint]
+**Target Detection(s):** [detection name(s)]
+
+### Gate Results
+| Gate | Status | Notes |
+|------|--------|-------|
+| G1: Acceleration | ✅ PASS | Acceleration ON, 98% complete |
+| G2: Population   | ✅ PASS | 3 sourcetypes contributing, 95% coverage |
+| G3: Fields       | ✅ PASS | action 99%, user 97%, src 95% |
+| G4: Time         | ✅ PASS | 24h continuous, no gaps |
+| G5: Detection    | ✅ PASS | All fields for "Brute Force" present |
+
+### Known Limitations
+- [any accepted gaps, e.g., "app field at 60% — acceptable for brute force detection"]
+
+### Baseline Metrics
+- DM event count (24h): [number]
+- Sourcetypes in model: [list]
+- Acceleration completeness: [%]
+
+### Approval
+- [ ] Detection Engineering sign-off
+- [ ] Evidence screenshots saved to [location]</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHEN NOT TO PROCEED -->
+                <!-- ============================================== -->
+                <h2>When NOT to Proceed to Detections</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    Q["Any gate failed?"] --> Y["YES — One or more<br/>gates did not pass"]
+    Q --> N["NO — All gates<br/>passed ✅"]
+    
+    Y --> ACTION["DO NOT:<br/>• Enable correlation searches<br/>• Report detection coverage<br/>• Tell auditors data model works<br/>• Assume zero results means no threats"]
+    
+    Y --> DO["INSTEAD:<br/>• Document the failure<br/>• Fix the root cause (see referenced pages)<br/>• Re-run validation after fix<br/>• Only proceed when ALL gates pass"]
+    
+    N --> PROCEED["PROCEED to:<br/>• Detection enablement lifecycle<br/>• Monitoring-only first<br/>• Then production enablement<br/>• See Enablement Mechanics"]
+    
+    style ACTION fill:#f85149,stroke:#da3633,color:#fff
+    style DO fill:#58a6ff,stroke:#388bfd,color:#fff
+    style PROCEED fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHEN TO RE-VALIDATE -->
+                <!-- ============================================== -->
+                <h2>When to Re-Validate</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Trigger</th>
+                                <th>Re-Run Which Gates?</th>
+                                <th>Why</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>ES upgrade</strong></td><td>All 5 gates</td><td>Upgrades can change data model definitions, acceleration settings, and CIM field mappings.</td></tr>
+                            <tr><td><strong>TA upgrade</strong></td><td>Gates 2, 3, 5</td><td>TA upgrades can change field extractions, aliases, and tags.</td></tr>
+                            <tr><td><strong>CIM add-on upgrade</strong></td><td>Gates 2, 3</td><td>CIM schema changes can affect data model constraints.</td></tr>
+                            <tr><td><strong>New data source onboarded</strong></td><td>Gates 2, 3, 4, 5</td><td>New source may or may not be properly tagged/mapped.</td></tr>
+                            <tr><td><strong>Correlation search returns zero results unexpectedly</strong></td><td>All 5 gates</td><td>Something broke. Find which layer.</td></tr>
+                            <tr><td><strong>Quarterly review</strong></td><td>Gates 1, 2, 3</td><td>Catch regressions. Data sources change, TAs update, acceleration can silently fail.</td></tr>
+                            <tr><td><strong>Source system format change</strong></td><td>Gates 2, 3, 5</td><td>If the source device changes its log format, the TA's regex may stop matching. Fields disappear.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- STANDARD SECTIONS -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>Gate 1 fails and acceleration cannot be enabled.</strong> This may require Splunk licensing review, hardware resources, or architecture changes. Escalate to Splunk admin and Security Manager.</li>
+                        <li><strong>Gate 2 fails for a data source that was previously working.</strong> This is a regression. Something changed (TA upgrade, config change, data source change). Treat as a P1 incident for detection coverage.</li>
+                        <li><strong>Gate 3 shows REQUIRED fields below 50% population.</strong> This is not a minor gap — it's a fundamental CIM failure. The TA may be wrong, the data format may have changed, or the wrong TA is installed.</li>
+                        <li><strong>Gate 4 shows data gaps longer than 4 hours.</strong> This is an infrastructure issue. Data is not flowing reliably. Detections cannot be trusted.</li>
+                        <li><strong>Someone asks to skip validation and "just enable the detections."</strong> Escalate. Explain the risk. Document the request and your objection. This is a professional responsibility — enabling unvalidated detections creates false security reporting.</li>
+                    </ul>
+                </div>
+
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>"Validation takes too long — skip it for now"</strong></td><td>An unvalidated detection creates false confidence. The SOC reports coverage that doesn't exist. Auditors are misled.</td><td>Validation takes 1-2 hours per data model. This is negligible compared to the weeks of false confidence an unvalidated detection creates.</td></tr>
+                            <tr><td><strong>"The search runs without errors, so it's working"</strong></td><td>A correlation search can run perfectly, return zero results, and that's a "successful" execution — it just found nothing. The question is whether it SHOULD have found something.</td><td>Zero results is only acceptable after you've validated that data flows through all 6 layers. Without validation, zero results might mean the pipeline is broken.</td></tr>
+                            <tr><td><strong>"We validated last quarter — no need to check again"</strong></td><td>TAs get updated. Data sources change format. Acceleration silently fails. A quarterly-old validation may not reflect current state.</td><td>Re-validate after every change event (upgrade, new source, config change) and quarterly as a standing check.</td></tr>
+                            <tr><td><strong>"Partial pass is good enough"</strong></td><td>Partial pass means some detections work and some don't. If you enable all detections, some will silently fail. You need to know WHICH ones work and WHICH don't.</td><td>Enable only the detections whose specific fields are validated (Gate 5). Document and defer the rest.</td></tr>
+                            <tr><td><strong>"I'll validate after deployment and fix issues then"</strong></td><td>Post-deployment fixes are reactive. The gap between deployment and fix is a window where the SOC has false confidence.</td><td>Validate first. Deploy only what passes. Fix what fails. Then deploy more.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Full 5-gate validation for 1 data model + 1 detection</strong></td><td>30 minutes</td><td>1-2 hours</td><td>Half day (issues found at multiple gates)</td></tr>
+                            <tr><td><strong>Full validation for all 4 core data models</strong></td><td>Half day</td><td>1-2 days</td><td>3+ days (widespread issues)</td></tr>
+                            <tr><td><strong>Fix a Gate 2 failure (missing tags)</strong></td><td>15 minutes</td><td>30 minutes</td><td>2 hours (complex eventtype needed)</td></tr>
+                            <tr><td><strong>Fix a Gate 3 failure (missing field)</strong></td><td>15 minutes</td><td>1 hour</td><td>Half day (complex field derivation + testing)</td></tr>
+                            <tr><td><strong>Document validation sign-off</strong></td><td>10 minutes</td><td>20 minutes</td><td>30 minutes</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Gate 1-5 results per data model</strong></td><td>Completed sign-off template with SPL output screenshots</td><td>Detection registry / data quality tracker</td><td>Before enabling any detection</td></tr>
+                            <tr><td><strong>Baseline metrics</strong></td><td>Event counts, field populations, acceleration status at time of validation</td><td>Data quality tracker</td><td>At validation time (becomes baseline for regression detection)</td></tr>
+                            <tr><td><strong>Failed gate records</strong></td><td>Which gate failed, root cause, fix plan, expected fix date</td><td>Detection registry / backlog</td><td>When any gate fails</td></tr>
+                            <tr><td><strong>Accepted risk documentation</strong></td><td>What gap exists, why it's accepted, compensating control, accepted by whom</td><td>Risk register</td><td>When a gap can't be fixed and is formally accepted</td></tr>
+                            <tr><td><strong>Re-validation results</strong></td><td>Same as initial validation, with comparison to baseline</td><td>Data quality tracker</td><td>After upgrades, quarterly, after any change event</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="missing-fields.html" class="next-steps-link">Missing Fields After Add-ons →</a>
+                        <a href="safe-addon-tuning.html" class="next-steps-link">Safe Add-on Tuning & Field Fixes →</a>
+                        <a href="safe-correlation-path.html" class="next-steps-link">Data Model → Correlation (Safe Path) →</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

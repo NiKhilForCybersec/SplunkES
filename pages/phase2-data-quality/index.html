@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 2: Data Quality & Normalization - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="index.html" class="nav-item active">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <span class="current">Phase 2: Data Quality & Normalization</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-2">🔧 Phase 2 — Data Quality</span>
+                <h1>Data Quality & Normalization</h1>
+
+                <!-- ============================================== -->
+                <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This page has been audited and hardened for solo enterprise delivery. All sections include explicit validation criteria, failure modes, and rollback procedures.</p>
+                </div>
+                
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 HARD GATE — DO NOT PROCEED TO PHASE 3 WITHOUT VALIDATION</div>
+                    <p><strong>This phase is a QUALITY GATE.</strong> Detections built on bad data produce false negatives (missed attacks) or false positives (alert fatigue). You MUST complete the Phase 2 Exit Checklist at the bottom of this page before proceeding to Phase 3.</p>
+                    <p><strong>Typical Duration:</strong> 1-2 weeks for enterprise environments.</p>
+                    <p><strong>DO NOT:</strong></p>
+                    <ul>
+                        <li>Proceed to Phase 3 if any source has timestamp drift >5 minutes</li>
+                        <li>Proceed if critical CIM fields (src, dest, user, action) are <90% populated</li>
+                        <li>Proceed without verifying data model acceleration is complete</li>
+                        <li>Deploy props.conf changes without testing in dev/staging first</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- RETAIL TIMING CONSTRAINTS -->
+                <!-- ============================================== -->
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Retail Business Timing Constraints — Configuration Changes</div>
+                    <p>Phase 2 involves configuration changes (props.conf, transforms.conf, tags.conf) that can impact Splunk performance and data parsing. Follow these timing constraints:</p>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Activity</th>
+                                <th>Risk Level</th>
+                                <th>Timing Guidance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>props.conf changes</strong></td>
+                                <td>Medium</td>
+                                <td>Deploy during change windows (Tue-Thu 2-6 AM ET). Test in dev first.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model rebuild</strong></td>
+                                <td>High (resource intensive)</td>
+                                <td>Schedule for off-peak hours. Large models can take 4-12 hours.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>TA upgrades</strong></td>
+                                <td>High</td>
+                                <td>Never during freeze periods. Requires indexer restart for some changes.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Field alias changes</strong></td>
+                                <td>Low</td>
+                                <td>Search-time only; can be done anytime. Immediate effect.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Quality Gate — Don't Skip This Phase</div>
+                    <p><strong>Data exists ≠ Data is usable.</strong> Phase 1 confirmed logs are flowing. Phase 2 confirms they're accurate, consistent, and ready for detection. Skip this phase and you'll build detections on broken foundations—timestamps off by hours, fields misaligned, correlation impossible.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION A: WHY THIS STEP EXISTS -->
+                <!-- ============================================== -->
+                <h2>Why This Phase Exists</h2>
+
+                <h3>Business Justification</h3>
+                <p>In enterprise environments with dozens of log sources from different vendors, data quality problems are the norm, not the exception. Every detection depends on:</p>
+                <ul>
+                    <li><strong>Accurate timestamps:</strong> A detection that correlates events within 5 minutes fails if one source has timestamps 6 hours off</li>
+                    <li><strong>Consistent field names:</strong> Entra ID calls it "ipAddress", Akamai calls it "clientIP", Windows calls it "Source_Network_Address"—you need them all as "src"</li>
+                    <li><strong>Proper data model mapping:</strong> Splunk ES relies on CIM data models. Unmapped data is invisible to ES correlation searches</li>
+                    <li><strong>Field value consistency:</strong> Username formats must match for user-based correlation across sources</li>
+                </ul>
+
+                <h3>Security Justification</h3>
+                <p>Data quality directly impacts detection effectiveness:</p>
+                <ul>
+                    <li><strong>Timestamp issues:</strong> Attacker activity might appear out of sequence, making attack chains invisible</li>
+                    <li><strong>Missing CIM mapping:</strong> ES out-of-box detections won't see your data</li>
+                    <li><strong>Field inconsistency:</strong> Cross-source correlation fails—you can't link WAF events to authentication events for the same user</li>
+                    <li><strong>False negatives:</strong> Real attacks go undetected because data doesn't match detection logic expectations</li>
+                </ul>
+
+                <h3>What Breaks If This Phase Is Skipped</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Quality Issue</th>
+                                <th>Detection Impact</th>
+                                <th>Real-World Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Timestamps wrong by hours</td>
+                                <td>Time-based correlations fail</td>
+                                <td>MFA fatigue detection misses attack because prompts appear hours apart</td>
+                            </tr>
+                            <tr>
+                                <td>Timezone misconfiguration</td>
+                                <td>Events appear in wrong order</td>
+                                <td>Brute force looks like single attempt because timestamps overlap</td>
+                            </tr>
+                            <tr>
+                                <td>No CIM mapping</td>
+                                <td>ES data models empty</td>
+                                <td>ES Authentication dashboard shows nothing despite auth logs flowing</td>
+                            </tr>
+                            <tr>
+                                <td>src field not populated</td>
+                                <td>IP-based correlation impossible</td>
+                                <td>Can't link credential stuffing WAF events to successful auth from same IP</td>
+                            </tr>
+                            <tr>
+                                <td>Username format mismatch</td>
+                                <td>User-based correlation fails</td>
+                                <td>Can't detect same user's activity across Entra ID and CyberArk</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: DATA QUALITY FRAMEWORK -->
+                <!-- ============================================== -->
+                <h2>Data Quality Assessment Framework</h2>
+
+                <p>For each log source validated in Phase 1, assess these five quality dimensions:</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    subgraph DQ["Data Quality Dimensions"]
+        direction TB
+        T["🕐 Timestamp Accuracy<br/>Is event time correct?"]
+        C["📋 CIM Compliance<br/>Does data map to models?"]
+        F["🏷️ Field Normalization<br/>Are field names consistent?"]
+        V["✓ Value Consistency<br/>Are field values usable?"]
+        L["📊 Completeness<br/>Are required fields populated?"]
+    end
+    
+    subgraph CHECKS["Quality Checks"]
+        T1["Compare _time vs _indextime"]
+        T2["Verify timezone handling"]
+        C1["Check data model acceleration"]
+        C2["Verify tags.conf mapping"]
+        F1["Validate CIM field aliases"]
+        F2["Check src, dest, user fields"]
+        V1["Username format consistency"]
+        V2["IP format validation"]
+        L1["Field population rates"]
+        L2["Missing field patterns"]
+    end
+    
+    subgraph OUTCOMES["Outcomes"]
+        PASS["✅ Ready for Detection"]
+        FIX["🔧 Fix Required"]
+        DOC["📝 Document Limitation"]
+    end
+    
+    T --> T1 --> T2
+    C --> C1 --> C2
+    F --> F1 --> F2
+    V --> V1 --> V2
+    L --> L1 --> L2
+    
+    T2 --> PASS
+    T2 --> FIX
+    C2 --> PASS
+    C2 --> FIX
+    F2 --> PASS
+    F2 --> FIX
+    V2 --> PASS
+    V2 --> DOC
+    L2 --> PASS
+    L2 --> DOC
+    
+    style PASS fill:#238636,stroke:#2ea043,color:#fff
+    style FIX fill:#f59e0b,stroke:#d97706
+    style DOC fill:#6e7681,stroke:#8b949e
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION B: PREREQUISITES -->
+                <!-- ============================================== -->
+                <h2>Prerequisites</h2>
+
+                <h3>What MUST Already Exist</h3>
+                <div class="checklist-group">
+                    <div class="checklist-title">Hard Requirements</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p2-prereq">
+                        <span><strong>Phase 1 Complete:</strong> All log sources validated and flowing</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p2-prereq">
+                        <span><strong>Log Source Matrix:</strong> Documented index, sourcetype, owner for each source</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p2-prereq">
+                        <span><strong>Splunk Add-ons Installed:</strong> Vendor TAs on search heads and indexers</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p2-prereq">
+                        <span><strong>Admin Access:</strong> Ability to edit props.conf, transforms.conf, tags.conf</span>
+                    </label>
+                </div>
+
+                <h3>What Often Does NOT Exist</h3>
+                <ul>
+                    <li><strong>Consistent TA versions:</strong> Different TA versions on search heads vs. indexers cause field extraction mismatches</li>
+                    <li><strong>CIM add-on:</strong> Splunk Common Information Model add-on may not be installed</li>
+                    <li><strong>Data model acceleration:</strong> ES data models may not be accelerated for custom sourcetypes</li>
+                    <li><strong>Documentation of expected formats:</strong> No one documented what timezone the source system uses</li>
+                </ul>
+
+                <!-- ============================================== -->
+                <!-- SECTION C: TIMESTAMP VALIDATION -->
+                <!-- ============================================== -->
+                <h2>Step 1: Timestamp Validation</h2>
+
+                <p>Timestamp accuracy is the foundation of all time-based detection. If timestamps are wrong, every correlation, threshold, and timeline is broken.</p>
+
+                <h3>1.1: Check Timestamp Extraction</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify Timestamp is Extracted from Event (Not Index Time)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Events should have _time from the event itself, not _indextime")`
+
+index=waf_akamai sourcetype=akamai:siem earliest=-1h
+| eval time_diff = _indextime - _time
+| stats 
+    count,
+    avg(time_diff) AS avg_diff,
+    min(time_diff) AS min_diff,
+    max(time_diff) AS max_diff,
+    stdev(time_diff) AS stdev_diff
+| eval avg_diff_sec = round(avg_diff, 0)
+| eval assessment = case(
+    avg_diff < 0, "⚠️ PROBLEM: _time is AFTER _indextime (future timestamps)",
+    avg_diff > 3600, "⚠️ PROBLEM: Avg latency > 1 hour - check timestamp extraction",
+    stdev_diff > 1800, "⚠️ PROBLEM: High variance suggests inconsistent timestamps",
+    true(), "✓ Timestamps appear consistent"
+)
+| table count, avg_diff_sec, min_diff, max_diff, stdev_diff, assessment</code></pre>
+                </div>
+
+                <p><strong>Interpretation:</strong></p>
+                <ul>
+                    <li><strong>avg_diff near 0:</strong> Timestamps extracted correctly, minimal latency</li>
+                    <li><strong>avg_diff 60-300:</strong> Normal ingestion latency (1-5 minutes)</li>
+                    <li><strong>avg_diff > 3600:</strong> Either high latency OR timestamp extraction broken</li>
+                    <li><strong>avg_diff negative:</strong> Future timestamps—timezone problem</li>
+                    <li><strong>High stdev:</strong> Inconsistent timestamps—some events extracted correctly, others not</li>
+                </ul>
+
+                <h3>1.2: Timezone Validation</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check for Timezone Offset Issues</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Look for events clustered at wrong hours - indicates timezone issue")`
+
+index=auth_azure sourcetype="azure:aad:signin" earliest=-7d
+| eval hour = strftime(_time, "%H")
+| stats count BY hour
+| sort hour
+
+`comment("
+Expected: Distribution matching business hours of your users
+Red flag: Peak activity at 3 AM local time suggests timezone offset
+")`</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Compare Timestamps Across Sources for Same Event</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("If you can identify the same event in multiple sources, compare timestamps")`
+
+`comment("Example: WAF block and subsequent auth failure for same IP")`
+index=waf_akamai src="192.168.1.100" earliest=-1h
+| append [search index=auth_azure ipAddress="192.168.1.100" earliest=-1h]
+| sort _time
+| table _time, index, sourcetype, src, ipAddress
+
+`comment("Events for same IP should be in logical sequence")`</code></pre>
+                </div>
+
+                <h3>1.3: Fixing Timestamp Issues</h3>
+
+                <h4>Scenario: Timestamps Extracted as Index Time</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>props.conf: Configure Timestamp Extraction</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>[sourcetype_name]
+# Tell Splunk where to find the timestamp
+TIME_PREFIX = "timestamp":\s*"
+TIME_FORMAT = %Y-%m-%dT%H:%M:%S
+MAX_TIMESTAMP_LOOKAHEAD = 30
+TZ = UTC
+
+# If timestamp is epoch (seconds since 1970)
+# TIME_FORMAT = %s
+
+# If timestamp is milliseconds epoch
+# TIME_FORMAT = %s%3N</code></pre>
+                </div>
+
+                <h4>Scenario: Wrong Timezone Applied</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>props.conf: Force Correct Timezone</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>[sourcetype_name]
+# Force UTC interpretation
+TZ = UTC
+
+# Or for specific timezone
+TZ = America/Toronto
+TZ = Europe/London
+
+# Common issue: Source logs in local time but Splunk assumes UTC
+# Fix: Set TZ to match source system's timezone</code></pre>
+                </div>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">💡 Timestamp Fix Testing</div>
+                    <p>After changing props.conf, new events will use new settings, but existing events are already indexed. To test, use <code>| makeresults</code> to simulate events, or wait for new data and compare before/after.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION D: CIM COMPLIANCE -->
+                <!-- ============================================== -->
+                <h2>Step 2: CIM Compliance Verification</h2>
+
+                <p>Splunk Enterprise Security uses Common Information Model (CIM) data models for its dashboards and correlation searches. Data that isn't CIM-compliant is invisible to ES.</p>
+
+                <h3>2.1: Check Data Model Acceleration Status</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify Data Models Are Accelerated</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| rest /services/admin/summarization by_tstats=t splunk_server=local
+| search datamodel_name IN ("Authentication", "Web", "Network_Traffic", "Endpoint", "Intrusion_Detection")
+| table datamodel_name, summary.is_inprogress, summary.complete, summary.access_time, summary.size
+| rename summary.is_inprogress AS building, summary.complete AS complete_pct, summary.access_time AS last_access, summary.size AS size_mb
+| eval status = case(
+    building=="1", "⏳ Building",
+    complete_pct >= 0.9, "✓ Ready",
+    complete_pct >= 0.5, "⚠️ Partially Complete",
+    complete_pct > 0, "⚠️ Low Completion",
+    true(), "✗ Not Accelerated"
+)
+| table datamodel_name, status, complete_pct, size_mb, last_access</code></pre>
+                </div>
+
+                <h3>2.2: Check Which Sourcetypes Map to Data Models</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify Your Sourcetypes Appear in Authentication Model</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Check if your auth sourcetypes are in the Authentication data model")`
+
+| tstats count FROM datamodel=Authentication WHERE earliest=-24h BY sourcetype
+| sort - count
+| eval cim_mapped = "✓ Yes"
+| table sourcetype, count, cim_mapped
+
+| append 
+    [| makeresults 
+     | eval sourcetype="azure:aad:signin", expected="Should be here"
+     | eval sourcetype=mvappend(sourcetype, "cyberark:identity", "OktaIM2:log", "WinEventLog:Security")
+     | mvexpand sourcetype
+     | table sourcetype, expected]
+| stats values(cim_mapped) AS cim_mapped, values(expected) AS expected, sum(count) AS count BY sourcetype
+| fillnull cim_mapped value="✗ NOT MAPPED"
+| sort - count</code></pre>
+                </div>
+
+                <h3>2.3: Check Web Data Model for WAF Data</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify WAF Data in Web Data Model</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| tstats count FROM datamodel=Web WHERE earliest=-24h BY sourcetype, Web.action
+| rename Web.action AS action
+| sort - count
+| eval cim_mapped = "✓ Mapped to Web model"
+| table sourcetype, action, count, cim_mapped
+
+`comment("Your akamai:siem sourcetype should appear here")`</code></pre>
+                </div>
+
+                <h3>2.4: Fixing CIM Mapping Issues</h3>
+
+                <h4>If Data Model Is Empty</h4>
+                <ol>
+                    <li><strong>Check TA installation:</strong> Ensure vendor TA is installed on search heads AND indexers</li>
+                    <li><strong>Verify tags.conf:</strong> TA should have tags.conf mapping sourcetype to data model</li>
+                    <li><strong>Check eventtypes.conf:</strong> TA should define eventtypes that match the data</li>
+                    <li><strong>Rebuild data model:</strong> If tags added after data ingested, rebuild acceleration</li>
+                </ol>
+
+                <h4>Manual CIM Tagging (If TA Doesn't Cover)</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>tags.conf: Map Sourcetype to Authentication Data Model</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># Create eventtype first in eventtypes.conf
+[custom_auth_events]
+search = sourcetype="custom:auth:logs"
+
+# Then tag in tags.conf
+[eventtype=custom_auth_events]
+authentication = enabled
+default = enabled</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>tags.conf: Map Sourcetype to Web Data Model</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>[eventtype=custom_waf_events]
+web = enabled
+attack = enabled</code></pre>
+                </div>
+
+                <h4>Rebuild Data Model Acceleration</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>CLI: Rebuild Specific Data Model</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># On search head
+$SPLUNK_HOME/bin/splunk rebuild acceleration Authentication -earliest -30d
+
+# Or via REST API
+curl -k -u admin:password -X POST \
+  https://localhost:8089/services/admin/summarization/tstats%3ADM_Authentication/rebuild</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION E: FIELD NORMALIZATION -->
+                <!-- ============================================== -->
+                <h2>Step 3: Field Normalization</h2>
+
+                <p>For detections to correlate events across sources, critical fields must have consistent names. The CIM defines standard field names that all sources should map to.</p>
+
+                <h3>3.1: Critical CIM Fields to Verify</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>CIM Field</th>
+                                <th>Purpose</th>
+                                <th>Common Source Fields</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>src</code></td>
+                                <td>Source IP address</td>
+                                <td>ipAddress, clientIP, Source_Network_Address, src_ip</td>
+                            </tr>
+                            <tr>
+                                <td><code>dest</code></td>
+                                <td>Destination host/IP</td>
+                                <td>hostname, host, target, destination</td>
+                            </tr>
+                            <tr>
+                                <td><code>user</code></td>
+                                <td>Username</td>
+                                <td>userPrincipalName, Account_Name, userName, actor.alternateId</td>
+                            </tr>
+                            <tr>
+                                <td><code>action</code></td>
+                                <td>Action taken</td>
+                                <td>result, status, outcome, action</td>
+                            </tr>
+                            <tr>
+                                <td><code>app</code></td>
+                                <td>Application name</td>
+                                <td>appDisplayName, application, service</td>
+                            </tr>
+                            <tr>
+                                <td><code>vendor</code></td>
+                                <td>Vendor name</td>
+                                <td>Usually set via EVAL</td>
+                            </tr>
+                            <tr>
+                                <td><code>product</code></td>
+                                <td>Product name</td>
+                                <td>Usually set via EVAL</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>3.2: Verify CIM Field Population</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check CIM Field Population Across Sources</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Check if critical CIM fields are populated for each sourcetype")`
+
+index IN (waf_akamai, auth_azure, auth_cyberark) earliest=-24h
+| head 10000
+| eval has_src = if(isnotnull(src) AND src!="", 1, 0)
+| eval has_dest = if(isnotnull(dest) AND dest!="", 1, 0)
+| eval has_user = if(isnotnull(user) AND user!="", 1, 0)
+| eval has_action = if(isnotnull(action) AND action!="", 1, 0)
+| eval has_app = if(isnotnull(app) AND app!="", 1, 0)
+| stats 
+    count AS total,
+    sum(has_src) AS with_src,
+    sum(has_dest) AS with_dest,
+    sum(has_user) AS with_user,
+    sum(has_action) AS with_action,
+    sum(has_app) AS with_app
+    BY sourcetype
+| foreach with_* 
+    [eval &lt;&lt;FIELD&gt;&gt;_pct = round('&lt;&lt;FIELD&gt;&gt;'/total*100, 0)."%"]
+| table sourcetype, total, with_src_pct, with_dest_pct, with_user_pct, with_action_pct, with_app_pct</code></pre>
+                </div>
+
+                <h3>3.3: Create Field Aliases</h3>
+
+                <p>If CIM fields aren't populated, create field aliases in props.conf:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>props.conf: Field Aliases for CIM Compliance</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># Akamai WAF
+[akamai:siem]
+FIELDALIAS-akamai_src = attackData.clientIP AS src
+FIELDALIAS-akamai_dest = httpMessage.host AS dest
+FIELDALIAS-akamai_url = httpMessage.path AS url
+FIELDALIAS-akamai_http_method = httpMessage.method AS http_method
+FIELDALIAS-akamai_action = attackData.action AS action
+EVAL-vendor = "Akamai"
+EVAL-product = "Kona Site Defender"
+
+# Entra ID Sign-in
+[azure:aad:signin]
+FIELDALIAS-azure_src = ipAddress AS src
+FIELDALIAS-azure_user = userPrincipalName AS user
+FIELDALIAS-azure_app = appDisplayName AS app
+FIELDALIAS-azure_dest = resourceDisplayName AS dest
+EVAL-action = case('status.errorCode'==0, "success", true(), "failure")
+EVAL-vendor = "Microsoft"
+EVAL-product = "Entra ID"
+
+# Windows Security
+[WinEventLog:Security]
+FIELDALIAS-win_src = Source_Network_Address AS src
+FIELDALIAS-win_user = Account_Name AS user
+FIELDALIAS-win_dest = Workstation_Name AS dest
+EVAL-action = case(EventCode IN (4624, 4648), "success", EventCode==4625, "failure", true(), "unknown")
+EVAL-vendor = "Microsoft"
+EVAL-product = "Windows"</code></pre>
+                </div>
+
+                <h3>3.4: Username Format Normalization</h3>
+
+                <p>Different systems use different username formats. For cross-source correlation, normalize to a common format:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Analyze Username Formats Across Sources</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index IN (auth_azure, auth_cyberark, auth_windows) earliest=-24h
+| stats values(user) AS sample_users BY sourcetype
+| eval sample_users = mvindex(sample_users, 0, 9)
+| table sourcetype, sample_users
+
+`comment("
+Look for format differences:
+- Entra ID: john.smith@contoso.com (UPN)
+- CyberArk: john.smith@contoso.com or jsmith
+- Windows: DOMAIN\\jsmith or jsmith
+")`</code></pre>
+                </div>
+
+                <h4>Create Username Normalization Lookup</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>identity_correlation.csv</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>upn,samaccountname,email,employee_id,display_name,department,is_privileged
+john.smith@contoso.com,jsmith,john.smith@contoso.com,EMP001,John Smith,IT,false
+admin.john@contoso.com,admin.john,admin.john@contoso.com,EMP001,John Smith,IT,true
+jane.doe@contoso.com,jdoe,jane.doe@contoso.com,EMP002,Jane Doe,Finance,false</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>transforms.conf: Identity Lookup Definition</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>[identity_correlation]
+filename = identity_correlation.csv
+case_sensitive_match = false
+max_matches = 1</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Use Lookup for Cross-Source Correlation</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index IN (auth_azure, auth_cyberark, auth_windows) earliest=-24h
+| eval user_normalized = lower(user)
+| lookup identity_correlation.csv upn AS user_normalized OUTPUT employee_id, display_name, is_privileged
+| lookup identity_correlation.csv samaccountname AS user_normalized OUTPUT employee_id AS emp_id2, display_name AS name2
+| eval employee_id = coalesce(employee_id, emp_id2)
+| eval display_name = coalesce(display_name, name2)
+| stats count BY employee_id, display_name, sourcetype
+| sort employee_id</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION F: VALUE CONSISTENCY -->
+                <!-- ============================================== -->
+                <h2>Step 4: Field Value Consistency</h2>
+
+                <h3>4.1: Action Field Standardization</h3>
+                <p>The <code>action</code> field should have consistent values across sources for correlation:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check Action Field Values</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index IN (waf_akamai, auth_azure, auth_cyberark) earliest=-24h
+| stats count BY sourcetype, action
+| sort sourcetype, - count
+
+`comment("
+Standard CIM action values for Authentication:
+- success
+- failure
+- error
+
+Standard CIM action values for Web/IDS:
+- allowed
+- blocked
+- dropped
+- alerted
+")`</code></pre>
+                </div>
+
+                <h4>Normalize Action Values</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>props.conf: Standardize Action Values</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code># Standardize WAF action values
+[akamai:siem]
+EVAL-action = case(
+    'attackData.action' IN ("deny", "block", "denied", "blocked"), "blocked",
+    'attackData.action' IN ("alert", "monitor", "alerted"), "allowed",
+    'attackData.action' IN ("allow", "pass", "allowed"), "allowed",
+    true(), 'attackData.action'
+)
+
+# Standardize authentication action values
+[azure:aad:signin]
+EVAL-action = case(
+    'status.errorCode'==0, "success",
+    'status.errorCode' IN (50126, 50053, 50055, 50056, 50057, 50058), "failure",
+    true(), "failure"
+)</code></pre>
+                </div>
+
+                <h3>4.2: IP Address Validation</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Check for Invalid IP Addresses</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index IN (waf_akamai, auth_azure) earliest=-24h
+| where isnotnull(src)
+| eval is_valid_ip = if(match(src, "^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$") OR match(src, "^[0-9a-fA-F:]+$"), "valid", "invalid")
+| stats count BY sourcetype, is_valid_ip
+| eval problem = if(is_valid_ip=="invalid", "⚠️ Review these events", "")
+| table sourcetype, is_valid_ip, count, problem</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION G: VALIDATION & ACCEPTANCE -->
+                <!-- ============================================== -->
+                <h2>Validation & Acceptance Criteria</h2>
+
+                <h3>Phase 2 Exit Criteria</h3>
+                <div class="checklist-group">
+                    <div class="checklist-title">Phase 2 Completion Checklist</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p2-exit">
+                        <span><strong>Timestamps Validated:</strong> All sources have correct _time extraction, no timezone issues</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p2-exit">
+                        <span><strong>CIM Compliance:</strong> All sources appear in relevant data models with >90% acceleration</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p2-exit">
+                        <span><strong>src Field:</strong> Populated >95% where applicable</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p2-exit">
+                        <span><strong>user Field:</strong> Populated >95% for authentication sources</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p2-exit">
+                        <span><strong>action Field:</strong> Standardized values across sources</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p2-exit">
+                        <span><strong>Username Correlation:</strong> Identity lookup created OR formats already consistent</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="p2-exit">
+                        <span><strong>Documentation:</strong> Field mappings and any limitations documented</span>
+                    </label>
+                </div>
+
+                <h3>Comprehensive Quality Dashboard Query</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Data Quality Summary Dashboard</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Overall data quality summary")`
+
+| tstats count WHERE index IN (waf_akamai, auth_azure, auth_cyberark, auth_windows) earliest=-24h BY sourcetype
+
+| join type=left sourcetype 
+    [search index IN (waf_akamai, auth_azure, auth_cyberark, auth_windows) earliest=-24h
+     | head 5000
+     | eval has_src = if(isnotnull(src) AND src!="", 1, 0)
+     | eval has_user = if(isnotnull(user) AND user!="", 1, 0)
+     | eval has_action = if(isnotnull(action) AND action!="", 1, 0)
+     | eval latency = _indextime - _time
+     | stats 
+         avg(has_src) AS src_pct,
+         avg(has_user) AS user_pct,
+         avg(has_action) AS action_pct,
+         avg(latency) AS avg_latency
+         BY sourcetype
+     | eval src_pct = round(src_pct*100, 0)."%"
+     | eval user_pct = round(user_pct*100, 0)."%"
+     | eval action_pct = round(action_pct*100, 0)."%"
+     | eval latency_min = round(avg_latency/60, 1)]
+
+| join type=left sourcetype
+    [| tstats count FROM datamodel=Authentication BY sourcetype
+     | eval in_auth_dm = "✓"
+     | table sourcetype, in_auth_dm]
+
+| join type=left sourcetype
+    [| tstats count FROM datamodel=Web BY sourcetype
+     | eval in_web_dm = "✓"
+     | table sourcetype, in_web_dm]
+
+| fillnull in_auth_dm, in_web_dm value="-"
+| table sourcetype, count, src_pct, user_pct, action_pct, latency_min, in_auth_dm, in_web_dm</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION H: FAILURE MODES -->
+                <!-- ============================================== -->
+                <h2>Failure Modes & Fixes</h2>
+
+                <h3>Failure Mode 1: Data Model Shows Zero Events</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p><code>| tstats count FROM datamodel=Authentication</code> returns 0 despite auth events flowing.</p>
+                </div>
+                <p><strong>Causes:</strong></p>
+                <ul>
+                    <li>TA not installed on search heads (field extractions missing)</li>
+                    <li>TA installed but eventtypes/tags not defined for your sourcetype</li>
+                    <li>Data model acceleration not enabled or not completed</li>
+                    <li>Data model constraint doesn't match your index</li>
+                </ul>
+                <p><strong>Fix:</strong></p>
+                <ol>
+                    <li>Verify TA installed: <code>| rest /services/apps/local | search title=*TA*</code></li>
+                    <li>Check if eventtype matches: <code>| search sourcetype="azure:aad:signin" | tags</code></li>
+                    <li>Verify data model constraint includes your index in datamodels.conf</li>
+                    <li>Rebuild acceleration after fixes</li>
+                </ol>
+
+                <hr>
+
+                <h3>Failure Mode 2: Timestamps Hours Off</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Events show timestamps that are consistently offset by fixed hours (e.g., always 5 hours ahead).</p>
+                </div>
+                <p><strong>Causes:</strong></p>
+                <ul>
+                    <li>Source system logs in local time, Splunk interprets as UTC</li>
+                    <li>TZ setting in props.conf is wrong</li>
+                    <li>Source system timezone changed (DST transitions)</li>
+                </ul>
+                <p><strong>Fix:</strong></p>
+                <ol>
+                    <li>Identify source system's timezone</li>
+                    <li>Set correct TZ in props.conf for that sourcetype</li>
+                    <li>Note: Fix only applies to new events; existing data keeps wrong timestamps</li>
+                </ol>
+
+                <hr>
+
+                <h3>Failure Mode 3: Field Aliases Not Working</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>FIELDALIAS in props.conf doesn't populate the CIM field.</p>
+                </div>
+                <p><strong>Causes:</strong></p>
+                <ul>
+                    <li>Source field name wrong (check exact JSON path)</li>
+                    <li>props.conf not on search heads</li>
+                    <li>App precedence: another app's props.conf overriding</li>
+                    <li>Syntax error in props.conf</li>
+                </ul>
+                <p><strong>Fix:</strong></p>
+                <ol>
+                    <li>Verify source field exists: <code>| head 1 | fields *</code></li>
+                    <li>Check exact field name (case sensitive for nested JSON)</li>
+                    <li>Restart Splunk or use <code>| btool props list sourcetype</code> to verify</li>
+                </ol>
+
+                <hr>
+
+                <h3>Failure Mode 4: Cross-Source Correlation Fails</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Join/correlation between sources returns no results despite matching data.</p>
+                </div>
+                <p><strong>Causes:</strong></p>
+                <ul>
+                    <li>Username format mismatch (UPN vs SAMAccountName)</li>
+                    <li>Case sensitivity (user vs USER)</li>
+                    <li>Timestamp mismatch (correlation window too narrow for latency)</li>
+                    <li>Field not actually populated in one source</li>
+                </ul>
+                <p><strong>Fix:</strong></p>
+                <ol>
+                    <li>Use identity lookup for username normalization</li>
+                    <li>Use <code>lower(user)</code> for case-insensitive matching</li>
+                    <li>Widen correlation time window to account for latency</li>
+                    <li>Verify field population in both sources</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK & SAFETY -->
+                <!-- ============================================== -->
+                <h2>Rollback & Safety</h2>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Configuration Changes Can Break Data Parsing</div>
+                    <p>Phase 2 involves modifying Splunk configuration files. Bad changes can break timestamp extraction, field parsing, or data model mapping. Always have a rollback plan.</p>
+                </div>
+
+                <h3>Safe props.conf Deployment Procedure</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Procedure: Deploy props.conf Changes Safely</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>STEP 1: DOCUMENT CURRENT STATE
+──────────────────────────────
+# On search head, capture current effective configuration
+$SPLUNK_HOME/bin/splunk btool props list [sourcetype] --debug > /tmp/props_before.txt
+
+# Record current field extraction behavior
+index=* sourcetype=[sourcetype] earliest=-1h | head 10 | table _raw, _time, src, dest, user
+
+STEP 2: TEST IN DEV/STAGING FIRST
+─────────────────────────────────
+# If dev environment exists:
+1. Deploy props.conf to dev search head
+2. Run validation queries against dev data
+3. Verify no regressions in existing field extractions
+
+STEP 3: BACKUP PRODUCTION CONFIG
+────────────────────────────────
+# Backup current app before changes
+cp -r $SPLUNK_HOME/etc/apps/[your_app] /tmp/[your_app]_backup_$(date +%Y%m%d)
+
+STEP 4: DEPLOY TO PRODUCTION
+────────────────────────────
+# Deploy during change window
+# Option A: Via Splunk Web (Settings → Data inputs → Source types → Edit)
+# Option B: Direct file edit + restart
+1. Edit $SPLUNK_HOME/etc/apps/[your_app]/local/props.conf
+2. Restart Splunk or use debug/refresh endpoint:
+   curl -k -u admin:password https://localhost:8089/services/admin/config-refresh
+
+STEP 5: VALIDATE
+────────────────
+# Immediately after deployment:
+1. Run validation queries from Step 1
+2. Compare before/after results
+3. Check _internal for parsing errors:
+   index=_internal sourcetype=splunkd "ERROR" "[sourcetype]" earliest=-15m
+
+STEP 6: MONITOR FOR 24 HOURS
+────────────────────────────
+# Watch for issues:
+- Field population rates changing
+- Timestamp distribution shifting
+- Data model acceleration errors</code></pre>
+                </div>
+
+                <h3>props.conf Rollback Procedure</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Emergency Rollback: Undo props.conf Changes</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>IF CHANGES BROKE DATA PARSING:
+
+OPTION 1: Restore from Backup (Preferred)
+─────────────────────────────────────────
+1. Stop Splunk (if safe): $SPLUNK_HOME/bin/splunk stop
+2. Restore backup: cp -r /tmp/[your_app]_backup_[date]/* $SPLUNK_HOME/etc/apps/[your_app]/
+3. Start Splunk: $SPLUNK_HOME/bin/splunk start
+4. Verify restoration: $SPLUNK_HOME/bin/splunk btool props list [sourcetype]
+
+OPTION 2: Revert Specific Settings
+──────────────────────────────────
+1. Edit props.conf
+2. Remove or comment out the problematic stanza
+3. Refresh: curl -k -u admin:password https://localhost:8089/services/admin/config-refresh
+4. Test immediately
+
+OPTION 3: Override in local/props.conf
+──────────────────────────────────────
+If you can't modify the original file, create override:
+1. Create $SPLUNK_HOME/etc/apps/[your_app]/local/props.conf
+2. Add corrected stanza (local overrides default)
+3. Refresh configuration
+
+NOTE: Rollback only affects NEW events
+──────────────────────────────────────
+Events already indexed with wrong timestamps/fields cannot be fixed.
+Options for historical data:
+- Re-index from raw data (if available)
+- Document the data quality gap for affected time range
+- Build detections that account for the issue</code></pre>
+                </div>
+
+                <h3>Data Model Acceleration Considerations</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Data Model Rebuild Guidance</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>WHEN REBUILD IS REQUIRED:
+- After changing tags.conf mapping
+- After changing eventtypes.conf
+- After adding new sourcetypes to CIM
+- After changing data model constraints
+
+REBUILD TIME ESTIMATES:
+| Data Model      | Typical Size | Rebuild Time |
+|-----------------|--------------|--------------|
+| Authentication  | 10-50 GB     | 1-4 hours    |
+| Web             | 50-200 GB    | 4-12 hours   |
+| Network_Traffic | 100-500 GB   | 8-24 hours   |
+| Endpoint        | 50-200 GB    | 4-12 hours   |
+
+REBUILD PROCEDURE:
+1. Check current acceleration status:
+   | rest /services/admin/summarization by_tstats=t | search datamodel_name="Authentication"
+
+2. Rebuild (CLI):
+   $SPLUNK_HOME/bin/splunk rebuild acceleration Authentication -earliest -30d
+
+3. Monitor progress:
+   | rest /services/admin/summarization by_tstats=t | search datamodel_name="Authentication"
+   | table summary.is_inprogress, summary.complete
+
+CAUTION:
+- Rebuilding large data models is resource-intensive
+- Schedule during off-peak hours
+- Monitor search head CPU/memory during rebuild
+- Consider staggering rebuilds if multiple models need updating</code></pre>
+                </div>
+
+                <h3>TA Version Verification</h3>
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Enterprise Issue: Mismatched TA Versions</div>
+                    <p>One of the most common enterprise data quality issues is having different TA versions on search heads vs. indexers. This causes field extraction mismatches.</p>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify TA Versions Across All Splunk Servers</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>| rest /services/apps/local splunk_server=*
+| search title IN ("Splunk_TA_*", "TA-*")
+| stats values(version) AS versions, dc(version) AS version_count, values(splunk_server) AS servers BY title
+| where version_count > 1
+| eval issue = "⚠️ VERSION MISMATCH - Update to consistent version across all servers"
+| table title, versions, version_count, servers, issue
+
+`comment("Healthy result: No rows returned (all TAs same version everywhere)")`</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE COLLECTION -->
+                <!-- ============================================== -->
+                <h2>Evidence Collection for Sign-Off</h2>
+
+                <p>Before requesting Phase 2 sign-off, collect and document the following evidence:</p>
+
+                <h3>Required Evidence Artifacts</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Artifact</th>
+                                <th>Format</th>
+                                <th>What It Proves</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Timestamp Validation Results</strong></td>
+                                <td>CSV export</td>
+                                <td>All sources have accurate timestamps (drift <5 min)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CIM Field Population Report</strong></td>
+                                <td>CSV export</td>
+                                <td>Critical fields (src, dest, user, action) >90% populated</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data Model Acceleration Status</strong></td>
+                                <td>Screenshot</td>
+                                <td>Required data models are accelerated and complete</td>
+                            </tr>
+                            <tr>
+                                <td><strong>props.conf Changes</strong></td>
+                                <td>Diff/changelog</td>
+                                <td>All configuration changes documented</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Known Limitations</strong></td>
+                                <td>Word/PDF</td>
+                                <td>Data quality issues that cannot be fixed</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Comprehensive Quality Validation Query</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Phase 2 Quality Gate Validation (Run Before Sign-Off)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Comprehensive data quality check for all security-relevant sourcetypes")`
+
+| tstats count WHERE index IN (waf_akamai, auth_azure, auth_cyberark, auth_okta) earliest=-24h BY index, sourcetype
+| join type=left sourcetype 
+    [search index IN (waf_akamai, auth_azure, auth_cyberark, auth_okta) earliest=-4h
+     | eval latency = _indextime - _time
+     | stats avg(latency) AS avg_latency, perc95(latency) AS p95_latency BY sourcetype]
+| join type=left sourcetype
+    [search index IN (waf_akamai, auth_azure, auth_cyberark, auth_okta) earliest=-24h
+     | head 10000
+     | eval has_src = if(isnotnull(src) AND src!="", 1, 0)
+     | eval has_user = if(isnotnull(user) AND user!="", 1, 0)
+     | eval has_action = if(isnotnull(action) AND action!="", 1, 0)
+     | stats 
+         avg(has_src) AS src_pct,
+         avg(has_user) AS user_pct,
+         avg(has_action) AS action_pct
+         BY sourcetype]
+| eval avg_latency_min = round(avg_latency/60, 1)
+| eval p95_latency_min = round(p95_latency/60, 1)
+| eval src_pct = round(src_pct*100, 1)."%"
+| eval user_pct = round(user_pct*100, 1)."%"
+| eval action_pct = round(action_pct*100, 1)."%"
+| eval timestamp_status = case(p95_latency < 300, "✓ OK", p95_latency < 900, "⚠️ Marginal", true(), "✗ FAIL")
+| eval cim_status = case(src_pct >= 90 AND user_pct >= 90 AND action_pct >= 90, "✓ OK", true(), "⚠️ Check fields")
+| table sourcetype, count, avg_latency_min, p95_latency_min, timestamp_status, src_pct, user_pct, action_pct, cim_status</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: WHAT YOU DO NEXT -->
+                <!-- ============================================== -->
+                <h2>What You Do Next</h2>
+
+                <h3>If All Quality Checks Pass ✓</h3>
+                <p>Proceed to <strong><a href="../phase3-detection/index.html">Phase 3: Detection Engineering</a></strong></p>
+                <p>Your data is now:</p>
+                <ul>
+                    <li>Timestamp-accurate for time-based correlation</li>
+                    <li>CIM-compliant for ES dashboards and out-of-box detections</li>
+                    <li>Field-normalized for cross-source correlation</li>
+                    <li>Ready for custom detection logic</li>
+                </ul>
+
+                <h3>If Quality Issues Remain</h3>
+                <ol>
+                    <li>Document the limitation (what field, what impact)</li>
+                    <li>Determine if detection is still possible with workaround</li>
+                    <li>Create risk acceptance if gap cannot be fixed</li>
+                    <li>Proceed with documented limitations</li>
+                </ol>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Phase 2 Deliverables</div>
+                    <ul>
+                        <li>✓ Data Quality Assessment results for each source</li>
+                        <li>✓ props.conf changes (if any) documented and deployed</li>
+                        <li>✓ Identity correlation lookup (if needed)</li>
+                        <li>✓ Data model acceleration verified</li>
+                        <li>✓ Known limitations documented</li>
+                    </ul>
+                </div>
+
+                <div class="next-steps">
+                    <a href="../phase3-detection/index.html" class="next-step-link primary">
+                        <span class="step-direction">Next Phase →</span>
+                        <span class="step-title">Phase 3: Detection Engineering</span>
+                    </a>
+                    <a href="../use-cases/waf-ddos.html" class="next-step-link">
+                        <span class="step-direction">Build Detections →</span>
+                        <span class="step-title">WAF & DDoS Use Cases</span>
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../assets/app.js"></script>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#0d1117',
+                primaryColor: '#238636',
+                primaryTextColor: '#c9d1d9',
+                primaryBorderColor: '#30363d',
+                lineColor: '#8b949e',
+                secondaryColor: '#161b22',
+                tertiaryColor: '#21262d'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 20
+            }
+        });
+    </script>
+</body>
+</html>

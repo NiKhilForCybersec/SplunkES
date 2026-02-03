@@ -1,0 +1,1756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAF & DDoS Detection Use Cases - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
+                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="waf-ddos.html" class="nav-item nav-item-sub active">WAF / DDoS Use Cases</a>
+                    <a href="mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">WAF & DDoS Use Cases</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-3">🎯 Phase 3 — Detection Engineering</span>
+                <h1>WAF & DDoS Detection Use Cases</h1>
+
+                <!-- ============================================== -->
+                <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>All use cases include: data reality checks, production SPL, monitoring mode config, false positive patterns, SOC runbooks, and rollback procedures.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 MANDATORY: Complete Data Reality Check Before Each Use Case</div>
+                    <p>Each use case has a "Data Reality Check" query. <strong>DO NOT build the detection if the reality check fails.</strong> Building detections against missing data creates false confidence.</p>
+                </div>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Use Case Library Overview</div>
+                    <p>This library contains production-ready detection use cases for Akamai WAF events. Each detection includes the full attack context, SPL logic, tuning guidance, and SOC runbooks needed to implement without external research.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- USE CASE SUMMARY TABLE -->
+                <!-- ============================================== -->
+                <h2>Use Case Summary</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Use Case</th>
+                                <th>Attack Type</th>
+                                <th>Severity</th>
+                                <th>MITRE ATT&CK</th>
+                                <th>Data Source</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><a href="#uc1-sqli">SQL Injection Campaign</a></td>
+                                <td>Web Application Attack</td>
+                                <td><span class="status-badge" style="background:#da3633;">High</span></td>
+                                <td>T1190</td>
+                                <td>Akamai WAF</td>
+                            </tr>
+                            <tr>
+                                <td><a href="#uc2-credential-stuffing">Credential Stuffing Attack</a></td>
+                                <td>Account Takeover</td>
+                                <td><span class="status-badge" style="background:#da3633;">High</span></td>
+                                <td>T1110.004</td>
+                                <td>Akamai WAF + Auth Logs</td>
+                            </tr>
+                            <tr>
+                                <td><a href="#uc3-rate-limiting">Rate Limit / DDoS Indicator</a></td>
+                                <td>Availability Attack</td>
+                                <td><span class="status-badge" style="background:#f59e0b;">Medium</span></td>
+                                <td>T1498/T1499</td>
+                                <td>Akamai WAF</td>
+                            </tr>
+                            <tr>
+                                <td><a href="#uc4-bot-activity">Malicious Bot Activity</a></td>
+                                <td>Scraping / Inventory Abuse</td>
+                                <td><span class="status-badge" style="background:#f59e0b;">Medium</span></td>
+                                <td>T1595</td>
+                                <td>Akamai Bot Manager</td>
+                            </tr>
+                            <tr>
+                                <td><a href="#uc5-command-injection">Command Injection Attempt</a></td>
+                                <td>Remote Code Execution</td>
+                                <td><span class="status-badge" style="background:#da3633;">Critical</span></td>
+                                <td>T1059</td>
+                                <td>Akamai WAF</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- DATA REQUIREMENTS -->
+                <!-- ============================================== -->
+                <h2>Data Requirements (All Use Cases)</h2>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Verify Data Before Building Detections</div>
+                    <p>Before implementing ANY detection, run the data reality check below. Building detections against missing or incomplete data is the #1 cause of silent detection failures.</p>
+                </div>
+
+                <h3>Required Log Sources</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Index</th>
+                                <th>Sourcetype</th>
+                                <th>Onboarding Guide</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Akamai WAF Events</td>
+                                <td>waf_akamai</td>
+                                <td>akamai:siem</td>
+                                <td><a href="../onboarding-primary/akamai-waf.html">Akamai WAF Onboarding</a></td>
+                            </tr>
+                            <tr>
+                                <td>Authentication Logs (for credential stuffing correlation)</td>
+                                <td>auth_azure, auth_*</td>
+                                <td>azure:aad:signin, etc.</td>
+                                <td><a href="../onboarding-primary/authentication-mfa.html">Auth/MFA Onboarding</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Data Reality Check SPL</h3>
+                <p>Run this BEFORE implementing any detection to verify required fields exist:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: WAF Data Reality Check</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=waf_akamai sourcetype=akamai:siem earliest=-24h
+| head 10000
+| eval has_src = if(isnotnull(src) AND src!="", 1, 0)
+| eval has_dest = if(isnotnull(dest) OR isnotnull('httpMessage.host'), 1, 0)
+| eval has_action = if(isnotnull(action) OR isnotnull('attackData.action'), 1, 0)
+| eval has_url = if(isnotnull(url) OR isnotnull('httpMessage.path'), 1, 0)
+| eval has_rule = if(isnotnull('attackData.rules{}.ruleId') OR isnotnull('attackData.ruleActions{}.ruleId'), 1, 0)
+| eval has_method = if(isnotnull(http_method) OR isnotnull('httpMessage.method'), 1, 0)
+| eval has_status = if(isnotnull(status) OR isnotnull('httpMessage.status'), 1, 0)
+| eval has_user_agent = if(isnotnull(http_user_agent) OR isnotnull('httpMessage.requestHeaders.User-Agent'), 1, 0)
+| stats 
+    count AS total_events,
+    sum(has_src) AS with_src,
+    sum(has_dest) AS with_dest,
+    sum(has_action) AS with_action,
+    sum(has_url) AS with_url,
+    sum(has_rule) AS with_rule,
+    sum(has_method) AS with_method,
+    sum(has_status) AS with_status,
+    sum(has_user_agent) AS with_user_agent
+| foreach with_* 
+    [eval &lt;&lt;FIELD&gt;&gt;_pct = round('&lt;&lt;FIELD&gt;&gt;'/total_events*100, 1)."%"]
+| table total_events, with_src_pct, with_dest_pct, with_action_pct, with_url_pct, with_rule_pct, with_method_pct, with_status_pct, with_user_agent_pct</code></pre>
+                </div>
+
+                <p><strong>Minimum Thresholds for Detection Viability:</strong></p>
+                <ul>
+                    <li><code>src</code> (source IP): Must be &gt;99% — cannot detect attacks without attacker IP</li>
+                    <li><code>action</code>: Must be &gt;99% — cannot distinguish blocked vs. allowed</li>
+                    <li><code>url/path</code>: Must be &gt;95% — needed for attack pattern analysis</li>
+                    <li><code>rule</code>: Should be &gt;80% — helps identify attack type</li>
+                </ul>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 STOP If Data Check Fails</div>
+                    <p>If critical fields are below threshold, DO NOT proceed with detection implementation. Return to <a href="../onboarding-primary/akamai-waf.html">Akamai WAF Onboarding</a> and fix field extraction issues first.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- USE CASE 1: SQL INJECTION -->
+                <!-- ============================================== -->
+                <h2 id="uc1-sqli">Use Case 1: SQL Injection Campaign Detection</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">High Severity | MITRE T1190 | Retail Impact: Data Breach Risk</div>
+                </div>
+
+                <h3>1.1 Real Attack Story: How SQL Injection Happens in Retail</h3>
+
+                <p>SQL injection against retail web applications typically follows this pattern:</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    subgraph RECON["Phase 1: Reconnaissance (Hours to Days)"]
+        R1["Attacker identifies target<br/>retail website"]
+        R2["Automated scanners probe<br/>for input fields"]
+        R3["Test payloads sent to<br/>search, login, product pages"]
+    end
+    
+    subgraph EXPLOIT["Phase 2: Exploitation Attempts"]
+        E1["SQLi payloads in URL parameters<br/>?id=1' OR '1'='1"]
+        E2["SQLi in POST body<br/>username=' OR 1=1--"]
+        E3["SQLi in HTTP headers<br/>User-Agent, Referer"]
+        E4["Encoded/obfuscated payloads<br/>to bypass WAF"]
+    end
+    
+    subgraph WAF["WAF Response"]
+        W1{"WAF Detection"}
+        W2["Block + Log<br/>(action=deny)"]
+        W3["Alert Only<br/>(action=alert)"]
+        W4["Bypass Successful<br/>(no detection)"]
+    end
+    
+    subgraph IMPACT["Phase 3: If Successful"]
+        I1["Database enumeration"]
+        I2["Customer PII extraction"]
+        I3["Payment card data theft"]
+        I4["Admin credential theft"]
+    end
+    
+    R1 --> R2 --> R3
+    R3 --> E1
+    E1 --> E2 --> E3 --> E4
+    E4 --> W1
+    W1 -->|"Detected"| W2
+    W1 -->|"Suspicious"| W3
+    W1 -->|"Missed"| W4
+    W4 --> I1 --> I2 --> I3 --> I4
+    
+    style W2 fill:#238636,stroke:#2ea043,color:#fff
+    style W3 fill:#f59e0b,stroke:#d97706,color:#000
+    style W4 fill:#da3633,stroke:#f85149,color:#fff
+    style I3 fill:#da3633,stroke:#f85149,color:#fff
+                    </div>
+                </div>
+
+                <p><strong>Why This Matters in Retail:</strong></p>
+                <ul>
+                    <li>Retail databases contain customer PII, payment data, and loyalty program information</li>
+                    <li>A successful SQLi can lead to mass data breach and PCI compliance violations</li>
+                    <li>Even blocked attacks indicate active targeting—attackers will try bypass techniques</li>
+                    <li>Patterns of SQLi attempts often precede successful breaches (attackers testing defenses)</li>
+                </ul>
+
+                <p><strong>Why WAF Alone Doesn't Stop This:</strong></p>
+                <ul>
+                    <li>WAF rules can be bypassed with encoding, case variation, or novel payloads</li>
+                    <li>WAF in "alert mode" doesn't block, just logs</li>
+                    <li>Application vulnerabilities may allow SQLi that WAF rules don't cover</li>
+                    <li>WAF doesn't protect against insider threats or compromised admin credentials</li>
+                </ul>
+
+                <h3>1.2 Data Reality Check: Verify Before Building</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify SQLi Detection Data Exists</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=waf_akamai sourcetype=akamai:siem earliest=-7d
+| spath output=rules path=attackData.rules{}.ruleId
+| spath output=rule_messages path=attackData.rules{}.ruleMessage
+| search rules=*SQL* OR rules=*sql* OR rule_messages=*SQL* OR rule_messages=*injection*
+| stats count BY rules, rule_messages
+| sort - count
+| head 20</code></pre>
+                </div>
+
+                <p><strong>Expected Output:</strong> You should see rule IDs and messages containing "SQL", "injection", "SQLi". If this returns zero results, either:</p>
+                <ul>
+                    <li>No SQL injection attempts have occurred (unlikely for internet-facing retail site)</li>
+                    <li>WAF rules for SQLi are not enabled</li>
+                    <li>Field extraction is broken — check raw events</li>
+                </ul>
+
+                <h3>1.3 Detection Logic (Enterprise-Safe SPL)</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: SQL Injection Campaign Detection — Correlation Search</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("
+===============================================================================
+DETECTION: SQL Injection Campaign
+AUTHOR: Detection Engineering Team
+VERSION: 1.0
+LAST_UPDATED: 2024-01-15
+MITRE: T1190 - Exploit Public-Facing Application
+===============================================================================
+LOGIC: Detects multiple SQL injection attempts from a single source IP within
+a short time window. Threshold set conservatively to reduce false positives
+from legitimate security scanners while catching real attack campaigns.
+===============================================================================
+TUNING NOTES:
+- Threshold of 5 in 10 minutes catches most attacks while filtering scanners
+- Adjust threshold UP if authorized scanners trigger alerts
+- DO NOT adjust threshold below 3 — will generate excessive noise
+===============================================================================
+")`
+
+index=waf_akamai sourcetype=akamai:siem earliest=-15m latest=now()
+| spath output=action path=attackData.action
+| spath output=rules path=attackData.rules{}.ruleId
+| spath output=rule_msg path=attackData.rules{}.ruleMessage
+| spath output=src path=attackData.clientIP
+| spath output=dest path=httpMessage.host
+| spath output=url path=httpMessage.path
+| spath output=method path=httpMessage.method
+
+`comment("Filter to SQL injection related rules")`
+| search rule_msg=*SQL* OR rule_msg=*injection* OR rules IN ("950001", "950007", "950901", "959071", "959072", "959073")
+
+`comment("Aggregate by source IP")`
+| stats 
+    count AS sqli_attempts,
+    dc(url) AS unique_urls_targeted,
+    dc(dest) AS unique_hosts_targeted,
+    values(action) AS actions,
+    values(url) AS targeted_urls,
+    values(rule_msg) AS rule_messages,
+    latest(_time) AS last_attempt,
+    earliest(_time) AS first_attempt
+    BY src
+
+`comment("Apply detection threshold — minimum 5 attempts")`
+| where sqli_attempts >= 5
+
+`comment("Calculate attack duration and velocity")`
+| eval attack_duration_sec = last_attempt - first_attempt
+| eval attack_velocity = round(sqli_attempts / (attack_duration_sec + 1) * 60, 2)
+
+`comment("Determine if attack was fully blocked")`
+| eval fully_blocked = if(mvcount(mvfilter(match(actions, "deny|block"))) == mvcount(actions), "Yes", "No - SOME REQUESTS MAY HAVE SUCCEEDED")
+
+`comment("Assign severity based on volume and blocking status")`
+| eval severity = case(
+    fully_blocked=="No - SOME REQUESTS MAY HAVE SUCCEEDED", "critical",
+    sqli_attempts >= 100, "high",
+    sqli_attempts >= 20, "high",
+    sqli_attempts >= 5, "medium",
+    true(), "low"
+)
+
+`comment("Build alert description")`
+| eval description = "SQL Injection campaign detected: ".sqli_attempts." attempts from ".src." targeting ".unique_hosts_targeted." host(s). ".fully_blocked." blocked."
+
+| table _time, src, sqli_attempts, unique_urls_targeted, unique_hosts_targeted, fully_blocked, severity, attack_velocity, targeted_urls, rule_messages, description</code></pre>
+                </div>
+
+                <h4>SPL Explanation (Why Each Clause Exists)</h4>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Clause</th>
+                                <th>Purpose</th>
+                                <th>Why It Matters</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>earliest=-15m</code></td>
+                                <td>10-minute window with 5-min overlap</td>
+                                <td>Catches attacks spanning schedule boundaries</td>
+                            </tr>
+                            <tr>
+                                <td><code>search rule_msg=*SQL*</code></td>
+                                <td>Filter to SQLi-related events</td>
+                                <td>Reduces noise from other WAF rules</td>
+                            </tr>
+                            <tr>
+                                <td><code>where sqli_attempts >= 5</code></td>
+                                <td>Minimum threshold</td>
+                                <td>Single probes are noise; 5+ indicates campaign</td>
+                            </tr>
+                            <tr>
+                                <td><code>fully_blocked calculation</code></td>
+                                <td>Identify if any requests succeeded</td>
+                                <td>Unblocked requests = potential compromise</td>
+                            </tr>
+                            <tr>
+                                <td><code>severity escalation</code></td>
+                                <td>Dynamic severity based on context</td>
+                                <td>Unblocked attacks are always critical</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4>Safe Defaults and Alternate Thresholds</h4>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Environment</th>
+                                <th>Threshold</th>
+                                <th>Rationale</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Standard retail (this detection)</td>
+                                <td>5 attempts / 10 min</td>
+                                <td>Balances detection vs. scanner noise</td>
+                            </tr>
+                            <tr>
+                                <td>High-security (PCI environment)</td>
+                                <td>3 attempts / 10 min</td>
+                                <td>Lower threshold, accept more false positives</td>
+                            </tr>
+                            <tr>
+                                <td>High-traffic (Black Friday)</td>
+                                <td>10 attempts / 10 min</td>
+                                <td>Reduce noise during traffic spikes</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>1.4 Historical Backtesting</h3>
+
+                <p>Before enabling this detection in production, backtest against historical data to understand baseline and tune thresholds.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: SQLi Detection Backtest (30 Days)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Backtest: How many alerts would this detection have generated?")`
+
+index=waf_akamai sourcetype=akamai:siem earliest=-30d latest=now()
+| spath output=rule_msg path=attackData.rules{}.ruleMessage
+| spath output=src path=attackData.clientIP
+| search rule_msg=*SQL* OR rule_msg=*injection*
+
+`comment("Bucket into 10-minute windows")`
+| bin _time span=10m
+
+`comment("Count per source per window")`
+| stats count AS attempts BY _time, src
+
+`comment("Apply same threshold as detection")`
+| where attempts >= 5
+
+`comment("Summarize: How many alerts per day?")`
+| timechart span=1d count AS daily_alerts
+
+`comment("Expected result: 0-10 alerts/day is manageable; 50+/day needs tuning")`</code></pre>
+                </div>
+
+                <p><strong>Backtest Interpretation:</strong></p>
+                <ul>
+                    <li><strong>0-5 alerts/day:</strong> Detection is well-tuned. Proceed to monitoring mode.</li>
+                    <li><strong>5-20 alerts/day:</strong> Acceptable for initial deployment. Plan for tuning.</li>
+                    <li><strong>20-50 alerts/day:</strong> High volume. Identify top sources—may need allowlist for scanners.</li>
+                    <li><strong>&gt;50 alerts/day:</strong> Too noisy. Increase threshold or add filters before deployment.</li>
+                </ul>
+
+                <h3>1.5 Monitoring-Only Mode Configuration</h3>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ MANDATORY: Run in Monitoring Mode First</div>
+                    <p>Never enable alerting on a new detection without at least 1-2 weeks in monitoring-only mode. This validates the detection works as expected and establishes baseline.</p>
+                </div>
+
+                <h4>Step 1: Create as Scheduled Report (Not Alert)</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Splunk Web: Settings → Searches, Reports, and Alerts → New Report</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>Report Name: MONITOR_SQLi_Campaign_Detection
+Search: [Use the detection SPL above]
+Schedule: Every 10 minutes
+Time Range: -15m to now
+Actions: None (monitoring only)
+
+`comment("Add to summary index for trend analysis")`
+| collect index=summary source="sqli_detection_monitor"</code></pre>
+                </div>
+
+                <h4>Step 2: Create Monitoring Dashboard</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Monitoring Mode Dashboard Panel</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=summary source="sqli_detection_monitor" earliest=-7d
+| timechart span=1d count AS potential_alerts BY severity
+| addtotals</code></pre>
+                </div>
+
+                <h4>Step 3: What to Watch During Monitoring</h4>
+                <ul>
+                    <li><strong>Alert volume:</strong> Is it manageable? (&lt;10/day for Tier 1 SOC)</li>
+                    <li><strong>False positive rate:</strong> Review sample of alerts—are they real attacks or scanners?</li>
+                    <li><strong>True positive examples:</strong> Do you see real SQLi patterns in the data?</li>
+                    <li><strong>Time-of-day patterns:</strong> Are alerts clustered at specific times (scheduled scans)?</li>
+                    <li><strong>Top sources:</strong> Are the same IPs triggering repeatedly (allowlist candidates)?</li>
+                </ul>
+
+                <h4>Step 4: Monitoring Period Duration</h4>
+                <ul>
+                    <li><strong>Minimum:</strong> 1 week (captures weekly patterns)</li>
+                    <li><strong>Recommended:</strong> 2 weeks (captures more edge cases)</li>
+                    <li><strong>If major event upcoming:</strong> Extend through event (e.g., through Black Friday)</li>
+                </ul>
+
+                <h4>Step 5: Promotion Criteria</h4>
+                <p>Promote from monitoring to production alerting when ALL of the following are true:</p>
+                <div class="checklist-group">
+                    <div class="checklist-title">Monitoring → Production Checklist</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="sqli-promote">
+                        <span>Alert volume is &lt;20/day (or acceptable to SOC)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="sqli-promote">
+                        <span>False positive rate is &lt;30% based on sample review</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="sqli-promote">
+                        <span>Known scanner IPs have been allowlisted</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="sqli-promote">
+                        <span>SOC has reviewed and approved the triage runbook</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="sqli-promote">
+                        <span>No major traffic events in next 2 weeks</span>
+                    </label>
+                </div>
+
+                <h3>1.6 False Positive Management</h3>
+
+                <h4>Common False Positive Sources in Retail</h4>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Pattern</th>
+                                <th>Mitigation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Authorized vulnerability scanners</td>
+                                <td>High volume from known scanner IPs (Qualys, Rapid7, etc.)</td>
+                                <td>Allowlist scanner IP ranges</td>
+                            </tr>
+                            <tr>
+                                <td>Penetration testing</td>
+                                <td>Concentrated attacks during scheduled windows</td>
+                                <td>Time-based suppression during test windows</td>
+                            </tr>
+                            <tr>
+                                <td>Bug bounty researchers</td>
+                                <td>Lower volume but legitimate testing</td>
+                                <td>Review before blocking; may find real issues</td>
+                            </tr>
+                            <tr>
+                                <td>Web application firewalls (recursive)</td>
+                                <td>WAF logging its own test traffic</td>
+                                <td>Exclude internal WAF management IPs</td>
+                            </tr>
+                            <tr>
+                                <td>Search engine crawlers</td>
+                                <td>Rarely triggers SQLi rules but can happen</td>
+                                <td>Allowlist known crawler user-agents</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4>Allowlist Configuration</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Lookup: sqli_allowlist.csv</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>src_ip,reason,added_by,added_date,expiration
+10.0.0.0/8,Internal networks,Security Team,2024-01-01,never
+192.168.0.0/16,Internal networks,Security Team,2024-01-01,never
+64.39.96.0/20,Qualys Scanner,Security Team,2024-01-01,2025-01-01
+159.182.0.0/16,Rapid7 Scanner,Security Team,2024-01-01,2025-01-01
+203.0.113.50,Pen Test Firm,Security Team,2024-06-01,2024-06-30</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Detection with Allowlist Applied</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Add this after the base search to apply allowlist")`
+
+| lookup sqli_allowlist.csv src_ip AS src OUTPUT reason AS allowlist_reason
+| where isnull(allowlist_reason)
+
+`comment("Events with allowlist_reason populated will be filtered out")`</code></pre>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Allowlist Risk Warning</div>
+                    <p>Every allowlisted IP is a blind spot. An attacker who compromises an allowlisted scanner can attack undetected. Review allowlist quarterly and remove expired entries. Never allowlist without documented justification.</p>
+                </div>
+
+                <h3>1.7 SOC Triage Runbook</h3>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    ALERT["🚨 SQLi Campaign Alert<br/>Triggered"]
+    
+    subgraph INITIAL["Initial Assessment (2 min)"]
+        I1["Check: Were requests blocked?<br/>(fully_blocked field)"]
+        I2{"All Blocked?"}
+    end
+    
+    subgraph BLOCKED["If Fully Blocked"]
+        B1["Lower priority<br/>WAF working as expected"]
+        B2["Check source reputation<br/>(threat intel lookup)"]
+        B3{"Known bad actor?"}
+        B4["Document and close<br/>as Blocked Attack"]
+        B5["Escalate for<br/>proactive blocking"]
+    end
+    
+    subgraph UNBLOCKED["If NOT Fully Blocked — URGENT"]
+        U1["🚨 ESCALATE IMMEDIATELY"]
+        U2["Check: Did requests<br/>reach application?"]
+        U3["Check: Any successful<br/>database queries?"]
+        U4["Check: Data exfiltration<br/>indicators?"]
+        U5["Engage IR Team"]
+    end
+    
+    subgraph INVESTIGATE["Investigation (15 min)"]
+        INV1["Pull full request details<br/>for unblocked events"]
+        INV2["Check application logs<br/>for corresponding errors"]
+        INV3["Review targeted URLs<br/>for sensitivity"]
+    end
+    
+    ALERT --> INITIAL
+    INITIAL --> I1 --> I2
+    I2 -->|"Yes"| BLOCKED
+    I2 -->|"No"| UNBLOCKED
+    
+    BLOCKED --> B1 --> B2 --> B3
+    B3 -->|"No"| B4
+    B3 -->|"Yes"| B5
+    
+    UNBLOCKED --> U1 --> U2 --> U3 --> U4 --> U5
+    
+    B4 --> INVESTIGATE
+    B5 --> INVESTIGATE
+    
+    style ALERT fill:#da3633,stroke:#f85149,color:#fff
+    style U1 fill:#da3633,stroke:#f85149,color:#fff
+    style B4 fill:#238636,stroke:#2ea043,color:#fff
+                    </div>
+                </div>
+
+                <h4>Triage Steps (Copy to SOC Wiki)</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SOC Runbook: SQL Injection Campaign</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>═══════════════════════════════════════════════════════════════════
+SQL INJECTION CAMPAIGN TRIAGE RUNBOOK
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: INITIAL ASSESSMENT (2 minutes)
+───────────────────────────────────────
+□ Review alert fields:
+  - src (attacker IP)
+  - sqli_attempts (volume)
+  - fully_blocked (critical field!)
+  - targeted_urls (what they're attacking)
+
+□ DECISION POINT: Is fully_blocked = "Yes"?
+  → YES: Proceed to Step 2 (blocked attack workflow)
+  → NO: SKIP to Step 4 (URGENT - unblocked workflow)
+
+STEP 2: BLOCKED ATTACK WORKFLOW (5 minutes)
+───────────────────────────────────────────
+□ Check threat intelligence for source IP:
+  - Run: | inputlookup threat_intel.csv | search ip="[src]"
+  - Check: VirusTotal, AbuseIPDB, Shodan
+  
+□ Determine if source is known scanner:
+  - Check sqli_allowlist.csv for near-matches
+  - Check if IP belongs to security vendor ranges
+  
+□ Review attack pattern:
+  - Are targeted URLs sensitive (payment, admin, API)?
+  - Is this a known vulnerability scanner signature?
+
+STEP 3: BLOCKED ATTACK DISPOSITION
+──────────────────────────────────
+□ If known scanner/pen test: Close as "Expected Activity"
+□ If unknown but fully blocked:
+  - Close as "Blocked Attack"
+  - Consider adding to blocklist for proactive defense
+  - No further action required
+□ If targeting critical systems: Escalate to Tier 2 for review
+
+STEP 4: UNBLOCKED ATTACK WORKFLOW — URGENT (15 minutes)
+───────────────────────────────────────────────────────
+🚨 SOME REQUESTS WERE NOT BLOCKED — POTENTIAL COMPROMISE
+
+□ IMMEDIATELY notify Tier 2 / IR team
+
+□ Gather evidence:
+  | search index=waf_akamai src="[attacker_ip]" 
+  | where action!="deny" AND action!="block"
+  | table _time, url, http_method, status, action
+
+□ Check application logs for same timeframe:
+  - Database errors?
+  - Unusual queries?
+  - Data access anomalies?
+
+□ Check for data exfiltration indicators:
+  - Large response sizes
+  - Multiple sequential requests to data endpoints
+  - Requests to export/download endpoints
+
+□ If evidence of successful exploitation:
+  → Declare security incident
+  → Engage Incident Response
+  → Begin containment procedures
+
+STEP 5: DOCUMENTATION
+────────────────────
+□ Update ticket with findings
+□ Record:
+  - Source IP
+  - Attack volume
+  - Targeted assets
+  - Blocking status
+  - Disposition decision
+  - Any follow-up actions
+
+ESCALATION CONTACTS:
+- Tier 2 SOC: [contact]
+- IR Team: [contact]
+- Security Manager (after hours): [contact]
+
+DO NOT:
+- Block the IP without approval (may interfere with investigation)
+- Close without documenting disposition
+- Ignore "partially blocked" alerts
+
+═══════════════════════════════════════════════════════════════════</code></pre>
+                </div>
+
+                <h3>1.8 Rollback & Safety Procedures</h3>
+
+                <h4>How to Disable the Detection Safely</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Emergency Disable Procedure</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>SCENARIO: Detection is generating excessive false positives and needs to be disabled
+
+OPTION 1: Disable in Splunk ES
+───────────────────────────────
+1. Navigate to: Enterprise Security → Configure → Content → Content Management
+2. Search for: SQLi_Campaign_Detection
+3. Click on the correlation search
+4. Set "Enabled" to "No"
+5. Click Save
+6. Document in change log: "Disabled SQLi detection due to [reason]"
+
+OPTION 2: Increase Threshold Temporarily
+────────────────────────────────────────
+If you want to reduce volume without fully disabling:
+1. Edit the correlation search
+2. Change: | where sqli_attempts >= 5
+   To:     | where sqli_attempts >= 20
+3. Save with comment: "Temporary threshold increase due to [reason]"
+4. Set calendar reminder to revert in 7 days
+
+OPTION 3: Add Emergency Suppressions
+───────────────────────────────────
+If specific IPs are causing noise:
+1. Add to sqli_allowlist.csv with expiration date
+2. Document reason and expected duration
+3. Set reminder to review/remove</code></pre>
+                </div>
+
+                <h4>Communication Template</h4>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Email: Detection Disabled Notification</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>Subject: [Detection Change] SQLi Campaign Detection Disabled
+
+Team,
+
+The SQL Injection Campaign detection has been temporarily disabled/modified.
+
+Reason: [Excessive false positives from authorized vulnerability scan]
+Action Taken: [Increased threshold from 5 to 20 attempts]
+Duration: [Until 2024-XX-XX]
+Risk: [Reduced sensitivity to low-volume SQLi attacks during this period]
+Compensating Control: [WAF still blocking; no change to protection]
+Reverting Plan: [Calendar reminder set; will revert after scan completes]
+
+Please contact [name] with questions.
+
+Regards,
+Detection Engineering</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- USE CASE 2: CREDENTIAL STUFFING -->
+                <!-- ============================================== -->
+                <h2 id="uc2-credential-stuffing">Use Case 2: Credential Stuffing Attack Detection</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">High Severity | MITRE T1110.004 | Retail Impact: Customer Account Takeover</div>
+                </div>
+
+                <h3>2.1 Real Attack Story: Credential Stuffing in Retail</h3>
+
+                <p>Credential stuffing is the #1 attack against retail customer accounts. Attackers use credentials leaked from other breaches to attempt mass login to retail loyalty programs, e-commerce accounts, and gift card portals.</p>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TB
+    subgraph ACQUIRE["Phase 1: Credential Acquisition"]
+        A1["Purchase leaked credentials<br/>from dark web forums"]
+        A2["Credentials from unrelated breach<br/>(LinkedIn, Adobe, etc.)"]
+        A3["Compile list: 100K-10M<br/>email/password pairs"]
+    end
+    
+    subgraph TOOLS["Phase 2: Attack Setup"]
+        T1["Configure credential stuffing tool<br/>(Sentry MBA, OpenBullet, etc.)"]
+        T2["Set up proxy network<br/>to distribute requests"]
+        T3["Target retail login endpoints<br/>/login, /account/signin, /api/auth"]
+    end
+    
+    subgraph ATTACK["Phase 3: Attack Execution"]
+        ATK1["Automated login attempts<br/>at 100-10,000/minute"]
+        ATK2["Rotate proxies to evade<br/>rate limiting"]
+        ATK3["Vary user-agents and timing<br/>to appear legitimate"]
+    end
+    
+    subgraph WAF["WAF Response"]
+        W1{"WAF Detection<br/>(Rate limiting, Bot Manager)"}
+        W2["Block suspicious IPs"]
+        W3["CAPTCHA challenge"]
+        W4["Some requests<br/>bypass detection"]
+    end
+    
+    subgraph IMPACT["Phase 4: Account Takeover"]
+        I1["Valid credential found<br/>(0.1-2% success rate)"]
+        I2["Attacker logs into<br/>customer account"]
+        I3["Steal loyalty points,<br/>gift cards, saved payment"]
+        I4["Make fraudulent purchases"]
+    end
+    
+    A1 --> A2 --> A3
+    A3 --> T1 --> T2 --> T3
+    T3 --> ATTACK
+    ATK1 --> W1
+    ATK2 --> W1
+    ATK3 --> W1
+    W1 -->|"Detected"| W2
+    W1 -->|"Suspicious"| W3
+    W1 -->|"Missed"| W4
+    W4 --> I1 --> I2 --> I3 --> I4
+    
+    style I1 fill:#da3633,stroke:#f85149,color:#fff
+    style I4 fill:#da3633,stroke:#f85149,color:#fff
+                    </div>
+                </div>
+
+                <p><strong>Why Credential Stuffing Works Against Retail:</strong></p>
+                <ul>
+                    <li>Customers reuse passwords across sites — credentials from unrelated breaches work</li>
+                    <li>Retail loyalty accounts have monetary value (points, gift cards, saved payment)</li>
+                    <li>E-commerce sites prioritize frictionless login over security</li>
+                    <li>Attack volume is massive — even 0.1% success rate yields thousands of compromised accounts</li>
+                </ul>
+
+                <h3>2.2 Data Reality Check</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Verify Login Endpoint Data for Credential Stuffing Detection</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=waf_akamai sourcetype=akamai:siem earliest=-7d
+| spath output=url path=httpMessage.path
+| spath output=method path=httpMessage.method
+| spath output=status path=httpMessage.status
+| search url IN ("*/login*", "*/signin*", "*/auth*", "*/account*") method="POST"
+| stats count BY url, status
+| sort - count
+
+`comment("Look for: 
+- High volume to login endpoints
+- Mix of 200 (success) and 401/403 (failure) status codes
+- If all 200s, either auth always succeeds (unlikely) or status extraction broken")`</code></pre>
+                </div>
+
+                <h3>2.3 Detection Logic</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Credential Stuffing Attack Detection</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("
+===============================================================================
+DETECTION: Credential Stuffing Attack
+MITRE: T1110.004 - Credential Stuffing
+===============================================================================
+LOGIC: Detects high volume of failed login attempts from single source IP,
+with additional scoring for distributed attacks and bot-like behavior.
+===============================================================================
+")`
+
+index=waf_akamai sourcetype=akamai:siem earliest=-15m latest=now()
+| spath output=url path=httpMessage.path
+| spath output=method path=httpMessage.method
+| spath output=status path=httpMessage.status
+| spath output=src path=attackData.clientIP
+| spath output=user_agent path=httpMessage.requestHeaders.User-Agent
+| spath output=action path=attackData.action
+| spath output=dest path=httpMessage.host
+
+`comment("Filter to login endpoint POST requests")`
+| search url IN ("*/login*", "*/signin*", "*/auth*", "*/authenticate*", "*/api/v*/auth*") 
+| search method="POST"
+
+`comment("Identify failed vs successful attempts by HTTP status")`
+| eval auth_result = case(
+    status IN ("200", "201", "302"), "success",
+    status IN ("401", "403", "400", "429"), "failure",
+    true(), "unknown"
+)
+
+`comment("Aggregate by source IP")`
+| stats 
+    count AS total_attempts,
+    sum(eval(if(auth_result=="failure", 1, 0))) AS failed_attempts,
+    sum(eval(if(auth_result=="success", 1, 0))) AS successful_attempts,
+    dc(user_agent) AS unique_user_agents,
+    dc(dest) AS unique_targets,
+    values(dest) AS targeted_hosts,
+    latest(_time) AS last_seen
+    BY src
+
+`comment("Calculate metrics")`
+| eval failure_rate = round(failed_attempts / total_attempts * 100, 1)
+| eval success_rate = round(successful_attempts / total_attempts * 100, 1)
+
+`comment("Detection thresholds")`
+| where total_attempts >= 20 AND failure_rate >= 80
+
+`comment("Scoring: Higher score = more confidence in attack")`
+| eval attack_score = 0
+| eval attack_score = attack_score + case(total_attempts >= 1000, 30, total_attempts >= 100, 20, total_attempts >= 20, 10, true(), 0)
+| eval attack_score = attack_score + case(failure_rate >= 99, 30, failure_rate >= 95, 20, failure_rate >= 80, 10, true(), 0)
+| eval attack_score = attack_score + case(unique_user_agents >= 10, 20, unique_user_agents >= 5, 10, unique_user_agents == 1, 5, true(), 0)
+| eval attack_score = attack_score + if(successful_attempts > 0, 20, 0)
+
+`comment("Severity based on score and successful logins")`
+| eval severity = case(
+    successful_attempts > 0, "critical",
+    attack_score >= 70, "high",
+    attack_score >= 40, "medium",
+    true(), "low"
+)
+
+`comment("Alert if score threshold met")`
+| where attack_score >= 40
+
+| eval description = "Credential stuffing detected: ".total_attempts." attempts (".failure_rate."% failed) from ".src.". ".successful_attempts." successful logins."
+
+| table _time, src, total_attempts, failed_attempts, successful_attempts, failure_rate, unique_user_agents, attack_score, severity, targeted_hosts, description</code></pre>
+                </div>
+
+                <h3>2.4 Correlation with Authentication Logs</h3>
+
+                <p>For complete visibility, correlate WAF detections with backend authentication logs to identify which accounts were compromised:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Cross-Source Credential Stuffing Correlation</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Find accounts that had successful login following credential stuffing from same IP")`
+
+index=waf_akamai sourcetype=akamai:siem earliest=-1h
+| spath output=src path=attackData.clientIP
+| spath output=url path=httpMessage.path
+| search url IN ("*/login*", "*/signin*") 
+| stats count AS waf_events BY src
+
+| join type=left src 
+    [search index=auth_* sourcetype IN ("azure:aad:signin", "app:auth:*") earliest=-1h
+     | search action="success"
+     | stats count AS successful_logins, values(user) AS compromised_users BY src]
+
+| where waf_events >= 20 AND successful_logins > 0
+
+| eval alert = "⚠️ POTENTIAL ACCOUNT COMPROMISE: ".successful_logins." successful logins from credential stuffing source"
+
+| table src, waf_events, successful_logins, compromised_users, alert</code></pre>
+                </div>
+
+                <h3>2.5 Monitoring-Only Mode</h3>
+
+                <p>Follow the same monitoring-only process as SQLi detection:</p>
+                <ol>
+                    <li>Deploy as scheduled report (not alert)</li>
+                    <li>Collect results to summary index for trend analysis</li>
+                    <li>Monitor for 1-2 weeks</li>
+                    <li>Review false positive rate and tune thresholds</li>
+                    <li>Promote to production when criteria met</li>
+                </ol>
+
+                <h3>2.6 False Positive Patterns in Retail</h3>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pattern</th>
+                                <th>Why It Happens</th>
+                                <th>Mitigation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Corporate proxy IP with many users</td>
+                                <td>All users appear from same IP; multiple login failures look like attack</td>
+                                <td>Allowlist known corporate egress IPs</td>
+                            </tr>
+                            <tr>
+                                <td>Mobile carrier NAT</td>
+                                <td>Thousands of mobile users share IP; normal failures aggregate</td>
+                                <td>Increase threshold for known carrier ranges</td>
+                            </tr>
+                            <tr>
+                                <td>Password reset campaigns</td>
+                                <td>Mass password reset causes login failures as users adapt</td>
+                                <td>Suppress during planned password campaigns</td>
+                            </tr>
+                            <tr>
+                                <td>Load testing</td>
+                                <td>Performance tests hit login endpoints</td>
+                                <td>Allowlist load test source IPs; time-based suppression</td>
+                            </tr>
+                            <tr>
+                                <td>SSO integration issues</td>
+                                <td>Broken SSO causes cascade of failures</td>
+                                <td>Correlate with SSO health metrics; don't alert during known issues</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>2.7 SOC Triage Runbook</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SOC Runbook: Credential Stuffing</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>═══════════════════════════════════════════════════════════════════
+CREDENTIAL STUFFING TRIAGE RUNBOOK
+═══════════════════════════════════════════════════════════════════
+
+PRIORITY: If successful_attempts > 0, treat as CRITICAL
+
+STEP 1: ASSESS COMPROMISE (5 minutes)
+─────────────────────────────────────
+□ Check successful_attempts field
+  → If 0: Attack was blocked, lower priority
+  → If > 0: POTENTIAL ACCOUNT COMPROMISE
+
+□ If successful logins occurred:
+  - Identify compromised accounts from correlation query
+  - Check: What did attacker access after login?
+  - Check: Were payment methods or PII accessed?
+
+STEP 2: IMMEDIATE ACTIONS FOR COMPROMISED ACCOUNTS
+──────────────────────────────────────────────────
+□ Force password reset for compromised accounts
+□ Invalidate active sessions
+□ Notify customer (per incident response playbook)
+□ Check for fraudulent transactions
+□ Document account list for compliance reporting
+
+STEP 3: SOURCE ANALYSIS (10 minutes)
+────────────────────────────────────
+□ Check threat intel for source IP
+□ Determine if IP is proxy/VPN/Tor exit node
+□ Check geographic location
+□ Look for other activity from same IP/range
+
+STEP 4: BLOCKING DECISION
+─────────────────────────
+□ If attack ongoing: Request emergency IP block at WAF
+□ If attack completed: Add to blocklist for future
+□ If distributed attack (many IPs): Escalate to Tier 2 for broader response
+
+STEP 5: DOCUMENTATION
+─────────────────────
+□ Record:
+  - Total attempts
+  - Successful compromises
+  - Accounts affected
+  - Actions taken
+  - Timeline
+
+DO NOT:
+- Ignore alerts with successful_attempts > 0
+- Delay on potential account compromises
+- Block without documenting (need for forensics)
+
+═══════════════════════════════════════════════════════════════════</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- USE CASE 3: RATE LIMITING / DDOS -->
+                <!-- ============================================== -->
+                <h2 id="uc3-rate-limiting">Use Case 3: Rate Limiting / DDoS Indicator</h2>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">Medium Severity | MITRE T1498/T1499 | Retail Impact: Service Availability</div>
+                </div>
+
+                <h3>3.1 Attack Context</h3>
+                <p>Rate limiting events indicate sources exceeding configured thresholds. This can signal DDoS attacks, aggressive scraping, or API abuse. In retail, this often manifests during:</p>
+                <ul>
+                    <li><strong>Flash sales:</strong> Bots attempting to buy limited inventory faster than humans</li>
+                    <li><strong>Price scraping:</strong> Competitors scraping product/price data at scale</li>
+                    <li><strong>Inventory checking:</strong> Scalpers checking stock levels continuously</li>
+                    <li><strong>DDoS attacks:</strong> Volumetric attacks overwhelming infrastructure</li>
+                </ul>
+
+                <h3>3.2 Detection Logic</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Rate Limit / DDoS Indicator Detection</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("
+===============================================================================
+DETECTION: Rate Limiting / DDoS Indicator
+MITRE: T1498 (Network DoS), T1499 (Application DoS)
+===============================================================================
+")`
+
+index=waf_akamai sourcetype=akamai:siem earliest=-10m latest=now()
+| spath output=action path=attackData.action
+| spath output=src path=attackData.clientIP
+| spath output=dest path=httpMessage.host
+| spath output=url path=httpMessage.path
+| spath output=status path=httpMessage.status
+
+`comment("Filter to rate-limited requests")`
+| search action IN ("rate_limit", "deny") OR status="429"
+
+| stats 
+    count AS rate_limited_requests,
+    dc(url) AS unique_paths,
+    dc(dest) AS unique_hosts,
+    values(dest) AS targeted_hosts,
+    values(url) AS sample_paths
+    BY src
+
+`comment("Detection threshold: 100+ rate-limited requests in 10 min")`
+| where rate_limited_requests >= 100
+
+`comment("Calculate request velocity")`
+| eval requests_per_second = round(rate_limited_requests / 600, 2)
+
+`comment("Severity based on volume")`
+| eval severity = case(
+    requests_per_second >= 100, "high",
+    requests_per_second >= 10, "medium",
+    true(), "low"
+)
+
+`comment("Classify attack type")`
+| eval attack_type = case(
+    requests_per_second >= 100, "Volumetric DDoS",
+    requests_per_second >= 10 AND unique_paths <= 5, "Targeted Application Attack",
+    unique_paths >= 50, "Aggressive Scraping/Crawling",
+    true(), "Rate Limit Violation"
+)
+
+| eval description = attack_type.": ".rate_limited_requests." rate-limited requests from ".src." (".requests_per_second." req/sec)"
+
+| table _time, src, rate_limited_requests, requests_per_second, unique_paths, attack_type, severity, targeted_hosts, description</code></pre>
+                </div>
+
+                <h3>3.3 Seasonal Considerations for Retail</h3>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📅 Adjust Thresholds for Retail Events</div>
+                    <p>Retail traffic patterns have predictable spikes. Adjust detection thresholds to avoid alert fatigue during high-traffic periods:</p>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Period</th>
+                                <th>Expected Traffic</th>
+                                <th>Recommended Threshold Adjustment</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Normal operations</td>
+                                <td>Baseline</td>
+                                <td>100 requests / 10 min (default)</td>
+                            </tr>
+                            <tr>
+                                <td>Black Friday / Cyber Monday</td>
+                                <td>10-50x baseline</td>
+                                <td>500-1000 requests / 10 min</td>
+                            </tr>
+                            <tr>
+                                <td>Boxing Day (Canada)</td>
+                                <td>5-20x baseline</td>
+                                <td>300-500 requests / 10 min</td>
+                            </tr>
+                            <tr>
+                                <td>Flash sales / Limited drops</td>
+                                <td>Variable, often 10x+</td>
+                                <td>Consider time-based suppression</td>
+                            </tr>
+                            <tr>
+                                <td>New product launches</td>
+                                <td>5-10x baseline</td>
+                                <td>200-300 requests / 10 min</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Dynamic Threshold Based on Time</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Adjust threshold based on known high-traffic periods")`
+
+| eval threshold = case(
+    `comment("Black Friday: 4th Thursday of November +/- 3 days")`
+    strftime(_time, "%m") == "11" AND tonumber(strftime(_time, "%d")) >= 22 AND tonumber(strftime(_time, "%d")) <= 28, 500,
+    
+    `comment("Boxing Day: Dec 26")`
+    strftime(_time, "%m-%d") == "12-26", 300,
+    
+    `comment("Default threshold")`
+    true(), 100
+)
+
+| where rate_limited_requests >= threshold</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- USE CASE 4: BOT ACTIVITY -->
+                <!-- ============================================== -->
+                <h2 id="uc4-bot-activity">Use Case 4: Malicious Bot Activity</h2>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">Medium Severity | MITRE T1595 | Retail Impact: Inventory Fraud, Scraping</div>
+                </div>
+
+                <h3>4.1 Attack Context</h3>
+                <p>Akamai Bot Manager classifies traffic as human, good bot (search engines), or bad bot. Bad bot activity in retail includes:</p>
+                <ul>
+                    <li><strong>Scalper bots:</strong> Automated purchasing of limited inventory (sneakers, GPUs, concert tickets)</li>
+                    <li><strong>Price scrapers:</strong> Competitors monitoring pricing for competitive intelligence</li>
+                    <li><strong>Account creation bots:</strong> Creating fake accounts for promotion abuse</li>
+                    <li><strong>Gift card checkers:</strong> Testing stolen gift card numbers at scale</li>
+                </ul>
+
+                <h3>4.2 Detection Logic</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Malicious Bot Detection</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=waf_akamai sourcetype=akamai:siem earliest=-15m latest=now()
+| spath output=bot_score path=botData.botScore
+| spath output=bot_category path=botData.category
+| spath output=src path=attackData.clientIP
+| spath output=dest path=httpMessage.host
+| spath output=url path=httpMessage.path
+| spath output=user_agent path=httpMessage.requestHeaders.User-Agent
+
+`comment("Filter to detected bot traffic")`
+| search bot_score >= 80 OR bot_category IN ("bad_bot", "malicious", "impersonator")
+
+| stats 
+    count AS bot_requests,
+    dc(url) AS unique_paths,
+    values(bot_category) AS bot_categories,
+    values(user_agent) AS user_agents,
+    values(url) AS sample_urls
+    BY src, dest
+
+| where bot_requests >= 50
+
+`comment("Classify bot behavior")`
+| eval bot_behavior = case(
+    match(sample_urls, "(?i)(add-to-cart|checkout|purchase)"), "Scalper Bot",
+    match(sample_urls, "(?i)(price|product|catalog)"), "Scraper Bot",
+    match(sample_urls, "(?i)(account|register|signup)"), "Account Creation Bot",
+    match(sample_urls, "(?i)(gift|card|balance)"), "Gift Card Checker",
+    true(), "General Bad Bot"
+)
+
+| eval severity = case(
+    bot_behavior IN ("Scalper Bot", "Gift Card Checker"), "high",
+    bot_requests >= 500, "high",
+    bot_requests >= 100, "medium",
+    true(), "low"
+)
+
+| table _time, src, dest, bot_requests, bot_behavior, bot_categories, severity, sample_urls</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- USE CASE 5: COMMAND INJECTION -->
+                <!-- ============================================== -->
+                <h2 id="uc5-command-injection">Use Case 5: Command Injection Attempt</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">Critical Severity | MITRE T1059 | Retail Impact: Full System Compromise</div>
+                </div>
+
+                <h3>5.1 Attack Context</h3>
+                <p>Command injection is one of the most severe web attacks. Unlike SQLi which targets the database, command injection targets the operating system. A successful command injection can lead to complete server compromise, lateral movement, and data exfiltration.</p>
+
+                <p><strong>Any command injection attempt—even blocked—warrants immediate investigation.</strong></p>
+
+                <h3>5.2 Detection Logic</h3>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Command Injection Detection (Critical Alert)</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("
+===============================================================================
+DETECTION: Command Injection Attempt
+MITRE: T1059 - Command and Scripting Interpreter
+SEVERITY: CRITICAL — Even blocked attempts require investigation
+===============================================================================
+")`
+
+index=waf_akamai sourcetype=akamai:siem earliest=-10m latest=now()
+| spath output=rule_msg path=attackData.rules{}.ruleMessage
+| spath output=rules path=attackData.rules{}.ruleId
+| spath output=action path=attackData.action
+| spath output=src path=attackData.clientIP
+| spath output=dest path=httpMessage.host
+| spath output=url path=httpMessage.path
+| spath output=method path=httpMessage.method
+
+`comment("Filter to command injection rules")`
+| search rule_msg IN ("*command*injection*", "*os*command*", "*remote*code*", "*rce*", "*shell*injection*")
+    OR rules IN ("950002", "950006", "959001", "959002")
+
+`comment("Even single attempt is concerning for command injection")`
+| stats 
+    count AS attempts,
+    values(action) AS actions,
+    values(rule_msg) AS attack_signatures,
+    values(url) AS targeted_urls,
+    values(method) AS methods
+    BY src, dest
+
+`comment("Check if any requests were NOT blocked")`
+| eval all_blocked = if(mvcount(mvfilter(match(actions, "deny|block"))) == mvcount(actions), "Yes", "NO - POTENTIAL COMPROMISE")
+
+`comment("Always critical severity for command injection")`
+| eval severity = if(all_blocked=="Yes", "high", "critical")
+
+| eval description = "⚠️ COMMAND INJECTION ATTEMPT: ".attempts." attempts from ".src." targeting ".dest.". Blocked: ".all_blocked
+
+| table _time, src, dest, attempts, all_blocked, severity, attack_signatures, targeted_urls, description</code></pre>
+                </div>
+
+                <h3>5.3 Triage — Command Injection is ALWAYS Urgent</h3>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 Command Injection Response Protocol</div>
+                    <p>Unlike other WAF detections where blocked = lower priority, command injection requires immediate investigation regardless of blocking status:</p>
+                </div>
+
+                <ol>
+                    <li><strong>If blocked:</strong> Investigate targeted endpoint for vulnerabilities. Attacker may try alternate payloads.</li>
+                    <li><strong>If unblocked:</strong> IMMEDIATE ESCALATION to IR team. Assume system compromise until proven otherwise.</li>
+                    <li><strong>Check application logs</strong> for the targeted endpoint during same timeframe</li>
+                    <li><strong>Review server processes</strong> if any requests reached the application</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- COMMON WAF DETECTION FAILURE MODES -->
+                <!-- ============================================== -->
+                <h2>Common WAF Detection Failure Modes</h2>
+
+                <p>These are the most common reasons WAF detections fail in production. Review before deployment.</p>
+
+                <h3>Failure Mode 1: Missing Security Configurations</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Detection works for some sites but misses attacks on others.</p>
+                </div>
+                <p><strong>Cause:</strong> Not all Akamai security configurations are enabled for SIEM Integration.</p>
+                <p><strong>Diagnosis:</strong></p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Find Which Security Configs Are Sending Events</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=waf_akamai sourcetype=akamai:siem earliest=-7d
+| spath output=config_id path=attackData.configId
+| stats count, dc(src) AS unique_attackers BY config_id
+| sort - count</code></pre>
+                </div>
+                <p><strong>Fix:</strong> Compare against your Akamai security configuration inventory. Enable SIEM Integration for missing configs.</p>
+
+                <hr>
+
+                <h3>Failure Mode 2: Threshold Too Low for Traffic Volume</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Detection generates hundreds of alerts during promotional events or traffic spikes.</p>
+                </div>
+                <p><strong>Cause:</strong> Thresholds set based on normal traffic don't account for legitimate spikes.</p>
+                <p><strong>Diagnosis:</strong></p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Analyze Detection Trigger Volume Over Time</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=waf_akamai sourcetype=akamai:siem earliest=-30d
+| spath output=src path=attackData.clientIP
+| spath output=action path=attackData.action
+| where action="deny"
+| timechart span=1d dc(src) AS unique_blocked_ips
+| eventstats avg(unique_blocked_ips) AS baseline, stdev(unique_blocked_ips) AS stdev
+| eval anomaly = if(unique_blocked_ips > baseline + (3 * stdev), "SPIKE", "normal")</code></pre>
+                </div>
+                <p><strong>Fix:</strong> Use dynamic thresholds (standard deviations above baseline) instead of static counts, or add retail calendar awareness to exclude promotional periods.</p>
+
+                <hr>
+
+                <h3>Failure Mode 3: CDN/Proxy IP Masking Real Source</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Multiple "attacks" appear from same IP, but it's actually a legitimate CDN or proxy.</p>
+                </div>
+                <p><strong>Cause:</strong> Akamai logs the connecting IP which may be a downstream CDN, not the real attacker IP.</p>
+                <p><strong>Diagnosis:</strong></p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Find High-Volume Source IPs</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=waf_akamai sourcetype=akamai:siem earliest=-7d
+| spath output=src path=attackData.clientIP
+| stats count BY src
+| where count > 10000
+| iplocation src
+| table src, count, Country, City
+`comment("Look for internal networks, CDN providers, or partner IPs")`</code></pre>
+                </div>
+                <p><strong>Fix:</strong> Add known CDN/proxy IPs to allowlist. Check for X-Forwarded-For or True-Client-IP headers if available.</p>
+
+                <hr>
+
+                <h3>Failure Mode 4: Rule Noise from Security Scanners</h3>
+                <div class="callout callout-danger">
+                    <div class="callout-title">Symptom</div>
+                    <p>Constant stream of SQL injection / XSS alerts from the same IP ranges.</p>
+                </div>
+                <p><strong>Cause:</strong> Legitimate security scanning (vulnerability assessments, pen tests) triggering WAF rules.</p>
+                <p><strong>Diagnosis:</strong></p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Identify Systematic Scanning Patterns</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>index=waf_akamai sourcetype=akamai:siem earliest=-24h
+| spath output=src path=attackData.clientIP
+| spath output=rule_id path=attackData.rules{}.ruleId
+| stats dc(rule_id) AS unique_rules, values(rule_id) AS rules_triggered BY src
+| where unique_rules > 10
+| sort - unique_rules
+`comment("High unique rule count = likely scanner, not targeted attack")`</code></pre>
+                </div>
+                <p><strong>Fix:</strong> Coordinate with security team to get approved scanner IP ranges. Add to time-bounded allowlist during scheduled scans.</p>
+
+                <!-- ============================================== -->
+                <!-- RETAIL TIMING AWARENESS -->
+                <!-- ============================================== -->
+                <h2>Retail Traffic Pattern Awareness</h2>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ WAF Detections Must Account for Retail Traffic Patterns</div>
+                    <p>Retail websites have extreme traffic variation. Static thresholds will fail. Consider these patterns:</p>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Period</th>
+                                <th>Traffic Multiplier</th>
+                                <th>Detection Impact</th>
+                                <th>Recommendation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Black Friday / Cyber Monday</strong></td>
+                                <td>5-20x normal</td>
+                                <td>All volume-based detections will fire</td>
+                                <td>Use percentage-based thresholds or disable volume alerts</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Flash Sales</strong></td>
+                                <td>2-5x normal</td>
+                                <td>Rate limiting detections trigger</td>
+                                <td>Pre-tune thresholds or add temporary allowances</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Weekly Flyer Launch</strong></td>
+                                <td>1.5-2x normal</td>
+                                <td>Minor impact</td>
+                                <td>Baseline should account for weekly patterns</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Overnight (2-6 AM)</strong></td>
+                                <td>0.1x normal</td>
+                                <td>Low traffic makes attacks more visible</td>
+                                <td>Lower thresholds acceptable overnight</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Dynamic Baseline Query for Thresholds</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Calculate Dynamic Threshold Based on Time of Day/Week</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Build baseline that accounts for day-of-week and hour-of-day patterns")`
+
+index=waf_akamai sourcetype=akamai:siem earliest=-30d
+| spath output=action path=attackData.action
+| where action="deny"
+| eval day_of_week = strftime(_time, "%A")
+| eval hour_of_day = strftime(_time, "%H")
+| stats count BY day_of_week, hour_of_day
+| stats avg(count) AS avg_blocks, stdev(count) AS stdev_blocks BY day_of_week, hour_of_day
+| eval dynamic_threshold = round(avg_blocks + (3 * stdev_blocks), 0)
+| table day_of_week, hour_of_day, avg_blocks, stdev_blocks, dynamic_threshold
+
+`comment("Use this lookup to set time-aware thresholds in your detections")`</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- ROLLBACK SECTION -->
+                <!-- ============================================== -->
+                <h2>Global Rollback Procedures</h2>
+
+                <p>Use these procedures to safely disable any WAF detection:</p>
+
+                <h3>Emergency Disable (All WAF Detections)</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Procedure: Disable All WAF Correlation Searches</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>SCENARIO: WAF detections generating excessive load or false positives
+
+OPTION 1: Disable Individual Detection
+──────────────────────────────────────
+1. ES → Configure → Content → Content Management
+2. Filter: "WAF" or specific detection name
+3. Select detection → Edit → Enabled = No → Save
+
+OPTION 2: Disable All WAF Detections
+────────────────────────────────────
+1. ES → Configure → Content → Content Management
+2. Filter by source: "waf_akamai"
+3. Multi-select all WAF detections
+4. Bulk action: Disable
+
+OPTION 3: Stop Data Collection (Emergency)
+──────────────────────────────────────────
+If issue is at ingestion level, disable HEC token:
+1. Settings → Data Inputs → HTTP Event Collector
+2. Find: akamai_waf_ingest token
+3. Disable token (stops all ingestion)
+⚠️ WARNING: This creates data gap — use only in emergency
+
+COMMUNICATION:
+Always notify SOC and management when disabling detections</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- NEXT STEPS -->
+                <!-- ============================================== -->
+                <h2>What You Do Next</h2>
+
+                <div class="checklist-group">
+                    <div class="checklist-title">WAF Detection Deployment Checklist</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="waf-deploy">
+                        <span>Data reality check passed for all required fields</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="waf-deploy">
+                        <span>Historical backtest completed for each detection</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="waf-deploy">
+                        <span>Monitoring-only mode deployed for 1-2 weeks</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="waf-deploy">
+                        <span>False positive sources identified and allowlisted</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="waf-deploy">
+                        <span>SOC runbooks reviewed and approved</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="waf-deploy">
+                        <span>Promoted to production alerting</span>
+                    </label>
+                </div>
+
+                <div class="next-steps">
+                    <a href="mfa-auth.html" class="next-step-link">
+                        <span class="step-direction">Next Use Cases →</span>
+                        <span class="step-title">MFA & Authentication Detection</span>
+                    </a>
+                    <a href="../phase4-automation/index.html" class="next-step-link">
+                        <span class="step-direction">After Detection →</span>
+                        <span class="step-title">Phase 4: Automation</span>
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../assets/app.js"></script>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#0d1117',
+                primaryColor: '#238636',
+                primaryTextColor: '#c9d1d9',
+                primaryBorderColor: '#30363d',
+                lineColor: '#8b949e',
+                secondaryColor: '#161b22',
+                tertiaryColor: '#21262d'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 20
+            }
+        });
+    </script>
+</body>
+</html>

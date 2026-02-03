@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESCU Log Mapping - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="ootb-vs-custom.html" class="nav-item nav-item-sub">OOTB vs Custom Strategy</a>
+                    <a href="correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                    <a href="tuning-noise.html" class="nav-item nav-item-sub">Tuning & Noise Reduction</a>
+                    <a href="change-management.html" class="nav-item nav-item-sub">ES Change Management</a>
+                    <a href="health-performance.html" class="nav-item nav-item-sub">Health & Performance</a>
+                    <a href="governance-audit.html" class="nav-item nav-item-sub">Governance & Audit</a>
+                    <a href="escu-overview.html" class="nav-item nav-item-sub">ESCU Overview</a>
+                    <a href="escu-operationalize.html" class="nav-item nav-item-sub">Operationalizing ESCU</a>
+                    <a href="escu-log-mapping.html" class="nav-item nav-item-sub active">ESCU Log Mapping</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="../es-operations/notable-suppression.html" class="nav-item nav-item-sub">Notable Suppression</a>
+                    <a href="../es-operations/investigations-evidence.html" class="nav-item nav-item-sub">Investigations & Evidence</a>
+                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                    <a href="../appendix/troubleshooting.html" class="nav-item nav-item-sub">Troubleshooting</a>
+                    <a href="../appendix/checklists.html" class="nav-item nav-item-sub">Master Checklists</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">ESCU Log Mapping</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-1">🎯 Phase 1 ↔ Phase 3 Bridge</span>
+                <h1>ESCU Log Mapping</h1>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED — ES CONTENT MANAGEMENT</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p><strong>Purpose:</strong> Maps ESCU detection requirements to the data sources they need. Provides SPL and procedures to discover what logs are required for specific Analytic Stories, perform gap analysis between ESCU requirements and your current log ingestion, and feed gaps back into Phase 1 onboarding priorities. This page bridges Phase 1 (Log Coverage) and Phase 3 (Detection).</p>
+                    <p><strong>Ownership:</strong> Detection Engineering (gap analysis) + Platform Engineering (data onboarding)</p>
+                    <p><strong>Preconditions:</strong> ESCU is installed. You've read <a href="escu-overview.html">ESCU Overview</a> and <a href="escu-operationalize.html">Operationalizing ESCU</a>. You have a current log coverage matrix from <a href="../phase1-log-coverage/index.html">Phase 1</a>.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
+                    <ul>
+                        <li><strong>Assumption:</strong> You maintain a log coverage matrix that tracks which data sources are ingested into Splunk. <strong>Risk if wrong:</strong> Gap analysis requires comparing ESCU requirements against your actual coverage. Without a matrix, you're guessing.</li>
+                        <li><strong>Assumption:</strong> ESCU detection SPL reliably indicates data source requirements through index, sourcetype, or data model references. <strong>Reality:</strong> Most do, but some use macros that obscure the data source. You may need to resolve macros to find the real requirement.</li>
+                        <li><strong>Assumption:</strong> Data source gaps can be addressed (budgeted, technically feasible, approved by data owners). <strong>Risk if wrong:</strong> Identifying gaps without a path to resolution creates a list of excuses, not a plan.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: THE MAPPING WORKFLOW -->
+                <!-- ============================================== -->
+                <h2>The ESCU-to-Log Mapping Workflow</h2>
+
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart TD
+    START["Start: ESCU Analytic Story<br/>you want to evaluate"] --> EXTRACT["STEP 1: EXTRACT<br/>data requirements from<br/>each detection's SPL"]
+    
+    EXTRACT --> CATALOG["STEP 2: CATALOG<br/>Build requirements list:<br/>index, sourcetype, data model,<br/>CIM fields needed"]
+    
+    CATALOG --> COMPARE["STEP 3: COMPARE<br/>Requirements vs your<br/>current log coverage matrix"]
+    
+    COMPARE --> Q1{"Gaps<br/>found?"}
+    
+    Q1 -->|"No gaps — all<br/>data available"| READY["✅ READY<br/>Proceed to evaluation<br/>(Operationalizing ESCU<br/>Stage 1)"]
+    
+    Q1 -->|"Gaps found"| CLASSIFY["STEP 4: CLASSIFY each gap"]
+    
+    CLASSIFY --> C1["Quick Win:<br/>Data exists in environment<br/>but not in Splunk.<br/>Onboarding effort: low."]
+    CLASSIFY --> C2["Planned:<br/>Data source needs<br/>procurement or config.<br/>Onboarding effort: medium."]
+    CLASSIFY --> C3["Blocker:<br/>Data source doesn't<br/>exist, expensive, or<br/>politically difficult."]
+    
+    C1 --> BACKLOG["STEP 5: Add to<br/>Phase 1 backlog<br/>with priority + linked<br/>ESCU detections"]
+    C2 --> BACKLOG
+    C3 --> DEFER["Defer ESCU detections<br/>dependent on this source.<br/>Document in registry."]
+    
+    BACKLOG --> TRACK["STEP 6: TRACK<br/>When data is onboarded,<br/>return to ESCU evaluation<br/>for deferred detections"]
+    
+    style READY fill:#238636,stroke:#2ea043,color:#fff
+    style DEFER fill:#6e7681,stroke:#484f58,color:#fff
+    style C1 fill:#238636,stroke:#2ea043,color:#fff
+    style C2 fill:#d29922,stroke:#bb8009,color:#fff
+    style C3 fill:#f85149,stroke:#da3633,color:#fff
+                    </div>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EXTRACTING DATA REQUIREMENTS -->
+                <!-- ============================================== -->
+                <h2>Step 1: Extracting Data Requirements from ESCU SPL</h2>
+
+                <p>Every ESCU detection search tells you what data it needs — if you know where to look. There are three patterns:</p>
+
+                <h3>Pattern A: Direct Index/Sourcetype References</h3>
+                <p>The simplest case. The SPL explicitly names the index and/or sourcetype.</p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Example: Direct Reference in ESCU SPL</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("ESCU detection example — direct index/sourcetype reference")`
+index=windows sourcetype=WinEventLog:Security EventCode=4688
+| stats count by New_Process_Name, Process_Command_Line, Creator_Process_Name
+| where count > 5
+
+`comment("DATA REQUIREMENT: index=windows, sourcetype=WinEventLog:Security")`
+`comment("Specific need: Windows Security event logs with process creation (4688)")`
+`comment("TA needed: Splunk Add-on for Microsoft Windows")`</code></pre>
+                </div>
+
+                <h3>Pattern B: Data Model (tstats) References</h3>
+                <p>Many ESCU detections use <code>| tstats</code> against accelerated data models. The data model name tells you what CIM category is needed.</p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Example: tstats Reference in ESCU SPL</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("ESCU detection example — data model reference")`
+| tstats count from datamodel=Endpoint.Processes where
+    Processes.process_name="cmd.exe"
+    by Processes.dest, Processes.user, Processes.process
+| rename Processes.* AS *
+
+`comment("DATA REQUIREMENT: Endpoint data model, Processes node")`
+`comment("Underlying data: Process execution logs (Sysmon, WinEventLog:Security 4688, CrowdStrike, etc.)")`
+`comment("Prerequisite: Endpoint DM must be ACCELERATED")`
+`comment("CIM fields needed: process_name, dest, user, process")`</code></pre>
+                </div>
+
+                <h3>Pattern C: Macro-Obscured References</h3>
+                <p>Some ESCU detections use macros that hide the actual data source. You need to resolve the macro to find the requirement.</p>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Resolve a Macro to Find Data Requirements</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("If an ESCU detection uses a macro like:")`
+`comment("  `security_content_summariesonly` `security_content_ctime(firstTime)` ")`
+`comment("Resolve the macro to see what it actually does:")`
+
+| rest /services/admin/macros splunk_server=local
+| search title="security_content_summariesonly" OR title="security_content_ctime*"
+| table title, definition, args
+| eval note = "This shows what the macro resolves to — use the definition to find the real data requirement"</code></pre>
+                </div>
+
+                <h3>Common Data Model → Data Source Mapping</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data Model (in tstats)</th>
+                                <th>CIM Category</th>
+                                <th>Common Source Data</th>
+                                <th>Common TAs</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>Endpoint.Processes</code></td>
+                                <td>Endpoint</td>
+                                <td>Sysmon EventID 1, WinEventLog 4688, CrowdStrike, Carbon Black, MDE</td>
+                                <td>TA-microsoft-sysmon, Splunk_TA_windows, TA for EDR vendor</td>
+                            </tr>
+                            <tr>
+                                <td><code>Endpoint.Filesystem</code></td>
+                                <td>Endpoint</td>
+                                <td>Sysmon EventID 11/15/23, EDR file events</td>
+                                <td>TA-microsoft-sysmon, EDR vendor TA</td>
+                            </tr>
+                            <tr>
+                                <td><code>Endpoint.Registry</code></td>
+                                <td>Endpoint</td>
+                                <td>Sysmon EventID 12/13/14, WinEventLog</td>
+                                <td>TA-microsoft-sysmon</td>
+                            </tr>
+                            <tr>
+                                <td><code>Endpoint.Services</code></td>
+                                <td>Endpoint</td>
+                                <td>WinEventLog System 7045, Sysmon</td>
+                                <td>Splunk_TA_windows</td>
+                            </tr>
+                            <tr>
+                                <td><code>Network_Traffic</code></td>
+                                <td>Network Traffic</td>
+                                <td>Firewall logs, Zeek/Bro, Palo Alto, Fortinet, AWS VPC Flow</td>
+                                <td>Vendor-specific TAs</td>
+                            </tr>
+                            <tr>
+                                <td><code>Network_Resolution</code></td>
+                                <td>Network Resolution (DNS)</td>
+                                <td>DNS server logs, Sysmon EventID 22, passive DNS</td>
+                                <td>Splunk_TA_windows, TA-microsoft-dns</td>
+                            </tr>
+                            <tr>
+                                <td><code>Authentication</code></td>
+                                <td>Authentication</td>
+                                <td>Windows Security 4624/4625, Azure AD Sign-Ins, Linux auth.log</td>
+                                <td>Splunk_TA_windows, Splunk Add-on for Microsoft Cloud Services</td>
+                            </tr>
+                            <tr>
+                                <td><code>Web</code></td>
+                                <td>Web</td>
+                                <td>Proxy logs, WAF logs, IIS/Apache/Nginx access logs</td>
+                                <td>Vendor-specific TAs (Akamai, Cloudflare, F5, Squid, etc.)</td>
+                            </tr>
+                            <tr>
+                                <td><code>Email</code></td>
+                                <td>Email</td>
+                                <td>Exchange message tracking, O365 mail flow, email gateway logs</td>
+                                <td>Splunk Add-on for Microsoft Cloud Services, vendor email TA</td>
+                            </tr>
+                            <tr>
+                                <td><code>Change</code></td>
+                                <td>Change</td>
+                                <td>Windows Security 4720/4722/4738, AD change logs, cloud audit logs</td>
+                                <td>Splunk_TA_windows, cloud vendor TAs</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: AUTOMATED EXTRACTION SPL -->
+                <!-- ============================================== -->
+                <h2>Step 2: Automated Data Requirement Extraction</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Extract Data Model Requirements from All ESCU Detections</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Scans all ESCU correlation searches and extracts data model references")`
+`comment("Shows which data models your ESCU content depends on")`
+
+| rest /services/saved/searches splunk_server=local
+| search eai:acl.app="DA-ESS-ContentUpdate"
+| where isnotnull(action.correlationsearch.enabled)
+| eval data_model = case(
+    match(search, "(?i)datamodel\s*=\s*Endpoint"), "Endpoint",
+    match(search, "(?i)datamodel\s*=\s*Network_Traffic"), "Network_Traffic",
+    match(search, "(?i)datamodel\s*=\s*Network_Resolution"), "Network_Resolution",
+    match(search, "(?i)datamodel\s*=\s*Authentication"), "Authentication",
+    match(search, "(?i)datamodel\s*=\s*Web"), "Web",
+    match(search, "(?i)datamodel\s*=\s*Email"), "Email",
+    match(search, "(?i)datamodel\s*=\s*Change"), "Change",
+    match(search, "(?i)datamodel\s*=\s*Malware"), "Malware",
+    match(search, "(?i)datamodel\s*=\s*Risk"), "Risk",
+    match(search, "(?i)tstats"), "Uses tstats (resolve manually)",
+    match(search, "(?i)index\s*="), "Direct index reference",
+    true(), "Unknown — review SPL manually"
+)
+| stats dc(title) AS detection_count,
+    values(title) AS sample_detections
+    BY data_model
+| sort - detection_count</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: Extract Index/Sourcetype Requirements from ESCU Detections</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("For ESCU detections that use direct index references")`
+`comment("Extracts the index and sourcetype patterns from the SPL")`
+
+| rest /services/saved/searches splunk_server=local
+| search eai:acl.app="DA-ESS-ContentUpdate"
+| where isnotnull(action.correlationsearch.enabled) AND match(search, "(?i)index\s*=")
+| rex field=search "index\s*=\s*(?<required_index>\w+)"
+| rex field=search "sourcetype\s*=\s*(?<required_sourcetype>[^\s\|]+)"
+| table title, required_index, required_sourcetype
+| fillnull value="(not explicit)"
+| sort required_index, required_sourcetype</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: GAP ANALYSIS -->
+                <!-- ============================================== -->
+                <h2>Step 3: Gap Analysis — ESCU Requirements vs Your Coverage</h2>
+
+                <h3>Manual Gap Analysis Procedure</h3>
+                <ol>
+                    <li><strong>Run the extraction SPL</strong> from Step 2 to get your ESCU data requirements by data model and by index</li>
+                    <li><strong>For each data model requirement</strong>, check if the model is accelerated:
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span>SPL: Check Data Model Acceleration Status</span>
+                                <button class="copy-btn">Copy</button>
+                            </div>
+                            <pre><code>| rest /services/datamodel/model splunk_server=local
+| table title, acceleration, "acceleration.earliest_time",
+    eai:acl.app
+| eval accel_status = case(
+    acceleration="1", "✅ Accelerated",
+    acceleration="0", "❌ NOT Accelerated",
+    true(), "❓ Unknown"
+)
+| sort title</code></pre>
+                        </div>
+                    </li>
+                    <li><strong>For each direct index requirement</strong>, verify data exists:
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span>SPL: Verify Data Exists in Required Indexes</span>
+                                <button class="copy-btn">Copy</button>
+                            </div>
+                            <pre><code>`comment("Replace YOUR_INDEX with each required index from Step 2")`
+
+| tstats count WHERE index=YOUR_INDEX BY sourcetype
+| eval status = if(count > 0, "✅ Data present", "❌ No data")
+| sort - count</code></pre>
+                        </div>
+                    </li>
+                    <li><strong>Build the gap matrix:</strong></li>
+                </ol>
+
+                <h3>Gap Matrix Template</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ESCU Requirement</th>
+                                <th>Type</th>
+                                <th>Available?</th>
+                                <th>Accelerated?</th>
+                                <th>ESCU Detections Blocked</th>
+                                <th>Gap Classification</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>Endpoint.Processes</code></td>
+                                <td>Data Model</td>
+                                <td>✅ Yes</td>
+                                <td>✅ Yes</td>
+                                <td>—</td>
+                                <td>—</td>
+                                <td>No gap. Proceed with evaluation.</td>
+                            </tr>
+                            <tr>
+                                <td><code>Network_Resolution</code></td>
+                                <td>Data Model</td>
+                                <td>✅ Yes</td>
+                                <td>❌ No</td>
+                                <td>DNS Tunneling, Suspicious DNS Query, ...</td>
+                                <td style="color: var(--accent-orange);">Quick Win</td>
+                                <td>Enable DM acceleration. Data exists; acceleration is the only gap.</td>
+                            </tr>
+                            <tr>
+                                <td><code>index=sysmon</code></td>
+                                <td>Index</td>
+                                <td>❌ No</td>
+                                <td>N/A</td>
+                                <td>Living Off the Land, Process Injection, ...</td>
+                                <td style="color: var(--accent-orange);">Planned</td>
+                                <td>Sysmon deployment project. Add to Phase 1 backlog. ETA: Q2.</td>
+                            </tr>
+                            <tr>
+                                <td><code>Email</code></td>
+                                <td>Data Model</td>
+                                <td>❌ No</td>
+                                <td>N/A</td>
+                                <td>Phishing campaign detections</td>
+                                <td style="color: var(--accent-red);">Blocker</td>
+                                <td>Email logs not ingested. Requires O365 connector project + budget approval. Defer ESCU email detections.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: COMMON ESCU STORY REQUIREMENTS -->
+                <!-- ============================================== -->
+                <h2>Common ESCU Analytic Story → Data Requirements</h2>
+
+                <p>This reference table maps popular ESCU Analytic Stories to their primary data requirements, helping you quickly assess whether you can use a story.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Analytic Story Category</th>
+                                <th>Example Stories</th>
+                                <th>Primary Data Required</th>
+                                <th>Minimum Viable Sources</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Ransomware</strong></td>
+                                <td>BlackCat, LockBit, Clop, Ransomware Cloud, Ransomware Endpoint</td>
+                                <td>Endpoint Processes, Endpoint Filesystem, Endpoint Registry, Network Traffic</td>
+                                <td>Sysmon (EventIDs 1, 11, 12, 13) OR EDR process telemetry + Windows Security logs</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Credential Access</strong></td>
+                                <td>Credential Dumping, Kerberoasting, Active Directory Discovery</td>
+                                <td>Endpoint Processes, Authentication, Windows Security EventLogs</td>
+                                <td>Windows Security (4624, 4625, 4648, 4768, 4769) + Sysmon process creation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cloud Compromise</strong></td>
+                                <td>AWS Account Takeover, Azure AD Account Takeover, GCP Cross-Project Activity</td>
+                                <td>Cloud audit logs, Authentication, Change</td>
+                                <td>CloudTrail (AWS), Azure AD Audit/Sign-In logs, GCP Audit Logs</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Living Off the Land</strong></td>
+                                <td>Windows System Binary Proxy Execution, Suspicious WMI, Suspicious PowerShell</td>
+                                <td>Endpoint Processes (with command-line logging)</td>
+                                <td>Sysmon EventID 1 with command-line capture, OR Windows Security 4688 with audit process creation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Network Threat</strong></td>
+                                <td>Command and Control, DNS Hijacking, Data Exfiltration</td>
+                                <td>Network Traffic, Network Resolution (DNS), Web proxy</td>
+                                <td>Firewall logs (Palo Alto, Fortinet) + DNS server logs + proxy/WAF logs</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Phishing / Email</strong></td>
+                                <td>Suspicious Emails, Brand Monitoring</td>
+                                <td>Email data model</td>
+                                <td>O365 message trace / Exchange message tracking / email gateway logs</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Insider Threat</strong></td>
+                                <td>Data Exfiltration, Privilege Escalation, Anomalous Access</td>
+                                <td>Authentication, Endpoint Processes, Web, Email, Change</td>
+                                <td>Cross-domain: requires breadth of data sources. Minimum: Auth + Endpoint + one of (Web / Email / DLP).</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">💡 Retail / Manufacturing Focus</div>
+                    <p>For a retail environment, the highest-value ESCU story categories are typically: <strong>Ransomware</strong> (protect POS and supply chain), <strong>Credential Access</strong> (protect AD and cloud identity), and <strong>Network Threat</strong> (WAF + DNS visibility). Cloud stories become relevant as you adopt Azure/AWS/GCP services. Insider Threat stories require the broadest data coverage and are typically a later-maturity initiative.</p>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FEEDING GAPS BACK TO PHASE 1 -->
+                <!-- ============================================== -->
+                <h2>Step 5: Feeding Gaps Back to Phase 1</h2>
+
+                <p>Every data gap identified through ESCU mapping becomes a Phase 1 onboarding candidate. The key is prioritization: not all gaps are equal.</p>
+
+                <h3>Gap Prioritization Framework</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Priority</th>
+                                <th>Criteria</th>
+                                <th>Example</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: var(--accent-red);"><strong>P1 — Critical</strong></td>
+                                <td>Blocks 5+ high-value ESCU detections AND addresses a top-3 threat model risk</td>
+                                <td>No Sysmon = no endpoint process detections = no ransomware or credential theft visibility</td>
+                                <td>Immediate onboarding project. Escalate to platform team.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange);"><strong>P2 — High</strong></td>
+                                <td>Blocks 3+ ESCU detections AND addresses a known risk, but existing compensating controls exist</td>
+                                <td>No DNS logs = no DNS tunneling detection, but network firewall provides some visibility</td>
+                                <td>Next onboarding sprint. Plan and schedule.</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-green);"><strong>P3 — Medium</strong></td>
+                                <td>Blocks 1-2 ESCU detections OR addresses a lower-priority threat</td>
+                                <td>No email logs = no phishing detections, but email gateway handles most phishing</td>
+                                <td>Add to backlog. Address when capacity allows.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>P4 — Low / Defer</strong></td>
+                                <td>Blocks ESCU detections for threats not in your current threat model, or data source is prohibitively expensive</td>
+                                <td>No ICS/SCADA logs for OT-focused ESCU stories (and you have no OT environment)</td>
+                                <td>Skip. Document as not applicable. Re-evaluate if threat model changes.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Phase 1 Backlog Entry Template</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>Backlog Entry: ESCU-Driven Data Onboarding Request</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>## Data Onboarding Request — ESCU Gap
+
+**Data Source:** [e.g., Microsoft Sysmon]
+**Index Needed:** [e.g., sysmon]
+**Sourcetype Needed:** [e.g., XmlWinEventLog:Microsoft-Windows-Sysmon/Operational]
+**TA Required:** [e.g., TA-microsoft-sysmon v10.x+]
+
+**ESCU Detections Blocked:** [count] detections across [count] Analytic Stories
+  - Story: [name] — [X] detections blocked
+  - Story: [name] — [X] detections blocked
+
+**Threat Model Alignment:** [Which top threats does this address?]
+**Priority:** [P1/P2/P3/P4]
+**Estimated Onboarding Effort:** [from Universal Onboarding Framework]
+
+**Requested By:** Detection Engineering
+**Date:** [date]
+**Linked Phase 1 Ticket:** [ticket #]</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: FAILURE MODES -->
+                <!-- ============================================== -->
+                <h2>Failure Modes</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Failure Mode</th>
+                                <th>Symptom</th>
+                                <th>Root Cause</th>
+                                <th>Impact</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Mapping done but never acted on</strong></td>
+                                <td>Gap analysis completed 6 months ago, no gaps addressed</td>
+                                <td>No ownership, no prioritization, no connection to Phase 1 backlog</td>
+                                <td>ESCU detections remain unusable. Analysis was wasted effort.</td>
+                                <td>Assign gaps to Phase 1 backlog with owners and deadlines. Track in sprint planning.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data model assumed available but not accelerated</strong></td>
+                                <td>ESCU detections using tstats return zero results</td>
+                                <td>Data exists, TA is installed, but data model acceleration is off or incomplete</td>
+                                <td>Silent detection failure — search runs, finds nothing</td>
+                                <td>Include DM acceleration check as mandatory step in gap analysis. Fix before enabling detections.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CIM field mismatch</strong></td>
+                                <td>Data model is accelerated, data exists, but ESCU detection uses field names not present in your data</td>
+                                <td>TA version mismatch, or TA doesn't extract the specific CIM field the detection needs</td>
+                                <td>Detection silently fails or produces unexpected results</td>
+                                <td>Test each field referenced in the SPL against your actual data. Update TA or add field aliases.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Gap analysis scope too broad</strong></td>
+                                <td>Team tries to map ALL ESCU content at once, analysis takes months</td>
+                                <td>No prioritization by threat model. Boiling the ocean.</td>
+                                <td>Analysis paralysis. Nothing gets deployed.</td>
+                                <td>Focus on 3-5 analytic stories per quarter based on threat model priorities. Depth over breadth.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Macro resolution missed</strong></td>
+                                <td>Extraction SPL identifies data model but ESCU detection actually queries a different data source via macro</td>
+                                <td>Macro abstracts the real data source. Automated extraction doesn't resolve macros.</td>
+                                <td>Requirements list is incomplete. Some gaps go undetected.</td>
+                                <td>For detections flagged as "Uses tstats (resolve manually)" or "Unknown," manually resolve macros and trace to actual data.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: VALIDATION SPL -->
+                <!-- ============================================== -->
+                <h2>Validation SPL & Expected Output</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span>SPL: ESCU Coverage Readiness Score</span>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code>`comment("Estimates what percentage of ESCU detections you COULD enable")`
+`comment("Based on data model availability and acceleration")`
+
+| rest /services/saved/searches splunk_server=local
+| search eai:acl.app="DA-ESS-ContentUpdate"
+| where isnotnull(action.correlationsearch.enabled)
+| eval uses_dm = if(match(search, "(?i)tstats.*datamodel"), "Yes", "No")
+| eval dm_name = case(
+    match(search, "(?i)Endpoint"), "Endpoint",
+    match(search, "(?i)Network_Traffic"), "Network_Traffic",
+    match(search, "(?i)Network_Resolution"), "Network_Resolution",
+    match(search, "(?i)Authentication"), "Authentication",
+    match(search, "(?i)Web"), "Web",
+    match(search, "(?i)Email"), "Email",
+    match(search, "(?i)Change"), "Change",
+    true(), "Other/Direct"
+)
+| stats count AS total_detections BY dm_name
+| append [
+    | rest /services/datamodel/model splunk_server=local
+    | eval dm_name = title
+    | eval accel = if(acceleration="1", "✅", "❌")
+    | table dm_name, accel
+]
+| stats first(total_detections) AS detections, first(accel) AS accelerated BY dm_name
+| fillnull detections value=0
+| fillnull accelerated value="N/A"
+| eval ready = if(accelerated="✅" AND detections > 0, "✅ Ready", "❌ Gap")
+| sort - detections</code></pre>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ROLLBACK -->
+                <!-- ============================================== -->
+                <h2>Rollback Steps</h2>
+
+                <ol>
+                    <li><strong>Gap analysis identified wrong requirements:</strong> Re-run extraction SPL with manual macro resolution. Correct the gap matrix. Notify Phase 1 team of changes.</li>
+                    <li><strong>Data onboarding completed but ESCU detection still fails:</strong> The gap was misidentified. Check CIM field mapping, TA version, and data model acceleration. Return to Step 1 with the specific detection SPL.</li>
+                    <li><strong>Prioritization was wrong (spent effort on low-value gap):</strong> Re-prioritize against current threat model. Redirect remaining effort to higher-value gaps. Document lesson learned.</li>
+                </ol>
+
+                <!-- ============================================== -->
+                <!-- SECTION: STOP & ESCALATE -->
+                <!-- ============================================== -->
+                <h2>Stop & Escalate Conditions</h2>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🛑 STOP and Escalate When:</div>
+                    <ul>
+                        <li><strong>P1 gaps have been in the backlog for more than 1 quarter.</strong> Critical data sources blocking high-value detections need escalation to Security Manager / CISO. Include the count of detections blocked.</li>
+                        <li><strong>ESCU detections were enabled despite known data gaps.</strong> Disable immediately. A detection without its data source either does nothing (wasted concurrency) or produces misleading results.</li>
+                        <li><strong>More than 50% of ESCU data model requirements are not accelerated.</strong> Acceleration is a platform responsibility. Escalate to Splunk admin with the specific DMs needing acceleration and the detection count blocked by each.</li>
+                        <li><strong>Gap analysis reveals you need a data source that requires significant budget.</strong> This is a business decision. Package the gap analysis as a business case: "X detections for threats Y and Z require data source W. Cost: $__. Risk without: ___."</li>
+                        <li><strong>TA updates break CIM mapping for data sources feeding ESCU detections.</strong> After any TA update, verify data still maps correctly to CIM fields. If mapping broke, escalate to platform team for immediate fix.</li>
+                    </ul>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: ANTI-PATTERNS -->
+                <!-- ============================================== -->
+                <h2>Common Anti-Patterns</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Anti-Pattern</th>
+                                <th>Why It's Dangerous</th>
+                                <th>What to Do Instead</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>"We'll map all ESCU data requirements at once"</strong></td>
+                                <td>ESCU has hundreds of detections. Full mapping takes weeks. Nothing gets deployed during that time.</td>
+                                <td>Map per Analytic Story, prioritized by threat model. 3-5 stories per sprint. Deploy what's ready while mapping continues.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"We have the index — we're good"</strong></td>
+                                <td>Having data in an index doesn't mean it's CIM-compliant, the right sourcetype, or mapped to the correct data model.</td>
+                                <td>Verify the full chain: data exists → sourcetype correct → TA installed → CIM fields extracted → data model accelerated.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Detection Engineering handles data gaps alone"</strong></td>
+                                <td>Data onboarding is a Platform Engineering / Infrastructure responsibility. DE identifies the gap; Platform fills it.</td>
+                                <td>DE documents the requirement. Phase 1 backlog entry goes to Platform team with clear acceptance criteria.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"We'll do the gap analysis when we have time"</strong></td>
+                                <td>"When we have time" means "never." Gaps persist, detections stay disabled, ESCU provides zero value.</td>
+                                <td>Schedule gap analysis as part of the quarterly ESCU evaluation sprint. It's a planned activity, not a stretch goal.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>"Skip mapping — just enable and see if it works"</strong></td>
+                                <td>If data is missing, the detection silently fails. You think you have coverage; you don't. Worse than no detection at all.</td>
+                                <td>Verify data before enabling. Every time. The 10-minute data check saves hours of false-confidence troubleshooting.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EFFORT & TIMELINE -->
+                <!-- ============================================== -->
+                <h2>Typical Effort & Timeline</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Best Case</th>
+                                <th>Common Case</th>
+                                <th>Blocked Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Extract data requirements for 1 Analytic Story</strong></td>
+                                <td>30 minutes</td>
+                                <td>1-2 hours</td>
+                                <td>Half day (many macro-obscured detections)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Run DM acceleration + data existence checks</strong></td>
+                                <td>15 minutes (run SPL, review)</td>
+                                <td>30 minutes</td>
+                                <td>1 hour (many DMs to check)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Build gap matrix for 1 Analytic Story</strong></td>
+                                <td>30 minutes</td>
+                                <td>1 hour</td>
+                                <td>2 hours (complex dependencies)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Full gap analysis sprint (3-5 stories)</strong></td>
+                                <td>Half day</td>
+                                <td>1-2 days</td>
+                                <td>3+ days (broad scope, many unresolved macros)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Data onboarding to fill a gap</strong></td>
+                                <td>1-2 days (Quick Win)</td>
+                                <td>1-2 weeks (Planned)</td>
+                                <td>1+ month (Blocker — procurement, politics)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ============================================== -->
+                <!-- SECTION: EVIDENCE -->
+                <!-- ============================================== -->
+                <h2>Evidence to Capture</h2>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Evidence</th>
+                                <th>Format</th>
+                                <th>Where to Store</th>
+                                <th>When to Capture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>ESCU data requirement extraction</strong></td>
+                                <td>SPL output: data model/index per ESCU detection</td>
+                                <td>Detection registry</td>
+                                <td>During evaluation sprint mapping phase</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Gap matrix</strong></td>
+                                <td>Table: requirement, available?, gap classification, action</td>
+                                <td>Log coverage matrix / detection registry</td>
+                                <td>Per Analytic Story evaluation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Phase 1 backlog entries</strong></td>
+                                <td>Structured request: data source, ESCU detections blocked, priority</td>
+                                <td>Phase 1 backlog / project tracker</td>
+                                <td>When gap is classified as P1-P3</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Coverage readiness score</strong></td>
+                                <td>SPL output from validation query</td>
+                                <td>Quarterly governance report</td>
+                                <td>Quarterly during evaluation sprint</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Gap closure record</strong></td>
+                                <td>Documentation: gap identified, data onboarded, ESCU detections unblocked</td>
+                                <td>Detection registry + change log</td>
+                                <td>When a data onboarding project completes</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="next-steps">
+                    <div class="next-steps-title">🚀 What To Do Next</div>
+                    <div class="next-steps-links">
+                        <a href="../phase1-log-coverage/index.html" class="next-steps-link">Phase 1: Log Coverage & Readiness →</a>
+                        <a href="escu-operationalize.html" class="next-steps-link">← Back to Operationalizing ESCU</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <button class="mobile-menu-toggle">☰</button>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>

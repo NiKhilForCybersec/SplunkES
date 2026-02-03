@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Primary Onboarding - Splunk ES Handbook</title>
+    <link rel="stylesheet" href="../../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="index.html" class="nav-item active">Overview</a>
+                    <a href="akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
+                    <a href="syslog-devices.html" class="nav-item nav-item-sub">Syslog Devices</a>
+                    <a href="endpoint-logs.html" class="nav-item nav-item-sub">Endpoint Logs</a>
+                    <a href="custom-apps-hec.html" class="nav-item nav-item-sub">Custom Apps (HEC)</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Alternate Onboarding</div>
+                    <a href="../onboarding-alternate/index.html" class="nav-item">Overview</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/akamai-waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-authentication.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase1-log-coverage/index.html">Phase 1</a>
+                <span class="separator">/</span>
+                <span class="current">Primary Onboarding</span>
+            </div>
+            
+            <div class="content-wrapper">
+                <span class="phase-indicator phase-1">📊 Phase 1 — Log Coverage</span>
+                <h1>Primary Onboarding Methods</h1>
+
+                <!-- ============================================== -->
+                <!-- AUDIT SUMMARY - HARDENED INDICATOR -->
+                <!-- ============================================== -->
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 Page Status: HARDENED</div>
+                    <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
+                    <p>This overview page links to source-specific guides, each with their own hardened procedures.</p>
+                </div>
+
+                <div class="callout callout-danger">
+                    <div class="callout-title">🚨 MANDATORY: Follow Source-Specific Guides</div>
+                    <p><strong>This page is an overview only.</strong> Each data source has unique requirements, failure modes, and rollback procedures. Always read the source-specific guide BEFORE starting onboarding.</p>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">⚠️ Onboarding Priority Order</div>
+                    <p>For detection engineering projects, onboard sources in this order:</p>
+                    <ol>
+                        <li><strong>Authentication/MFA</strong> — Foundation for identity-based detections</li>
+                        <li><strong>WAF/DDoS</strong> — Web attack visibility</li>
+                        <li><strong>Endpoint telemetry</strong> — Process and file activity</li>
+                        <li><strong>Network devices</strong> — Traffic and firewall logs</li>
+                    </ol>
+                    <p>This order ensures each phase has the data it needs.</p>
+                </div>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title">📋 What Are Primary Methods?</div>
+                    <p>Primary onboarding methods are the standard, well-supported approaches for getting data into Splunk. These should be your first choice for most data sources.</p>
+                </div>
+
+                <h2>Method Overview</h2>
+                
+                <div class="card-grid">
+                    <a href="akamai-waf.html" class="overview-card">
+                        <div class="card-icon">🛡️</div>
+                        <h3>Akamai WAF</h3>
+                        <p>Web Application Firewall and security event logs via SIEM Integration</p>
+                        <span class="badge badge-required">In Scope</span>
+                    </a>
+                    
+                    <a href="authentication-mfa.html" class="overview-card">
+                        <div class="card-icon">🔐</div>
+                        <h3>Authentication / MFA</h3>
+                        <p>Entra ID, CyberArk, and multi-factor authentication logs</p>
+                        <span class="badge badge-required">In Scope</span>
+                    </a>
+                    
+                    <a href="syslog-devices.html" class="overview-card">
+                        <div class="card-icon">📡</div>
+                        <h3>Syslog Devices</h3>
+                        <p>Network devices, firewalls, and Linux servers via syslog</p>
+                        <span class="badge badge-optional">Common</span>
+                    </a>
+                    
+                    <a href="endpoint-logs.html" class="overview-card">
+                        <div class="card-icon">💻</div>
+                        <h3>Endpoint Logs</h3>
+                        <p>Windows Event Logs, EDR telemetry via Universal Forwarder</p>
+                        <span class="badge badge-optional">Common</span>
+                    </a>
+                    
+                    <a href="custom-apps-hec.html" class="overview-card">
+                        <div class="card-icon">🔌</div>
+                        <h3>Custom Apps (HEC)</h3>
+                        <p>Application logs via HTTP Event Collector</p>
+                        <span class="badge badge-optional">Flexible</span>
+                    </a>
+                </div>
+
+                <h2>Method Selection Matrix</h2>
+                
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Data Source</th>
+                            <th>Primary Method</th>
+                            <th>Typical Latency</th>
+                            <th>CIM Compliance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Akamai WAF</strong></td>
+                            <td>SIEM Integration → HEC</td>
+                            <td>~2-5 minutes</td>
+                            <td>Web data model</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Entra ID</strong></td>
+                            <td>Diagnostic Settings → Event Hub → HEC</td>
+                            <td>~2-5 minutes</td>
+                            <td>Authentication data model</td>
+                        </tr>
+                        <tr>
+                            <td><strong>CyberArk</strong></td>
+                            <td>Syslog via Heavy Forwarder</td>
+                            <td>Seconds</td>
+                            <td>Authentication data model</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Network Devices</strong></td>
+                            <td>Syslog via Heavy Forwarder</td>
+                            <td>Seconds</td>
+                            <td>Network Traffic data model</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Windows Endpoints</strong></td>
+                            <td>Universal Forwarder</td>
+                            <td>Seconds</td>
+                            <td>Endpoint data model</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Custom Applications</strong></td>
+                            <td>HTTP Event Collector</td>
+                            <td>Seconds</td>
+                            <td>Varies (custom mapping)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Architecture Overview</h2>
+                
+                <div class="mermaid-container">
+                    <div class="mermaid">
+flowchart LR
+    subgraph Sources["Data Sources"]
+        AKAMAI[Akamai WAF]
+        ENTRA[Entra ID]
+        CYBERARK[CyberArk]
+        NETWORK[Network Devices]
+        WINDOWS[Windows Endpoints]
+        APPS[Custom Apps]
+    end
+    
+    subgraph Collection["Collection Tier"]
+        HEC[HTTP Event Collector]
+        HF[Heavy Forwarder]
+        UF[Universal Forwarder]
+    end
+    
+    subgraph Splunk["Splunk Cloud"]
+        IDX[Indexers]
+        ES[Enterprise Security]
+    end
+    
+    AKAMAI -->|HTTPS| HEC
+    ENTRA -->|Event Hub| HEC
+    CYBERARK -->|Syslog| HF
+    NETWORK -->|Syslog| HF
+    WINDOWS -->|WinEventLog| UF
+    APPS -->|HTTPS POST| HEC
+    
+    HEC --> IDX
+    HF --> IDX
+    UF --> IDX
+    IDX --> ES
+    
+    style HEC fill:#238636,stroke:#3fb950,color:#fff
+    style HF fill:#1f6feb,stroke:#58a6ff,color:#fff
+    style UF fill:#8957e5,stroke:#a371f7,color:#fff
+                    </div>
+                </div>
+
+                <h2>Deployment Prerequisites</h2>
+                
+                <div class="checklist-group">
+                    <div class="checklist-title">Infrastructure Requirements</div>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="primary-prereq">
+                        <span>Heavy Forwarder deployed for syslog collection</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="primary-prereq">
+                        <span>HEC token created with appropriate index permissions</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="primary-prereq">
+                        <span>Network connectivity verified (firewall rules)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="primary-prereq">
+                        <span>DNS resolution confirmed for all endpoints</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" data-checklist="primary-prereq">
+                        <span>TLS certificates valid and trusted</span>
+                    </label>
+                </div>
+
+                <h2>Common Configuration Files</h2>
+
+                <h3>Heavy Forwarder: inputs.conf (Syslog)</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">inputs.conf</span>
+                        <button class="copy-btn" aria-label="Copy code">Copy</button>
+                    </div>
+                    <pre><code># UDP Syslog - Standard
+[udp://514]
+sourcetype = syslog
+index = prod_network_syslog
+connection_host = dns
+no_priority_stripping = true
+
+# TCP Syslog - Reliable delivery
+[tcp://1514]
+sourcetype = syslog
+index = prod_network_syslog
+connection_host = dns
+
+# TLS Syslog - Encrypted
+[tcp-ssl://6514]
+sourcetype = syslog
+index = prod_security_syslog
+connection_host = dns
+serverCert = /opt/splunk/etc/auth/server.pem
+sslPassword = &lt;encrypted&gt;</code></pre>
+                </div>
+
+                <h3>Heavy Forwarder: outputs.conf</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">outputs.conf</span>
+                        <button class="copy-btn" aria-label="Copy code">Copy</button>
+                    </div>
+                    <pre><code>[tcpout]
+defaultGroup = splunk_cloud
+
+[tcpout:splunk_cloud]
+server = inputs.&lt;stack&gt;.splunkcloud.com:9997
+sslCertPath = /opt/splunk/etc/auth/splunkcloud/cert.pem
+sslRootCAPath = /opt/splunk/etc/auth/splunkcloud/cacert.pem
+sslPassword = &lt;encrypted&gt;
+sslVerifyServerCert = true</code></pre>
+                </div>
+
+                <h2>Troubleshooting Quick Reference</h2>
+                
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Symptom</th>
+                            <th>Likely Cause</th>
+                            <th>Check First</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>No events arriving</td>
+                            <td>Network/firewall issue</td>
+                            <td><code>tcpdump -i any port 514</code></td>
+                        </tr>
+                        <tr>
+                            <td>Events delayed</td>
+                            <td>Queue backup on HF</td>
+                            <td><code>splunk list inputstatus</code></td>
+                        </tr>
+                        <tr>
+                            <td>Wrong sourcetype</td>
+                            <td>Transforms not applied</td>
+                            <td>Check props.conf/transforms.conf</td>
+                        </tr>
+                        <tr>
+                            <td>Timestamp wrong</td>
+                            <td>TIME_FORMAT mismatch</td>
+                            <td>Test with <code>| makeresults | eval _raw=...</code></td>
+                        </tr>
+                        <tr>
+                            <td>Events merged</td>
+                            <td>LINE_BREAKER issue</td>
+                            <td>Check SHOULD_LINEMERGE setting</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Next Steps</h2>
+                <p>Select a specific onboarding guide based on your data source:</p>
+                
+                <div class="next-steps">
+                    <a href="akamai-waf.html" class="next-step-card">
+                        <span class="next-step-label">Priority Source</span>
+                        <span class="next-step-title">Akamai WAF Onboarding →</span>
+                    </a>
+                    <a href="authentication-mfa.html" class="next-step-card">
+                        <span class="next-step-label">Priority Source</span>
+                        <span class="next-step-title">Authentication / MFA Onboarding →</span>
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../../assets/app.js"></script>
+</body>
+</html>
