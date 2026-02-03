@@ -71,7 +71,7 @@
                             <tr>
                                 <td><strong>Modular / scripted inputs</strong></td>
                                 <td>Run anywhere: SH, HF, standalone instance.</td>
-                                <td><strong>Classic Experience:</strong> Must run on IDM (Inputs Data Manager) or customer-managed HF. <strong>Victoria Experience:</strong> Can run on search head directly. <strong>Never on indexers.</strong> Java-based modular inputs (like Akamai SIEM connector) may not work on IDM — verify with Splunk support.</td>
+                                <td><strong>Classic Experience:</strong> Must run on IDM (Inputs Data Manager) or customer-managed HF. <strong>Victoria Experience:</strong> Can run on search head directly. <strong>Never on indexers.</strong> For vendor-specific API collectors (e.g., Akamai SIEM connector), deploy on customer-managed infrastructure and forward to HEC instead of relying on modular inputs inside Cloud.</td>
                             </tr>
                             <tr>
                                 <td><strong>Heavy Forwarder</strong></td>
