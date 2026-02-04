@@ -26,19 +26,6 @@
                     <p><strong>Preconditions:</strong> You've passed all 5 gates in <a href="validating-es-data.html">Validating ES Data</a>. The data model is populated. Fields are confirmed. You are ready to build or enable a detection.</p>
                 </div>
 
-                <!-- ============================================== -->
-                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
-                <!-- ============================================== -->
-                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
-                    <div class="callout-title">☁️ Splunk Cloud Safety Box — ES Data Layer &amp; CIM</div>
-                    <p><strong>✅ Allowed in Cloud:</strong> All CIM concepts, data model definitions, field naming, tags, and tstats queries are identical in Cloud. The CIM Setup page (Apps → Manage Apps → Splunk Common Information Model → Set Up) works the same. ES Data Model Acceleration Enforcement (Settings → Data Inputs) works the same. All validation SPL on this page works in Cloud. Rebuilding data models via UI (Settings → Data Models → expand → Rebuild).</p>
-                    <p><strong>⚠️ Restricted in Cloud:</strong> You cannot edit <code>datamodels.conf</code> on indexers directly — file a support ticket for advanced changes. You cannot force parallel summarization changes — file a support ticket. <code>btool</code> commands shown on this page do not work in Cloud. You cannot access <code>tstatsHomePath</code> or storage volume settings.</p>
-                    <p><strong>🔄 Cloud-Safe Alternative:</strong> Replace <code>btool props list</code> with <code>| rest /services/configs/conf-props</code>. Replace <code>btool transforms list</code> with <code>| rest /services/configs/conf-transforms</code>. Use the Data Model Audit dashboard (or the <code>cim_datamodelinfo</code> macro) to monitor acceleration status instead of filesystem checks. Deploy search-time field fixes via TAs on the SH using SSAI.</p>
-                    <p><strong>📋 Verify:</strong> If data model acceleration is incomplete or slow, file a support ticket before attempting manual changes. Splunk manages the indexer-side summarization infrastructure.</p>
-                </div>
-
-
-
                 <div class="callout callout-warning">
                     <div class="callout-title">⚠️ Assumptions — Verify Before Proceeding</div>
                     <ul>

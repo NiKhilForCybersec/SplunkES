@@ -5,19 +5,82 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Decision Guides - Splunk ES Handbook</title>
     <link rel="stylesheet" href="../../assets/style.css">
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
-
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
     <div class="layout">
-        <aside id="sidebar" class="sidebar"></aside>
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="index.html" class="nav-item active">Decision Guides</a>
+                    <a href="edge-processor.html" class="nav-item nav-item-sub">Edge Processor</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
+                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
+                    <a href="../onboarding-primary/syslog-devices.html" class="nav-item nav-item-sub">Syslog Devices</a>
+                    <a href="../onboarding-primary/endpoint-logs.html" class="nav-item nav-item-sub">Endpoint Logs</a>
+                    <a href="../onboarding-primary/custom-apps-hec.html" class="nav-item nav-item-sub">Custom Apps (HEC)</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Alternate Onboarding</div>
+                    <a href="../onboarding-alternate/index.html" class="nav-item">Overview</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/akamai-waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-authentication.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
 
         <main class="main-content">
-            <nav id="breadcrumbs" class="breadcrumbs"></nav>
-
-<div class="content-wrapper">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase1-log-coverage/index.html">Phase 1</a>
+                <span class="separator">/</span>
+                <span class="current">Decision Guides</span>
+            </div>
+            
+            <div class="content-wrapper">
                 <span class="phase-indicator phase-1">📊 Phase 1 — Log Coverage</span>
                 <h1>Decision Guides</h1>
 
@@ -29,18 +92,6 @@
                     <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
                     <p>Decision guides include risk factors and enterprise considerations for each path.</p>
                 </div>
-
-                <!-- ============================================== -->
-                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
-                <!-- ============================================== -->
-                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
-                    <div class="callout-title">☁️ Splunk Cloud Safety Box — Infrastructure &amp; Decision Guides</div>
-                    <p><strong>✅ Allowed in Cloud:</strong> Decision frameworks and evaluation criteria on this page apply to Cloud. HEC is the primary Cloud ingestion path.</p>
-                    <p><strong>⚠️ Restricted in Cloud:</strong> Architecture patterns that assume direct indexer access, deployment server management, or filesystem-level configuration apply only to customer-managed infrastructure (HFs, UFs, standalone instances).</p>
-                    <p><strong>🔄 Cloud-Safe Alternative:</strong> When this page discusses ingestion architectures, the Cloud path is: external collector → HEC, or UF/HF → Cloud indexing tier. See the <a href="../../pages/planning/splunk-cloud-es-differences.html">Cloud + ES: What's Different</a> page for the full Cloud architecture reference.</p>
-                </div>
-
-
 
                 <div class="callout callout-danger">
                     <div class="callout-title">🚨 MANDATORY: Document Decision Rationale</div>
@@ -525,7 +576,7 @@ flowchart TB
                         <span>Sample ADR: Akamai WAF Ingestion</span>
                         <button class="copy-btn">Copy</button>
                     </div>
-                    <pre><code>## Decision: Akamai WAF via SIEM Integration API
+                    <pre><code>## Decision: Akamai WAF via SIEM Integration
 
 **Date:** 2024-01-15
 **Decision Maker:** Detection Engineering Team
@@ -533,26 +584,23 @@ flowchart TB
 
 ### Context
 Need to ingest Akamai WAF logs for DDoS and web attack detection.
-Options: SIEM Integration API (external connector → HEC), Log Delivery Service (S3), Datastream.
+Options: SIEM Integration (HEC), Log Delivery Service (S3), Datastream.
 
 ### Decision
-Deploy Akamai SIEM connector on customer Linux VM. Connector polls
-Akamai SIEM Integration API and forwards events to Splunk Cloud via HEC.
-Install Akamai Splunk add-on on Search Head for parsing and CIM mapping.
+Use SIEM Integration with HEC push to Splunk Cloud.
 
 ### Rationale
 - Considered alternatives: Log Delivery (S3 polling), Datastream
 - Key factors: 
-  - SIEM Integration API is lowest latency (~2-5 min)
-  - Official Akamai SIEM connector is production-grade
-  - Connector runs on customer infrastructure (we control lifecycle)
-  - Akamai Splunk add-on provides CIM mapping for ES compatibility
+  - SIEM Integration is lowest latency (~2-5 min)
+  - No additional infrastructure required
+  - Akamai manages the integration
+  - Directly supported by Akamai TA for Splunk
 
 ### Consequences
-- **Positive:** Low latency, ES-compatible, well-documented
-- **Negative:** Requires customer-managed VM/container for the connector
-- **Risks:** HEC token compromise could allow data injection.
-  Collector outage causes event gap (12-hour replay window).
+- **Positive:** Simple setup, low maintenance, good latency
+- **Negative:** Dependent on Akamai-side configuration
+- **Risks:** HEC token compromise could allow data injection
 
 ### Reversal Plan
 Could switch to Log Delivery if SIEM Integration has issues.
@@ -561,7 +609,6 @@ Effort: Moderate (2-3 days to reconfigure)</code></pre>
             </div>
         </main>
     </div>
-    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
 </body>
 </html>

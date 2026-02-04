@@ -5,19 +5,79 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Phase 1: Log Coverage & Readiness - Splunk ES Handbook</title>
     <link rel="stylesheet" href="../../assets/style.css">
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
-
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
     <div class="layout">
-        <aside id="sidebar" class="sidebar"></aside>
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="index.html" class="nav-item active">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
+                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
+                    <a href="../onboarding-primary/syslog-hf.html" class="nav-item nav-item-sub">Syslog via HF</a>
+                    <a href="../onboarding-primary/endpoint-telemetry.html" class="nav-item nav-item-sub">Endpoint Telemetry</a>
+                    <a href="../onboarding-primary/hec-ingestion.html" class="nav-item nav-item-sub">HEC Ingestion</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Alternate Onboarding</div>
+                    <a href="../onboarding-alternate/index.html" class="nav-item">Overview</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
 
         <main class="main-content">
-            <nav id="breadcrumbs" class="breadcrumbs"></nav>
-
-<div class="content-wrapper">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <span class="current">Phase 1: Log Coverage & Readiness</span>
+            </div>
+            
+            <div class="content-wrapper">
                 <span class="phase-indicator phase-1">📊 Phase 1 — Log Coverage</span>
                 <h1>Log Coverage & Ingestion Readiness Assessment</h1>
 
@@ -29,18 +89,6 @@
                     <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
                     <p>This page has been audited and hardened for solo enterprise delivery. All sections include explicit validation criteria, failure modes, and rollback procedures.</p>
                 </div>
-
-                <!-- ============================================== -->
-                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
-                <!-- ============================================== -->
-                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
-                    <div class="callout-title">☁️ Splunk Cloud Safety Box — Phase 1 — Log Coverage</div>
-                    <p><strong>✅ Allowed in Cloud:</strong> All conceptual frameworks, validation SPL queries, and ES UI-based workflows on this page apply identically in Cloud. Search-time field extractions, CIM validation, and data model checks work the same.</p>
-                    <p><strong>⚠️ Restricted in Cloud:</strong> Any steps referencing <code>$SPLUNK_HOME</code> filesystem paths, <code>btool</code> CLI, <code>splunk restart</code>, or direct <code>props.conf/transforms.conf</code> edits on indexers do NOT apply in Cloud. These steps apply only to customer-managed HFs or Enterprise environments.</p>
-                    <p><strong>🔄 Cloud-Safe Alternative:</strong> For props/transforms changes on the SH: deploy via TA using SSAI or use Settings → Fields. For indexer-side changes: file a Splunk support ticket. Replace <code>btool</code> with <code>| rest /services/configs/conf-[conf_name]</code>. Replace <code>splunk restart</code> with "changes take effect automatically (search-time) or via support ticket (index-time)." Replace <code>splunk rebuild acceleration</code> with Settings → Data Models → Rebuild.</p>
-                </div>
-
-
                 
                 <div class="callout callout-danger">
                     <div class="callout-title">🚨 HARD GATE — DO NOT PROCEED TO PHASE 2 WITHOUT SIGN-OFF</div>
@@ -60,7 +108,7 @@
                 <!-- ============================================== -->
                 <div class="callout callout-warning">
                     <div class="callout-title">⚠️ Retail Business Timing Constraints — READ BEFORE PLANNING</div>
-                    <p>Sobeys and similar retail environments have strict change windows. Plan your Phase 1 work around these constraints:</p>
+                    <p>Large retail enterprise environments have strict change windows. Plan your Phase 1 work around these constraints:</p>
                 </div>
                 <div class="table-wrapper">
                     <table>
@@ -1190,7 +1238,7 @@ flowchart TB
 2. DISABLE the ingestion source:
    - HEC Token: Splunk Web → Settings → Data Inputs → HTTP Event Collector → [token] → Disable
    - API Polling: Edit inputs.conf, set disabled = 1, restart Splunk
-   - SIEM Push/Pull: Disable connector in vendor portal, or stop external collector process (Akamai SIEM connector, CyberArk, etc.)
+   - SIEM Push: Disable connector in vendor portal (Akamai, CyberArk, etc.)
 
 3. COMMUNICATE:
    - Notify Splunk admin immediately
@@ -1543,7 +1591,6 @@ Thank you,
         </main>
     </div>
 
-    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
     <script>
         mermaid.initialize({ 

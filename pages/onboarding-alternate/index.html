@@ -10,11 +10,67 @@
     <link rel="stylesheet" href="../../assets/style.css">
 </head>
 <body>
-<div class="layout">
-        <aside id="sidebar" class="sidebar"></aside>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+    </button>
 
-        <main class="main-content">
-            <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1><a href="../../index.html">Splunk ES</a></h1>
+            <span class="version">Detection Engineering</span>
+        </div>
+        <ul class="nav-tree">
+            <li><a href="../delivery-model/index.html">Delivery Model</a></li>
+            <li><a href="../planning/index.html">Planning & Scoping</a></li>
+            <li>
+                <span class="nav-section">Phase 1: Log Coverage</span>
+                <ul>
+                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
+                    <li><a href="../universal-onboarding/index.html">Universal Framework</a></li>
+                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
+                    <li><a href="../onboarding-primary/index.html">Primary Paths</a></li>
+                    <li>
+                        <span class="nav-section">Alternate Paths</span>
+                        <ul>
+                            <li><a href="index.html" class="active">Overview</a></li>
+                            <li><a href="azure-event-hubs.html">Azure Event Hubs</a></li>
+                            <li><a href="kafka-connect.html">Kafka Connect</a></li>
+                            <li><a href="db-connect.html">DB Connect</a></li>
+                            <li><a href="scripted-inputs.html">Scripted Inputs</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+            <li><a href="../phase2-data-quality/index.html">Phase 2: Data Quality</a></li>
+            <li><a href="../phase3-detection/index.html">Phase 3: Detection</a></li>
+            <li>
+                <span class="nav-section">Use Case Library</span>
+                <ul>
+                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS</a></li>
+                    <li><a href="../use-cases/mfa-auth.html">MFA & Authentication</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase4-automation/index.html">Phase 4: Automation</a></li>
+            <li><a href="../phase5-rba/index.html">Phase 5: RBA</a> <span class="badge badge-future">Future</span></li>
+            <li>
+                <span class="nav-section">Appendix</span>
+                <ul>
+                    <li><a href="../appendix/spl-library.html">SPL Library</a></li>
+                    <li><a href="../appendix/troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="../appendix/checklists.html">Checklists</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <nav class="breadcrumb">
+            <a href="../../index.html">Home</a>
+            <span class="separator">›</span>
+            <a href="../phase1-log-coverage/index.html">Phase 1</a>
+            <span class="separator">›</span>
+            <span class="current">Alternate Paths</span>
+        </nav>
 
         <header class="page-header">
             <div class="phase-indicator phase-1">Phase 1: Log Coverage</div>
@@ -31,18 +87,6 @@
                 <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
                 <p>Alternate paths include additional complexity and risk factors compared to primary paths.</p>
             </div>
-
-                <!-- ============================================== -->
-                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
-                <!-- ============================================== -->
-                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
-                    <div class="callout-title">☁️ Splunk Cloud Safety Box — Infrastructure &amp; Decision Guides</div>
-                    <p><strong>✅ Allowed in Cloud:</strong> Decision frameworks and evaluation criteria on this page apply to Cloud. HEC is the primary Cloud ingestion path.</p>
-                    <p><strong>⚠️ Restricted in Cloud:</strong> Architecture patterns that assume direct indexer access, deployment server management, or filesystem-level configuration apply only to customer-managed infrastructure (HFs, UFs, standalone instances).</p>
-                    <p><strong>🔄 Cloud-Safe Alternative:</strong> When this page discusses ingestion architectures, the Cloud path is: external collector → HEC, or UF/HF → Cloud indexing tier. See the <a href="../../pages/planning/splunk-cloud-es-differences.html">Cloud + ES: What's Different</a> page for the full Cloud architecture reference.</p>
-                </div>
-
-
 
             <div class="callout callout-danger">
                 <div class="callout-title">🚨 CRITICAL: Alternate Paths Require Additional Expertise</div>
@@ -393,14 +437,8 @@ flowchart TD
             </div>
         </section>
     </main>
-    </div>
-
-
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
 
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
 </body>
 </html>

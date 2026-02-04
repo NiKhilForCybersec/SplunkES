@@ -5,14 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scripted Inputs | Splunk ES Handbook</title>
     <link rel="stylesheet" href="../../assets/style.css">
-<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 </head>
 <body>
-    <div class="layout">
-        <aside id="sidebar" class="sidebar"></aside>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>Splunk ES</h1>
+            <span class="version">Detection Engineering</span>
+        </div>
+        <ul class="nav-tree">
+            <li><a href="../../index.html"><span class="nav-icon">◈</span> Home</a></li>
+            <li><a href="../delivery-model/index.html"><span class="nav-icon">◆</span> Delivery Model</a></li>
+            <li><a href="../planning/index.html"><span class="nav-icon">◇</span> Planning & Scoping</a></li>
+            <li class="nav-section">
+                <span class="section-title">Phase 1: Log Coverage</span>
+                <ul>
+                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
+                    <li><a href="../universal-onboarding/index.html">Universal Onboarding</a></li>
+                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
+                </ul>
+            </li>
+            <li class="nav-section">
+                <span class="section-title">Onboarding - Primary</span>
+                <ul>
+                    <li><a href="../onboarding-primary/index.html">Overview</a></li>
+                    <li><a href="../onboarding-primary/akamai-waf.html">Akamai WAF</a></li>
+                    <li><a href="../onboarding-primary/authentication-mfa.html">Authentication/MFA</a></li>
+                    <li><a href="../onboarding-primary/syslog-hf.html">Syslog via HF</a></li>
+                    <li><a href="../onboarding-primary/endpoint-telemetry.html">Endpoint Telemetry</a></li>
+                    <li><a href="../onboarding-primary/hec-ingestion.html">HEC Ingestion</a></li>
+                </ul>
+            </li>
+            <li class="nav-section">
+                <span class="section-title">Onboarding - Alternate</span>
+                <ul>
+                    <li><a href="index.html">Overview</a></li>
+                    <li><a href="azure-event-hubs.html">Azure Event Hubs</a></li>
+                    <li><a href="kafka-connect.html">Kafka Connect</a></li>
+                    <li><a href="db-connect.html">DB Connect</a></li>
+                    <li><a href="scripted-inputs.html" class="active">Scripted Inputs</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase2-data-quality/index.html"><span class="nav-icon">◆</span> Phase 2: Data Quality</a></li>
+            <li><a href="../phase3-detection/index.html"><span class="nav-icon">◇</span> Phase 3: Detection</a></li>
+            <li class="nav-section">
+                <span class="section-title">Use Cases</span>
+                <ul>
+                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS Detection</a></li>
+                    <li><a href="../use-cases/mfa-auth.html">MFA Authentication</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase4-automation/index.html"><span class="nav-icon">◈</span> Phase 4: Automation</a></li>
+            <li><a href="../phase5-rba/index.html"><span class="nav-icon">◇</span> Phase 5: RBA <span class="badge future">Future</span></a></li>
+            <li class="nav-section">
+                <span class="section-title">Appendix</span>
+                <ul>
+                    <li><a href="../appendix/index.html">Reference Index</a></li>
+                    <li><a href="../appendix/spl-library.html">SPL Library</a></li>
+                    <li><a href="../appendix/troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="../appendix/checklists.html">Checklists</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
 
-        <main class="main-content">
-            <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <main class="content">
+        <nav class="breadcrumb">
+            <a href="../../index.html">Home</a>
+            <span class="separator">›</span>
+            <a href="index.html">Onboarding - Alternate</a>
+            <span class="separator">›</span>
+            <span class="current">Scripted Inputs</span>
+        </nav>
 
         <header class="page-header">
             <div class="phase-indicator">Phase 1 · Alternate Path</div>
@@ -29,18 +93,6 @@
                 <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
                 <p>This page includes custom script security requirements, checkpoint management, and rollback procedures.</p>
             </div>
-
-                <!-- ============================================== -->
-                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
-                <!-- ============================================== -->
-                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
-                    <div class="callout-title">☁️ Splunk Cloud Safety Box — Scripted Inputs</div>
-                    <p><strong>✅ Allowed in Cloud:</strong> Scripted inputs can run on IDM (Classic) or SH (Victoria) if packaged as a Cloud-vetted app. They can also run on customer-managed HFs.</p>
-                    <p><strong>⚠️ Restricted in Cloud:</strong> Arbitrary scripts cannot be deployed ad-hoc — they must be packaged as a private app and submitted for Cloud vetting. <code>$SPLUNK_HOME</code> filesystem paths, CLI commands, and manual script placement described on this page apply ONLY to customer-managed infrastructure (HFs, standalone instances). On Classic Experience, scripted inputs on SH void search SLAs.</p>
-                    <p><strong>🔄 Cloud-Safe Alternative:</strong> Preferred pattern: run the script on your own infrastructure (Lambda, EC2, cron job on a server) and POST results to Cloud HEC. This eliminates all Cloud-side scripted input restrictions. If the script must run inside Splunk, package it as an app, get it vetted, and deploy to IDM (Classic) or SH (Victoria).</p>
-                </div>
-
-
 
             <div class="callout callout-danger">
                 <div class="callout-title">🚨 CRITICAL: Scripted Inputs Require Custom Code Maintenance</div>
@@ -1494,13 +1546,7 @@ index=[target_index] sourcetype=[script_sourcetype] earliest=-1h
             </div>
         </section>
     </main>
-    </div>
 
-
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
-
-    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
 </body>
 </html>

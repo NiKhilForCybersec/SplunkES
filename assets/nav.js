@@ -11,7 +11,6 @@ const NAV_CONFIG = [
         icon: '🏠',
         items: [
             { title: 'Home', href: 'index.html' },
-            { title: '☁️ Cloud + ES: Read First', href: 'pages/planning/splunk-cloud-es-differences.html', badge: 'NEW', badgeClass: 'phase-1' },
             { title: 'Delivery Operating Model', href: 'pages/delivery-model/index.html' },
             { title: 'Planning & Project Intake', href: 'pages/planning/index.html' },
         ]

@@ -5,19 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Authentication & MFA Onboarding - Splunk ES Handbook</title>
     <link rel="stylesheet" href="../../assets/style.css">
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
-
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
     <div class="layout">
-        <aside id="sidebar" class="sidebar"></aside>
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="index.html" class="nav-item">Overview</a>
+                    <a href="akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="authentication-mfa.html" class="nav-item nav-item-sub active">Authentication / MFA</a>
+                    <a href="syslog-hf.html" class="nav-item nav-item-sub">Syslog via HF</a>
+                    <a href="endpoint-telemetry.html" class="nav-item nav-item-sub">Endpoint Telemetry</a>
+                    <a href="hec-ingestion.html" class="nav-item nav-item-sub">HEC Ingestion</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Alternate Onboarding</div>
+                    <a href="../onboarding-alternate/index.html" class="nav-item">Overview</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
 
         <main class="main-content">
-            <nav id="breadcrumbs" class="breadcrumbs"></nav>
-
-<div class="content-wrapper">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase1-log-coverage/index.html">Phase 1</a>
+                <span class="separator">/</span>
+                <a href="index.html">Primary Onboarding</a>
+                <span class="separator">/</span>
+                <span class="current">Authentication / MFA</span>
+            </div>
+            
+            <div class="content-wrapper">
                 <span class="phase-indicator phase-1">📊 Phase 1 — Log Coverage</span>
                 <h1>Authentication & MFA Log Onboarding</h1>
                 
@@ -25,31 +89,6 @@
                     <div class="callout-title">🔐 Multi-Provider Guide</div>
                     <p>This guide covers onboarding authentication and MFA logs from multiple identity providers commonly found in enterprise environments. Most organizations have 2-4 authentication sources that need to be correlated for complete visibility.</p>
                 </div>
-
-                <!-- ============================================== -->
-                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
-                <!-- ============================================== -->
-                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
-                    <div class="callout-title">☁️ Splunk Cloud Safety Box — Authentication / MFA Onboarding</div>
-                    <p><strong>✅ Allowed in Cloud:</strong> HEC token creation, index creation via UI, TA installation on SH via SSAI, all validation SPL, CIM mapping validation, ES correlation search management.</p>
-                    <p><strong>⚠️ Restricted in Cloud:</strong> Some IdP add-ons use modular inputs (e.g., Okta, Azure AD, Duo). On Classic Experience, these cannot run on the SH — use IDM or customer-managed HF. Direct edits to props.conf/transforms.conf on indexers require a support ticket.</p>
-                    <p><strong>🔄 Cloud-Safe Alternative:</strong> Many IdPs support direct webhook/push to HEC (Okta System Log, Azure AD via Event Hub). Prefer vendor push → HEC over modular input polling where possible. For IdPs that require polling, deploy the connector on your infrastructure and POST to HEC.</p>
-                    <p><strong>📋 Verify:</strong> Check each IdP's supported delivery methods. If using a Splunk add-on with modular inputs, confirm it is Cloud-vetted on Splunkbase and check your Experience type (Classic vs. Victoria).</p>
-                </div>
-
-                <h3>Splunk Cloud Execution Notes — Authentication / MFA</h3>
-                <div class="table-wrapper">
-                    <table>
-                        <tbody>
-                            <tr><td style="width:35%"><strong>Where does the collector run?</strong></td><td>Depends on delivery method. <strong>Vendor push (webhook):</strong> No collector needed — IdP pushes directly to Cloud HEC. <strong>API polling:</strong> Collector runs on your infrastructure. <strong>Modular input via add-on:</strong> Victoria Experience → SH. Classic Experience → IDM or customer-managed HF.</td></tr>
-                            <tr><td><strong>Are add-on modular inputs allowed?</strong></td><td>Victoria Experience: Yes (on SH). Classic Experience: Only on IDM or customer HF. Verify the add-on is Cloud-vetted.</td></tr>
-                            <tr><td><strong>Where does parsing happen?</strong></td><td>Search-time on SH (TA provides field extraction, CIM mapping). Index-time timestamp/sourcetype via HEC token metadata or TA on indexers (support ticket to install).</td></tr>
-                            <tr><td><strong>Who owns IdP credentials?</strong></td><td>You manage IdP API keys/secrets on your collector or in the add-on configuration (on IDM/SH/HF). Splunk Cloud does not store vendor credentials on your behalf.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-
 
                 <!-- ============================================== -->
                 <!-- PROVIDER MATRIX -->
@@ -503,7 +542,7 @@ COMMON MULTI-TENANT SCENARIOS:
 FOR EACH TENANT, DOCUMENT:
 | Tenant Name     | Tenant ID                              | Users  | Owner    | Event Hub Needed |
 |-----------------|----------------------------------------|--------|----------|------------------|
-| Sobeys Main     | 12345678-1234-1234-1234-123456789012   | 50,000 | IAM Team | Yes              |
+| Enterprise Main  | 12345678-1234-1234-1234-123456789012   | 50,000 | IAM Team | Yes              |
 | IGA Acquisition | 87654321-4321-4321-4321-210987654321   | 10,000 | Acquired | Yes              |
 
 EACH TENANT REQUIRES SEPARATE:
@@ -563,7 +602,7 @@ EACH TENANT REQUIRES SEPARATE:
                     <li><strong>MFA log access:</strong> Many organizations have Entra ID sign-in logs but NOT the detailed MFA logs (authenticationDetails array). Verify MFA details are included.</li>
                     <li><strong>Azure Event Hub:</strong> The recommended delivery method for Entra ID requires Event Hub, which may not exist. Cloud team may need 1-2 weeks to provision.</li>
                     <li><strong>API credentials with correct permissions:</strong> Okta/CyberArk API keys often exist but have read-only permissions that don't include the log types you need.</li>
-                    <li><strong>Username consistency:</strong> Entra uses UPN (user@domain.com), CyberArk might use SAMAccountName (DOMAIN\user), on-prem AD uses various formats. Correlation requires understanding these differences.</li>
+                    <li><strong>Username consistency:</strong> Entra uses UPN (<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="92e7e1f7e0d2f6fdfff3fbfcbcf1fdff">[email&#160;protected]</a>), CyberArk might use SAMAccountName (DOMAIN\user), on-prem AD uses various formats. Correlation requires understanding these differences.</li>
                     <li><strong>Working diagnostic settings:</strong> Azure diagnostic settings may have been configured once and broken by subscription changes, policy updates, or Event Hub deletions.</li>
                 </ul>
 
@@ -1102,19 +1141,19 @@ index = auth_windows</code></pre>
                                 <td>Entra ID</td>
                                 <td>userPrincipalName</td>
                                 <td>UPN (email-like)</td>
-                                <td>john.smith@contoso.com</td>
+                                <td><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7812171016560b15110c10381b17160c170b17561b1715">[email&#160;protected]</a></td>
                             </tr>
                             <tr>
                                 <td>CyberArk</td>
                                 <td>user</td>
                                 <td>Variable (often UPN)</td>
-                                <td>john.smith@contoso.com</td>
+                                <td><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f09a9f989ede839d998498b0939f9e849f839fde939f9d">[email&#160;protected]</a></td>
                             </tr>
                             <tr>
                                 <td>Okta</td>
                                 <td>actor.alternateId</td>
                                 <td>UPN or email</td>
-                                <td>john.smith@contoso.com</td>
+                                <td><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7812171016560b15110c10381b17160c170b17561b1715">[email&#160;protected]</a></td>
                             </tr>
                             <tr>
                                 <td>Windows AD</td>
@@ -1171,8 +1210,8 @@ EVAL-action = case(EventCode==4624, "success", EventCode==4625, "failure", true(
                         <button class="copy-btn">Copy</button>
                     </div>
                     <pre><code>upn,samaccountname,employee_id,display_name
-john.smith@contoso.com,jsmith,EMP001,John Smith
-jane.doe@contoso.com,jdoe,EMP002,Jane Doe
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="177d787f7939647a7e637f57747879637864783974787a">[email&#160;protected]</a>,jsmith,EMP001,John Smith
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="d2b8b3bcb7fcb6bdb792b1bdbca6bda1bdfcb1bdbf">[email&#160;protected]</a>,jdoe,EMP002,Jane Doe
 ...</code></pre>
                 </div>
 
@@ -1654,33 +1693,4 @@ az monitor diagnostic-settings show \
                     <a href="../use-cases/mfa-auth.html" class="next-step-link">
                         <span class="step-direction">Build Detections →</span>
                         <span class="step-title">MFA / Authentication Use Cases</span>
-                    </a>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <script src="../../assets/nav.js"></script>
-    <script src="../../assets/app.js"></script>
-    <script>
-        mermaid.initialize({ 
-            startOnLoad: true,
-            theme: 'dark',
-            themeVariables: {
-                darkMode: true,
-                background: '#0d1117',
-                primaryColor: '#238636',
-                primaryTextColor: '#c9d1d9',
-                primaryBorderColor: '#30363d',
-                lineColor: '#8b949e',
-                secondaryColor: '#161b22',
-                tertiaryColor: '#21262d'
-            },
-            flowchart: {
-                curve: 'basis',
-                padding: 20
-            }
-        });
-    </script>
-</body>
-</html>
+               

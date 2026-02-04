@@ -9,12 +9,68 @@
 </head>
 <body>
     <div class="layout">
-        <aside id="sidebar" class="sidebar"></aside>
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Data Layer & CIM ⚠️</div>
+                    <a href="how-es-uses-data.html" class="nav-item nav-item-sub">How ES Uses Data</a>
+                    <a href="cim-fundamentals.html" class="nav-item nav-item-sub">CIM Fundamentals for ES</a>
+                    <a href="data-models-deep-dive.html" class="nav-item nav-item-sub">Data Models Deep Dive</a>
+                    <a href="validating-es-data.html" class="nav-item nav-item-sub active">Validating ES Data ⛔</a>
+                    <a href="missing-fields.html" class="nav-item nav-item-sub">Missing Fields After Add-ons</a>
+                    <a href="safe-addon-tuning.html" class="nav-item nav-item-sub">Safe Add-on Tuning</a>
+                    <a href="safe-correlation-path.html" class="nav-item nav-item-sub">Data Model → Correlation</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Content Management</div>
+                    <a href="../es-content-management/ootb-content.html" class="nav-item nav-item-sub">OOTB Content Reality</a>
+                    <a href="../es-content-management/correlation-lifecycle.html" class="nav-item nav-item-sub">Correlation Search Lifecycle</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">ES Operations</div>
+                    <a href="../es-operations/incident-review.html" class="nav-item nav-item-sub">Incident Review & Triage</a>
+                    <a href="../es-operations/enablement-mechanics.html" class="nav-item nav-item-sub">Enablement Mechanics</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                </div>
+            </div>
+        </nav>
 
         <main class="main-content">
-            <nav id="breadcrumbs" class="breadcrumbs"></nav>
-
-<div class="content-wrapper">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="how-es-uses-data.html">ES Data Layer</a>
+                <span class="separator">/</span>
+                <span class="current">Validating ES Data & Data Models</span>
+            </div>
+            
+            <div class="content-wrapper">
                 <span class="phase-indicator phase-2">⛔ HARD GATE — DO NOT SKIP</span>
                 <h1>Validating ES Data & Data Models</h1>
 
@@ -24,19 +80,6 @@
                     <p>Enabling detections against unvalidated data creates false confidence: the SOC believes it has coverage that doesn't actually exist. Auditors see enabled searches and assume protection. But zero notables fire because the data pipeline is broken. This is worse than having no detections at all — because at least with no detections, you know you're blind.</p>
                     <p>Complete this validation for every data model you plan to use. Capture evidence. Get sign-off. Then proceed.</p>
                 </div>
-
-                <!-- ============================================== -->
-                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
-                <!-- ============================================== -->
-                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
-                    <div class="callout-title">☁️ Splunk Cloud Safety Box — ES Data Layer &amp; CIM</div>
-                    <p><strong>✅ Allowed in Cloud:</strong> All CIM concepts, data model definitions, field naming, tags, and tstats queries are identical in Cloud. The CIM Setup page (Apps → Manage Apps → Splunk Common Information Model → Set Up) works the same. ES Data Model Acceleration Enforcement (Settings → Data Inputs) works the same. All validation SPL on this page works in Cloud. Rebuilding data models via UI (Settings → Data Models → expand → Rebuild).</p>
-                    <p><strong>⚠️ Restricted in Cloud:</strong> You cannot edit <code>datamodels.conf</code> on indexers directly — file a support ticket for advanced changes. You cannot force parallel summarization changes — file a support ticket. <code>btool</code> commands shown on this page do not work in Cloud. You cannot access <code>tstatsHomePath</code> or storage volume settings.</p>
-                    <p><strong>🔄 Cloud-Safe Alternative:</strong> Replace <code>btool props list</code> with <code>| rest /services/configs/conf-props</code>. Replace <code>btool transforms list</code> with <code>| rest /services/configs/conf-transforms</code>. Use the Data Model Audit dashboard (or the <code>cim_datamodelinfo</code> macro) to monitor acceleration status instead of filesystem checks. Deploy search-time field fixes via TAs on the SH using SSAI.</p>
-                    <p><strong>📋 Verify:</strong> If data model acceleration is incomplete or slow, file a support ticket before attempting manual changes. Splunk manages the indexer-side summarization infrastructure.</p>
-                </div>
-
-
 
                 <div class="callout callout-info">
                     <div class="callout-title">📋 Page Status: HARDENED — ES DATA LAYER</div>
@@ -668,9 +711,7 @@ flowchart TD
         </main>
     </div>
     
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
-    <script src="../../assets/nav.js"></script>
+    <button class="mobile-menu-toggle">☰</button>
     <script src="../../assets/app.js"></script>
 </body>
 </html>

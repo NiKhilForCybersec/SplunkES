@@ -5,19 +5,75 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MFA & Authentication Detection Use Cases - Splunk ES Handbook</title>
     <link rel="stylesheet" href="../../assets/style.css">
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
-
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
     <div class="layout">
-        <aside id="sidebar" class="sidebar"></aside>
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
+                    <a href="../onboarding-primary/akamai-waf.html" class="nav-item nav-item-sub">Akamai WAF</a>
+                    <a href="../onboarding-primary/authentication-mfa.html" class="nav-item nav-item-sub">Authentication / MFA</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="../phase2-data-quality/index.html" class="nav-item">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="mfa-auth.html" class="nav-item nav-item-sub active">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                </div>
+            </div>
+        </nav>
 
         <main class="main-content">
-            <nav id="breadcrumbs" class="breadcrumbs"></nav>
-
-<div class="content-wrapper">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <a href="../phase3-detection/index.html">Phase 3: Detection</a>
+                <span class="separator">/</span>
+                <span class="current">MFA & Authentication Use Cases</span>
+            </div>
+            
+            <div class="content-wrapper">
                 <span class="phase-indicator phase-3">🎯 Phase 3 — Detection Engineering</span>
                 <h1>MFA & Authentication Detection Use Cases</h1>
 
@@ -29,18 +85,6 @@
                     <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
                     <p>All use cases include: data reality checks, production SPL, monitoring mode config, false positive patterns, SOC runbooks, and rollback procedures.</p>
                 </div>
-
-                <!-- ============================================== -->
-                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
-                <!-- ============================================== -->
-                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
-                    <div class="callout-title">☁️ Splunk Cloud Safety Box — ES Content Management</div>
-                    <p><strong>✅ Allowed in Cloud:</strong> All ES content management workflows are UI-based and work identically in Cloud. Correlation search creation, enablement, tuning, suppression, ESCU deployment, and content lifecycle management all use the ES UI. No differences from Enterprise.</p>
-                    <p><strong>⚠️ Restricted in Cloud:</strong> If this page references <code>savedsearches.conf</code> file edits, <code>btool</code> debugging, or filesystem-level backup procedures, those apply only to customer-managed infrastructure. You cannot edit .conf files directly in Splunk Cloud.</p>
-                    <p><strong>🔄 Cloud-Safe Alternative:</strong> All correlation search management is via Configure → Content → Content Management. For backup/versioning, export searches via the ES UI or REST API and store in Git. Use <code>| rest /services/saved/searches</code> to inspect search configurations programmatically. Deploy content updates as packaged apps via SSAI.</p>
-                </div>
-
-
 
                 <div class="callout callout-danger">
                     <div class="callout-title">🚨 MANDATORY: Complete Data Reality Check Before Each Use Case</div>
@@ -670,9 +714,9 @@ Summary Index Collection:
                         <button class="copy-btn">Copy</button>
                     </div>
                     <pre><code>user,reason,approved_by,approved_date,review_date,max_threshold
-svc_backup@contoso.com,Service account - scheduled jobs,Security Manager,2024-01-15,2024-04-15,50
-admin.john@contoso.com,IT Admin - high legitimate MFA volume,Security Manager,2024-01-15,2024-04-15,20
-helpdesk@contoso.com,Shared service desk account,Security Manager,2024-01-15,2024-04-15,30</code></pre>
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="daa9acb985b8bbb9b1afaa9ab9b5b4aeb5a9b5f4b9b5b7">[email&#160;protected]</a>,Service account - scheduled jobs,Security Manager,2024-01-15,2024-04-15,50
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e58481888c8bcb8f8a8d8ba5868a8b918a968acb868a88">[email&#160;protected]</a>,IT Admin - high legitimate MFA volume,Security Manager,2024-01-15,2024-04-15,20
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5139343d213534223a11323e3f253e223e7f323e3c">[email&#160;protected]</a>,Shared service desk account,Security Manager,2024-01-15,2024-04-15,30</code></pre>
                 </div>
 
                 <div class="code-block">
@@ -1266,11 +1310,11 @@ index=auth_cyberark sourcetype="cyberark:identity" earliest=-15m latest=now()
                         <button class="copy-btn">Copy</button>
                     </div>
                     <pre><code>user,is_privileged,account_type
-admin.john@contoso.com,true,Global Admin
-admin.jane@contoso.com,true,Global Admin
-svc_backup@contoso.com,true,Service Account
-dba_prod@contoso.com,true,Database Admin
-cyberark_admin@contoso.com,true,PAM Admin</code></pre>
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3f5e5b52565111555057517f5c50514b504c50115c5052">[email&#160;protected]</a>,true,Global Admin
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="8feeebe2e6e1a1e5eee1eacfece0e1fbe0fce0a1ece0e2">[email&#160;protected]</a>,true,Global Admin
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="037075605c61626068767343606c6d776c706c2d606c6e">[email&#160;protected]</a>,true,Service Account
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="690d0b0836191b060d290a06071d061a06470a0604">[email&#160;protected]</a>,true,Database Admin
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="781b011a1d0a190a1327191c151116381b17160c170b17561b1715">[email&#160;protected]</a>,true,PAM Admin</code></pre>
                 </div>
 
                 <!-- ============================================== -->
@@ -1310,7 +1354,7 @@ cyberark_admin@contoso.com,true,PAM Admin</code></pre>
                 </div>
                 <p><strong>Cause:</strong> Different providers use different username formats:</p>
                 <ul>
-                    <li>Entra ID: <code>john.smith@contoso.com</code> (UPN)</li>
+                    <li>Entra ID: <code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="563c393e3878253b3f223e16353938223925397835393b">[email&#160;protected]</a></code> (UPN)</li>
                     <li>CyberArk: <code>john.smith</code> (SAMAccountName)</li>
                     <li>Windows AD: <code>CONTOSO\john.smith</code> (Domain\SAM)</li>
                 </ul>
@@ -1473,39 +1517,4 @@ ALWAYS NOTIFY:
 
                 <div class="next-steps">
                     <a href="../phase4-automation/index.html" class="next-step-link">
-                        <span class="step-direction">After Detection →</span>
-                        <span class="step-title">Phase 4: Automation</span>
-                    </a>
-                    <a href="../appendix/spl-library.html" class="next-step-link">
-                        <span class="step-direction">Reference →</span>
-                        <span class="step-title">SPL Library</span>
-                    </a>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <script src="../../assets/nav.js"></script>
-    <script src="../../assets/app.js"></script>
-    <script>
-        mermaid.initialize({ 
-            startOnLoad: true,
-            theme: 'dark',
-            themeVariables: {
-                darkMode: true,
-                background: '#0d1117',
-                primaryColor: '#238636',
-                primaryTextColor: '#c9d1d9',
-                primaryBorderColor: '#30363d',
-                lineColor: '#8b949e',
-                secondaryColor: '#161b22',
-                tertiaryColor: '#21262d'
-            },
-            flowchart: {
-                curve: 'basis',
-                padding: 20
-            }
-        });
-    </script>
-</body>
-</html>
+                        <span class="

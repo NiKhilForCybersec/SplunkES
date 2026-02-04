@@ -5,19 +5,71 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Phase 2: Data Quality & Normalization - Splunk ES Handbook</title>
     <link rel="stylesheet" href="../../assets/style.css">
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
-
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
     <div class="layout">
-        <aside id="sidebar" class="sidebar"></aside>
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="sidebar-logo">
+                    <div class="sidebar-logo-icon">ES</div>
+                    <div>
+                        <div class="sidebar-logo-text">Detection Engineering</div>
+                        <div class="sidebar-logo-subtitle">Delivery Handbook</div>
+                    </div>
+                </a>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="../../index.html" class="nav-item">Home</a>
+                    <a href="../delivery-model/index.html" class="nav-item">Delivery Operating Model</a>
+                    <a href="../planning/index.html" class="nav-item">Planning & Project Intake</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 1 — Log Coverage</div>
+                    <a href="../phase1-log-coverage/index.html" class="nav-item">Log Coverage & Readiness <span class="nav-phase-badge phase-1">P1</span></a>
+                    <a href="../universal-onboarding/index.html" class="nav-item">Universal Onboarding Framework</a>
+                    <a href="../decision-guides/index.html" class="nav-item">Decision Guides</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Primary Onboarding</div>
+                    <a href="../onboarding-primary/index.html" class="nav-item">Overview</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 2 — Data Quality</div>
+                    <a href="index.html" class="nav-item active">Data Quality & Normalization <span class="nav-phase-badge phase-2">P2</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 3 — Detection</div>
+                    <a href="../phase3-detection/index.html" class="nav-item">Detection Engineering <span class="nav-phase-badge phase-3">P3</span></a>
+                    <a href="../use-cases/waf-ddos.html" class="nav-item nav-item-sub">WAF / DDoS Use Cases</a>
+                    <a href="../use-cases/mfa-auth.html" class="nav-item nav-item-sub">MFA / Auth Use Cases</a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 4 — Automation</div>
+                    <a href="../phase4-automation/index.html" class="nav-item">Automation <span class="nav-phase-badge phase-4">P4</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Phase 5 — Future</div>
+                    <a href="../phase5-rba/index.html" class="nav-item">RBA (Future) <span class="nav-phase-badge phase-5">P5</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Appendix</div>
+                    <a href="../appendix/index.html" class="nav-item">Appendix Overview</a>
+                    <a href="../appendix/spl-library.html" class="nav-item nav-item-sub">SPL Library</a>
+                </div>
+            </div>
+        </nav>
 
         <main class="main-content">
-            <nav id="breadcrumbs" class="breadcrumbs"></nav>
-
-<div class="content-wrapper">
+            <div class="breadcrumbs">
+                <a href="../../index.html">Home</a>
+                <span class="separator">/</span>
+                <span class="current">Phase 2: Data Quality & Normalization</span>
+            </div>
+            
+            <div class="content-wrapper">
                 <span class="phase-indicator phase-2">🔧 Phase 2 — Data Quality</span>
                 <h1>Data Quality & Normalization</h1>
 
@@ -29,18 +81,6 @@
                     <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
                     <p>This page has been audited and hardened for solo enterprise delivery. All sections include explicit validation criteria, failure modes, and rollback procedures.</p>
                 </div>
-
-                <!-- ============================================== -->
-                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
-                <!-- ============================================== -->
-                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
-                    <div class="callout-title">☁️ Splunk Cloud Safety Box — Phase 2 — Data Quality & Normalization</div>
-                    <p><strong>✅ Allowed in Cloud:</strong> All conceptual frameworks, validation SPL queries, and ES UI-based workflows on this page apply identically in Cloud. Search-time field extractions, CIM validation, and data model checks work the same.</p>
-                    <p><strong>⚠️ Restricted in Cloud:</strong> Any steps referencing <code>$SPLUNK_HOME</code> filesystem paths, <code>btool</code> CLI, <code>splunk restart</code>, or direct <code>props.conf/transforms.conf</code> edits on indexers do NOT apply in Cloud. These steps apply only to customer-managed HFs or Enterprise environments.</p>
-                    <p><strong>🔄 Cloud-Safe Alternative:</strong> For props/transforms changes on the SH: deploy via TA using SSAI or use Settings → Fields. For indexer-side changes: file a Splunk support ticket. Replace <code>btool</code> with <code>| rest /services/configs/conf-[conf_name]</code>. Replace <code>splunk restart</code> with "changes take effect automatically (search-time) or via support ticket (index-time)." Replace <code>splunk rebuild acceleration</code> with Settings → Data Models → Rebuild.</p>
-                </div>
-
-
                 
                 <div class="callout callout-danger">
                     <div class="callout-title">🚨 HARD GATE — DO NOT PROCEED TO PHASE 3 WITHOUT VALIDATION</div>
@@ -637,8 +677,8 @@ EVAL-product = "Windows"</code></pre>
 
 `comment("
 Look for format differences:
-- Entra ID: john.smith@contoso.com (UPN)
-- CyberArk: john.smith@contoso.com or jsmith
+- Entra ID: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="9ef4f1f6f0b0edf3f7eaf6defdf1f0eaf1edf1b0fdf1f3">[email&#160;protected]</a> (UPN)
+- CyberArk: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="52383d3a3c7c213f3b263a12313d3c263d213d7c313d3f">[email&#160;protected]</a> or jsmith
 - Windows: DOMAIN\\jsmith or jsmith
 ")`</code></pre>
                 </div>
@@ -650,9 +690,9 @@ Look for format differences:
                         <button class="copy-btn">Copy</button>
                     </div>
                     <pre><code>upn,samaccountname,email,employee_id,display_name,department,is_privileged
-john.smith@contoso.com,jsmith,john.smith@contoso.com,EMP001,John Smith,IT,false
-admin.john@contoso.com,admin.john,admin.john@contoso.com,EMP001,John Smith,IT,true
-jane.doe@contoso.com,jdoe,jane.doe@contoso.com,EMP002,Jane Doe,Finance,false</code></pre>
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7b11141315550816120f133b1814150f14081455181416">[email&#160;protected]</a>,jsmith,<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e983868187c79a84809d81a98a86879d869a86c78a8684">[email&#160;protected]</a>,EMP001,John Smith,IT,false
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f190959c989fdf9b9e999fb1929e9f859e829edf929e9c">[email&#160;protected]</a>,admin.john,<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="254441484c4b0b4f4a4d4b65464a4b514a564a0b464a48">[email&#160;protected]</a>,EMP001,John Smith,IT,true
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="462c2728236822292306252928322935296825292b">[email&#160;protected]</a>,jdoe,<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f19b909f94df959e94b1929e9f859e829edf929e9c">[email&#160;protected]</a>,EMP002,Jane Doe,Finance,false</code></pre>
                 </div>
 
                 <div class="code-block">
@@ -1196,36 +1236,3 @@ CAUTION:
                         <span class="step-direction">Next Phase →</span>
                         <span class="step-title">Phase 3: Detection Engineering</span>
                     </a>
-                    <a href="../use-cases/waf-ddos.html" class="next-step-link">
-                        <span class="step-direction">Build Detections →</span>
-                        <span class="step-title">WAF & DDoS Use Cases</span>
-                    </a>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <script src="../../assets/nav.js"></script>
-    <script src="../../assets/app.js"></script>
-    <script>
-        mermaid.initialize({ 
-            startOnLoad: true,
-            theme: 'dark',
-            themeVariables: {
-                darkMode: true,
-                background: '#0d1117',
-                primaryColor: '#238636',
-                primaryTextColor: '#c9d1d9',
-                primaryBorderColor: '#30363d',
-                lineColor: '#8b949e',
-                secondaryColor: '#161b22',
-                tertiaryColor: '#21262d'
-            },
-            flowchart: {
-                curve: 'basis',
-                padding: 20
-            }
-        });
-    </script>
-</body>
-</html>

@@ -5,14 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DB Connect Integration | Splunk ES Handbook</title>
     <link rel="stylesheet" href="../../assets/style.css">
-<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 </head>
 <body>
-    <div class="layout">
-        <aside id="sidebar" class="sidebar"></aside>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>Splunk ES</h1>
+            <span class="version">Detection Engineering</span>
+        </div>
+        <ul class="nav-tree">
+            <li><a href="../../index.html"><span class="nav-icon">◈</span> Home</a></li>
+            <li><a href="../delivery-model/index.html"><span class="nav-icon">◆</span> Delivery Model</a></li>
+            <li><a href="../planning/index.html"><span class="nav-icon">◇</span> Planning & Scoping</a></li>
+            <li class="nav-section">
+                <span class="section-title">Phase 1: Log Coverage</span>
+                <ul>
+                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
+                    <li><a href="../universal-onboarding/index.html">Universal Onboarding</a></li>
+                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
+                </ul>
+            </li>
+            <li class="nav-section">
+                <span class="section-title">Onboarding - Primary</span>
+                <ul>
+                    <li><a href="../onboarding-primary/index.html">Overview</a></li>
+                    <li><a href="../onboarding-primary/akamai-waf.html">Akamai WAF</a></li>
+                    <li><a href="../onboarding-primary/authentication-mfa.html">Authentication/MFA</a></li>
+                    <li><a href="../onboarding-primary/syslog-hf.html">Syslog via HF</a></li>
+                    <li><a href="../onboarding-primary/endpoint-telemetry.html">Endpoint Telemetry</a></li>
+                    <li><a href="../onboarding-primary/hec-ingestion.html">HEC Ingestion</a></li>
+                </ul>
+            </li>
+            <li class="nav-section">
+                <span class="section-title">Onboarding - Alternate</span>
+                <ul>
+                    <li><a href="index.html">Overview</a></li>
+                    <li><a href="azure-event-hubs.html">Azure Event Hubs</a></li>
+                    <li><a href="kafka-connect.html">Kafka Connect</a></li>
+                    <li><a href="db-connect.html" class="active">DB Connect</a></li>
+                    <li><a href="scripted-inputs.html">Scripted Inputs</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase2-data-quality/index.html"><span class="nav-icon">◆</span> Phase 2: Data Quality</a></li>
+            <li><a href="../phase3-detection/index.html"><span class="nav-icon">◇</span> Phase 3: Detection</a></li>
+            <li class="nav-section">
+                <span class="section-title">Use Cases</span>
+                <ul>
+                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS Detection</a></li>
+                    <li><a href="../use-cases/mfa-auth.html">MFA Authentication</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase4-automation/index.html"><span class="nav-icon">◈</span> Phase 4: Automation</a></li>
+            <li><a href="../phase5-rba/index.html"><span class="nav-icon">◇</span> Phase 5: RBA <span class="badge future">Future</span></a></li>
+            <li class="nav-section">
+                <span class="section-title">Appendix</span>
+                <ul>
+                    <li><a href="../appendix/index.html">Reference Index</a></li>
+                    <li><a href="../appendix/spl-library.html">SPL Library</a></li>
+                    <li><a href="../appendix/troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="../appendix/checklists.html">Checklists</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
 
-        <main class="main-content">
-            <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <main class="content">
+        <nav class="breadcrumb">
+            <a href="../../index.html">Home</a>
+            <span class="separator">›</span>
+            <a href="index.html">Onboarding - Alternate</a>
+            <span class="separator">›</span>
+            <span class="current">DB Connect</span>
+        </nav>
 
         <header class="page-header">
             <div class="phase-indicator">Phase 1 · Alternate Path</div>
@@ -29,19 +93,6 @@
                 <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
                 <p>This page includes database-specific operational guidance, security requirements, and rollback procedures.</p>
             </div>
-
-                <!-- ============================================== -->
-                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
-                <!-- ============================================== -->
-                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
-                    <div class="callout-title">☁️ Splunk Cloud Safety Box — DB Connect</div>
-                    <p><strong>✅ Allowed in Cloud:</strong> Splunk DB Connect is Cloud-vetted and can run on SH (Victoria Experience) or IDM (Classic Experience). All validation SPL works in Cloud.</p>
-                    <p><strong>⚠️ Restricted in Cloud:</strong> DB Connect requires network connectivity from the Splunk Cloud SH/IDM to your database. This may require IP allowlisting on both sides. On Classic Experience, DB Connect must run on IDM — not on the SH. JDBC drivers may need to be included in the app package.</p>
-                    <p><strong>🔄 Cloud-Safe Alternative:</strong> If direct database connectivity is not feasible, consider deploying a customer-managed HF near the database, running DB Connect on the HF, and forwarding results to Cloud. Or use a scheduled script/Lambda to query the database and POST results to HEC.</p>
-                    <p><strong>📋 Verify:</strong> Confirm network path from Cloud SH/IDM to your database. Check firewall rules and IP allowlists. Verify DB Connect version is Cloud-certified on Splunkbase.</p>
-                </div>
-
-
 
             <div class="callout callout-danger">
                 <div class="callout-title">🚨 CRITICAL: DB Connect Can Impact Production Databases</div>
@@ -1204,13 +1255,7 @@ index=_internal sourcetype=splunkd component=DbxInputProcessor earliest=-1h
             </div>
         </section>
     </main>
-    </div>
 
-
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
-
-    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
 </body>
 </html>

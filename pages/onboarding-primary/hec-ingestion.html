@@ -10,11 +10,70 @@
     <link rel="stylesheet" href="../../assets/style.css">
 </head>
 <body>
-<div class="layout">
-        <aside id="sidebar" class="sidebar"></aside>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+    </button>
 
-        <main class="main-content">
-            <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1><a href="../../index.html">Splunk ES</a></h1>
+            <span class="version">Detection Engineering</span>
+        </div>
+        <ul class="nav-tree">
+            <li><a href="../delivery-model/index.html">Delivery Model</a></li>
+            <li><a href="../planning/index.html">Planning & Scoping</a></li>
+            <li>
+                <span class="nav-section">Phase 1: Log Coverage</span>
+                <ul>
+                    <li><a href="../phase1-log-coverage/index.html">Coverage Assessment</a></li>
+                    <li><a href="../universal-onboarding/index.html">Universal Framework</a></li>
+                    <li><a href="../decision-guides/index.html">Decision Guides</a></li>
+                    <li>
+                        <span class="nav-section">Primary Paths</span>
+                        <ul>
+                            <li><a href="index.html">Overview</a></li>
+                            <li><a href="akamai-waf.html">Akamai WAF</a></li>
+                            <li><a href="authentication-mfa.html">Authentication & MFA</a></li>
+                            <li><a href="syslog-hf.html">Syslog via HF</a></li>
+                            <li><a href="endpoint-telemetry.html">Endpoint Telemetry</a></li>
+                            <li><a href="hec-ingestion.html" class="active">HEC Ingestion</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="../onboarding-alternate/index.html">Alternate Paths</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase2-data-quality/index.html">Phase 2: Data Quality</a></li>
+            <li><a href="../phase3-detection/index.html">Phase 3: Detection</a></li>
+            <li>
+                <span class="nav-section">Use Case Library</span>
+                <ul>
+                    <li><a href="../use-cases/waf-ddos.html">WAF & DDoS</a></li>
+                    <li><a href="../use-cases/mfa-auth.html">MFA & Authentication</a></li>
+                </ul>
+            </li>
+            <li><a href="../phase4-automation/index.html">Phase 4: Automation</a></li>
+            <li><a href="../phase5-rba/index.html">Phase 5: RBA</a> <span class="badge badge-future">Future</span></li>
+            <li>
+                <span class="nav-section">Appendix</span>
+                <ul>
+                    <li><a href="../appendix/spl-library.html">SPL Library</a></li>
+                    <li><a href="../appendix/troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="../appendix/checklists.html">Checklists</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <nav class="breadcrumb">
+            <a href="../../index.html">Home</a>
+            <span class="separator">›</span>
+            <a href="../phase1-log-coverage/index.html">Phase 1</a>
+            <span class="separator">›</span>
+            <a href="index.html">Primary Paths</a>
+            <span class="separator">›</span>
+            <span class="current">HEC Ingestion</span>
+        </nav>
 
         <header class="page-header">
             <div class="phase-indicator phase-1">Phase 1: Log Coverage</div>
@@ -31,19 +90,6 @@
                 <p><strong>Last Audit:</strong> 2024-02 | <strong>Auditor:</strong> Detection Engineering Team</p>
                 <p>This page includes token security guidance, volume management, and enterprise-scale considerations.</p>
             </div>
-
-                <!-- ============================================== -->
-                <!-- CLOUD SAFETY BOX — AUTO-INJECTED               -->
-                <!-- ============================================== -->
-                <div class="callout callout-info" style="border-left-color: #1f6feb; background: #0c2d6b22;">
-                    <div class="callout-title">☁️ Splunk Cloud Safety Box — HEC Ingestion</div>
-                    <p><strong>✅ Allowed in Cloud:</strong> HEC is the PRIMARY ingestion method for Splunk Cloud. Create tokens via UI (Settings → Data Inputs → HTTP Event Collector). All HEC functionality described on this page works in Cloud. Acknowledgment, indexer discovery, and token-per-sourcetype patterns all apply.</p>
-                    <p><strong>⚠️ Restricted in Cloud:</strong> You cannot edit <code>inputs.conf</code> on Cloud indexers to modify global HEC settings (port, SSL, maxContentLength). These are managed by Splunk. You cannot disable HEC globally — file a support ticket if needed.</p>
-                    <p><strong>🔄 Cloud-Safe Alternative:</strong> Use the Cloud-specific HEC endpoint URL (provided in your Cloud admin panel — typically <code>https://http-inputs-&lt;your-stack&gt;.splunkcloud.com:443</code>). Token management is fully self-service via the UI.</p>
-                    <p><strong>📋 Verify:</strong> Confirm your Cloud HEC endpoint URL and ensure network ACLs allow HTTPS traffic from your sources to the Cloud HEC endpoint. Some Cloud stacks have IP allowlists — check with your Splunk admin.</p>
-                </div>
-
-
 
             <div class="callout callout-danger">
                 <div class="callout-title">🚨 CRITICAL: HEC Token Security</div>
@@ -831,14 +877,8 @@ index=_internal sourcetype=splunkd component=HttpInputDataHandler status!=200 ea
             </div>
         </section>
     </main>
-    </div>
-
-
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-    <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
 
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-    <script src="../../assets/nav.js"></script>
     <script src="../../assets/app.js"></script>
 </body>
 </html>
